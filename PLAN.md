@@ -51,7 +51,21 @@ reference 是「每組一條半圓 156 顆，兩條手臂共用資料」；本�
 1. 共用資料的燈條只算一次；
 2. 以「每台一份 LED 亮度表」做快取（同影格、同 preset 的台只差 offset 時可重用）；
 3. 必要時把 `effects.py` 的熱路徑改成 numpy 向量化（仍以 fixtures 比對前端結果）。
-M1 完成後先做基準測試再決定。
+
+**M2 基準測試結果**（`backend/scripts/benchmark_render.py`，24 台、40 FPS，預算 25 ms／影格；取各效果預設值，影格耗時的中位數；只算單一效果，串接轉場時兩層相加約 2 倍）：
+
+| 執行環境（Apple M4） | 156 顆 | 312 顆 | 624 顆 | 最慢的效果 |
+|---|---|---|---|---|
+| CPython 3.12 | 最慢 15.3 ms（61%） | 30.6 ms（123%） | 62.3 ms（249%） | `roulette-ring`、`stardust-cloud`、`moving-rings`、`random-fill` |
+| PyPy 3.12（程式不改） | 5.0 ms（20%） | 10.2 ms（41%） | 20.4 ms（82%） | `roulette-ring` 明顯比其他慢 2–4 倍 |
+
+- PyPy 3.12 下 backend 全部測試通過（含前後端一致性 fixtures），一般效果快 6–10 倍。
+- Pi 5（Cortex-A76）單核心大約比 M4 慢 3–4 倍：**Pi 5 + CPython 連 156 顆都不夠**；Pi 5 + PyPy 只有 156 顆勉強可行。
+- 建議（等 Q1 確定 LED 數、Q6 確定主機後定案）：
+  1. 執行環境改用 **PyPy**（uv 可管理；Linux aarch64／x86-64、Windows 都有版本），不需改程式；
+  2. 主機若 LED 數 ≥ 312，改用 x86 mini PC 或 Mac mini 等級，不用 Pi 5；
+  3. 若仍不夠，再依序做上面的對策 1–3，以及多程序（各程序負責一部分轉燈）；`roulette-ring` 值得單獨最佳化。
+- 實機一定要在目標主機重跑同一支腳本確認。
 
 ## 3. 球燈與洗牆燈（DMX fixtures）
 
@@ -205,8 +219,8 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 
 | # | 內容 | 完成條件 | 依賴 |
 |---|---|---|---|
-| M1 ✅ | 建 repo；複製 moon_observe backend/frontend；`uv sync --locked`、`npm ci` | 原有 backend、frontend 測試全部通過；fixture 重產逐 byte 相同（2026-11-03：來源 `moon_observe@b736485`（v0.1.12+1）以 `git archive` 匯出；backend 86、frontend 117 個測試通過；`tsc` + build 通過；`npx vite-node scripts/generateBackendVectors.ts` 重產的 `effects_v2.json` 與原檔 SHA-1 相同） | – |
-| M2 | 通用化：`pixels`、`unit_count` ≤ 24、`targets.universes`、`hardware.py`（搬自 `moon_observe_re`）；效能基準測試 | 24 台 × 假設 LED 數下量出每影格耗時；決定是否向量化 | – |
+| M1 ✅ | 建 repo；複製 moon_observe backend/frontend；`uv sync --locked`、`npm ci` | 原有 backend、frontend 測試全部通過；fixture 重產逐 byte 相同（2026-11-03：來源 `moon_observe@b736485`（v0.1.12+1）以 `git archive` 匯出；backend 86、frontend 117 個測試通過；`tsc` + build 通過；`npx vite-node scripts/generateBackendVectors.ts` 的輸出與原檔逐 byte 相同（注意：不加 `--write` 只會印到 stdout，不會寫檔）） | – |
+| M2 ✅ | 通用化：`pixels`、`unit_count`、多 universe、`hardware.py`；效能基準測試 | 2026-11-03：見下方「M2 實作細節」；backend 96 個測試（新增 `test_hardware.py` 10 個）、frontend 117 個測試通過，`tsc` 通過；fixtures 加入 24 台的整台效果（`unit-chase`、`unit-random`、`roulette-ring`、`sequential-center-fill`、`random-fill`），前後端一致；24 台 × 312 顆實際送到本機 UDP listener 2 秒：48 個 universe、每個 79 包（≈ 40 FPS）、封包 510／428 bytes；效能結果見 §2 | – |
 | M3 | DMX：fixture profile、patch 解析與驗證、`dmx.py`（RGB → 通道、universe buffer）、`--patch-report` | 位址重疊／越界等驗證測試；golden test 逐 byte 比對 | Q2–Q4 |
 | M4 | 轉燈幾何與 payload 依實體配置實作 | payload golden test；現場一台實測 | Q1 |
 | M5 | Fixture effect engine（TS + Python）、Sequence v2、天氣套用到 DMX 群組 | 前後端 fixture vectors 一致；v1 → v2 升級測試 | M3 |
@@ -214,3 +228,15 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 | M7 | 前端：全場 3D、群組編輯、對燈模式 | `npm test`、`tsc` 通過；Playwright 截圖 | M5、Q5 |
 | M8 | 部署（Pi systemd 或 Windows WinSW）與現場 checklist | 安裝 → 升級 → 回退 → 停止時燈全暗、馬達停 | Q6、Q7 |
 | M9 | 更新 `doc/system-reference.md` 為本系統版本 | 文件與程式一致 | 全部 |
+
+### M2 實作細節
+
+- `render.pixels` 1..2048（預設 156）；`render.unit_count` 1..64（預設 9）；參數 `litCount` 等效果上限暫不動（依 LED 數調整留到 M4）。
+- 新增選填 `[hardware]`：`color_order`（預設 RGB）、`brightness`（0..1，預設 1）、`channels_per_universe`（3 的倍數、≤ 510，預設 510）。
+- 新增選填 `[motor]`：`channel`（預設 `pixels × 3 + 1`，必須在 LED 通道之後）；指令維持 reference 的 0（緩停）／255（緩啟動）與 `PUT /api/motor {"enabled"}`。
+- 每台是一條邏輯通道串（LED 依色序、再接馬達通道），依 `channels_per_universe` 切成**連續的 universe**（WLED 慣例），從 target 的 `universe` 開始；一顆 LED 不會跨 universe；每包補到偶數長度；每台最多 8 個 universe。
+- 同一 IP 上各台用到的 universe 不可重疊（錯誤訊息會提示「連續 universe」）。
+- 不寫 `[hardware]`、`[motor]` 時，封包與 reference 逐 byte 相同（一包 470 bytes，ch469 馬達），原有測試全部不改照樣通過。
+- `GET /api/state`：`motor.channel` 改讀設定；`output` 新增 `pixels`；`output.targets[]` 多了 `universes`。
+- 程式結束時，若馬達為 255，保留最後畫面、對每台每個 universe 再送一次馬達 0（同 reference）。
+- 前端尚未修改（仍是 1×9 排列、156 顆），留到 M7。

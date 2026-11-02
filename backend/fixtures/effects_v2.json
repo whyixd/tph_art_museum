@@ -33087,6 +33087,211 @@
       ],
       "totalFrames": 540,
       "sha256": "caf34c793856e500b04c6d41aacd9ae92d781c814a8793400ca30c5320e29b59"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "unit-chase",
+        "parameters": {
+          "stepSeconds": 0.5,
+          "fadeSeconds": 0,
+          "gapSeconds": 0.5,
+          "holdSeconds": 2,
+          "endDarkSeconds": 0.5
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        }
+      },
+      "unitCount": 24,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 1680,
+      "sha256": "92ad1853c8f9903cf6a1814f01c154704a91c1297e39834d932e2dca617237af"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "unit-random",
+        "parameters": {
+          "fadeInSeconds": 0,
+          "holdSeconds": 1,
+          "fadeOutSeconds": 1,
+          "gapSeconds": 0.2
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        }
+      },
+      "unitCount": 24,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 4224,
+      "sha256": "622f6b0e76ee1ee467cb9dcb3e2e47dac769700330c3e767b72ee8d869fe9b0c"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "roulette-ring",
+        "parameters": {
+          "sweeps": 4,
+          "startStepFrames": 2,
+          "endStepSeconds": 0.6,
+          "holdSeconds": 1,
+          "dimSeconds": 3,
+          "spreadStepSeconds": 0.15,
+          "ringHoldSeconds": 2,
+          "glitchSeconds": 1.2,
+          "glitchSpreadSeconds": 2,
+          "flickerFrames": 2,
+          "endDarkSeconds": 0.5
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        }
+      },
+      "unitCount": 24,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 2746,
+      "sha256": "e90a2d5aec3113a50dd0c38c58142f0537df07cc157058e8e059a2e1df0868f6"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "sequential-center-fill",
+        "parameters": {
+          "expansionSeconds": 2.5,
+          "holdSeconds": 0.4
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        }
+      },
+      "unitCount": 24,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 5538,
+      "sha256": "79b9aacb1fa789be644e5ad017f8ad7188b41d3dae2f8cf4ce14bab2509d1256"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "random-fill",
+        "parameters": {
+          "fillSeconds": 60,
+          "acceleration": 2,
+          "ledFadeSeconds": 0,
+          "holdSeconds": 5,
+          "fadeOutSeconds": 3
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "unit",
+          "colors": [
+            {
+              "r": 0.2784313725490196,
+              "g": 0.8431372549019608,
+              "b": 1
+            },
+            {
+              "r": 0.47843137254901963,
+              "g": 0.3607843137254902,
+              "b": 1
+            },
+            {
+              "r": 1,
+              "g": 0.30980392156862746,
+              "b": 0.6392156862745098
+            },
+            {
+              "r": 1,
+              "g": 0.7294117647058823,
+              "b": 0.28627450980392155
+            },
+            {
+              "r": 0.36470588235294116,
+              "g": 1,
+              "b": 0.6980392156862745
+            }
+          ]
+        }
+      },
+      "unitCount": 24,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 5440,
+      "sha256": "43174ed6153ac7b6ff4dc2f631be19feefb40c9659f040efa0edd37a59330678"
     }
   ],
   "rainLines": {

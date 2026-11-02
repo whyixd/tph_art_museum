@@ -14,17 +14,17 @@ from typing import Any, Callable, Mapping, Sequence
 
 from stupidArtnet import StupidArtnet
 
-from .config import load_config
-from .control import MOTOR_CHANNEL, PresetStore, make_server
+from .config import DEFAULT_HARDWARE, load_config
+from .control import PresetStore, make_server
 from .effects import Rgb, completion_frames
-from .renderer import render_frame, rgb_bytes
+from .hardware import build_packets, default_motor_channel, packet_sizes
+from .renderer import render_frame
 from .sequence import SequenceStore, render_sequence_frame
 from .palette import PaletteStore
 from .playback import PlaybackMonitor
 from .unit_colors import UnitColorStore
 from .weather import WeatherStore
 
-ARTNET_PACKET_SIZE = MOTOR_CHANNEL + 1  # ArtDmx and stupidArtnet require an even length.
 SINGLE_ROUND_SECONDS = 60  # A single effect "round" for weather visits: at least this long.
 
 
@@ -76,8 +76,12 @@ def stream(
     targets = config.get("targets") or [{
         "unit_id": config["unit_id"], "ip": config["ip"], "universe": config["universe"],
     }]
-    clients: list[tuple[Mapping[str, Any], Any]] = []
-    last_payloads: dict[int, bytearray] = {}
+    hardware = config.get("hardware", DEFAULT_HARDWARE)
+    motor_channel = config.get("motor", {}).get("channel", default_motor_channel(config["pixels"]))
+    sizes = packet_sizes(config["pixels"], motor_channel, hardware["channels_per_universe"])
+    # 每台每個 universe 一個 client，依 universe 順序排列。 / One client per unit universe, in universe order.
+    clients: list[tuple[Mapping[str, Any], list[Any]]] = []
+    last_pixels: dict[int, Sequence[Rgb]] = {}
     last_motor_value = 0
     last_sequence_generation: int | None = None
     last_weather_generation: int | None = None
@@ -87,15 +91,18 @@ def stream(
     last_boundary: tuple[int, int] | None = None
     try:
         for target in targets:
-            universe = target["universe"]
-            client = client_factory(
-                target["ip"], universe & 0x0F, ARTNET_PACKET_SIZE, fps=fps,
-                source_address=(config["source_ip"], 0) if config["source_ip"] else None,
-            )
-            clients.append((target, client))
-            client.set_simplified(False)
-            client.set_net(universe >> 8)
-            client.set_subnet((universe >> 4) & 0x0F)
+            universes = target.get("universes") or [target["universe"] + offset for offset in range(len(sizes))]
+            unit_clients: list[Any] = []
+            clients.append((target, unit_clients))
+            for universe, size in zip(universes, sizes, strict=True):
+                client = client_factory(
+                    target["ip"], universe & 0x0F, size, fps=fps,
+                    source_address=(config["source_ip"], 0) if config["source_ip"] else None,
+                )
+                unit_clients.append(client)
+                client.set_simplified(False)
+                client.set_net(universe >> 8)
+                client.set_subnet((universe >> 4) & 0x0F)
         start = clock()
         frame = 0
         sent = 0
@@ -147,7 +154,7 @@ def stream(
             # 測試單色時，被指定的燈台整條填色；底下的播放照常前進。
             # A unit colour test fills the chosen units; playback underneath keeps advancing.
             unit_colors = unit_colors_provider() if unit_colors_provider is not None else None
-            for target, client in clients:
+            for target, unit_clients in clients:
                 unit_id = target["unit_id"]
                 test_color = unit_colors[unit_id - 1] if unit_colors is not None and unit_id <= len(unit_colors) else None
                 category = weather.get("category") if weather is not None else None
@@ -172,23 +179,25 @@ def stream(
                         fps=fps, rpm=config["rpm"], raining=category == "rain",
                         color_override=color_override,
                     )
-                payload = bytearray(rgb_bytes(pixels))
-                payload.extend(bytes(ARTNET_PACKET_SIZE - len(payload)))
-                payload[MOTOR_CHANNEL - 1] = motor_value
-                client.send(bytes(payload))
-                last_payloads[unit_id] = payload
-                sent += 1
+                packets = build_packets(pixels, hardware=hardware, motor_channel=motor_channel, motor_value=motor_value)
+                for client, packet in zip(unit_clients, packets, strict=True):
+                    client.send(packet)
+                    sent += 1
+                last_pixels[unit_id] = pixels
             frame += 1
         return sent
     finally:
-        for target, client in clients:
+        for target, unit_clients in clients:
             try:
-                if last_motor_value == 255 and target["unit_id"] in last_payloads:
-                    payload = last_payloads[target["unit_id"]]
-                    payload[MOTOR_CHANNEL - 1] = 0
-                    client.send(bytes(payload))
+                if last_motor_value == 255 and target["unit_id"] in last_pixels:
+                    # 保留最後畫面，只把馬達改成緩停。 / Keep the last picture; only stop the motor.
+                    packets = build_packets(last_pixels[target["unit_id"]], hardware=hardware,
+                                            motor_channel=motor_channel, motor_value=0)
+                    for client, packet in zip(unit_clients, packets, strict=True):
+                        client.send(packet)
             finally:
-                client.close()
+                for client in unit_clients:
+                    client.close()
 
 
 def main(argv: list[str] | None = None) -> int:

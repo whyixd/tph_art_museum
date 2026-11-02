@@ -12,8 +12,8 @@ from threading import Lock
 from typing import Any, Mapping
 
 from .effects import preset_to_json, validate_preset
+from .hardware import default_motor_channel
 
-MOTOR_CHANNEL = 469  # Art-Net/DMX channels are numbered from 1.
 
 
 class PresetStore:
@@ -73,11 +73,12 @@ class PresetStore:
         return {
             "revision": self.revision,
             "preset": self.raw,
-            "motor": {"channel": MOTOR_CHANNEL, "enabled": self.motor_enabled,
+            "motor": {"channel": config.get("motor", {}).get("channel", default_motor_channel(config["pixels"])),
+                      "enabled": self.motor_enabled,
                       "value": 255 if self.motor_enabled else 0},
             "output": {
                 "ip": config["ip"], "universe": config["universe"],
-                "fps": config["fps"], "rpm": config["rpm"],
+                "fps": config["fps"], "rpm": config["rpm"], "pixels": config["pixels"],
                 "unitId": config["unit_id"], "unitCount": config["unit_count"],
                 "targets": config.get("targets", [{"unit_id": config["unit_id"], "ip": config["ip"], "universe": config["universe"]}]),
             },

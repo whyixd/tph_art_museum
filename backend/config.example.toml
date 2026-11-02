@@ -12,8 +12,22 @@ pixels = 156
 unit_id = 1
 unit_count = 9
 
-# To output all nine units from one backend, replace ip/universe above with
-# one [[artnet.targets]] entry per unit (see backend/README.md).
+# To output all units from one backend (up to 64; this installation has 24),
+# replace ip/universe above with one [[artnet.targets]] entry per unit:
+# [[artnet.targets]]
+# unit_id = 1
+# ip = "192.0.2.51"
+# universe = 0   # first universe; a unit needing N universes uses universe..universe+N-1
+
+# 轉燈硬體（整段與各欄位皆可省略；省略時與參考系統的 470 bytes 相同）。
+# Spinner hardware; omit to keep the reference payload (156 px RGB + ch469 motor = 470 bytes).
+# [hardware]
+# color_order = "RGB"            # RGB / RBG / GRB / GBR / BRG / BGR
+# brightness = 1.0               # 0..1, applied before quantization
+# channels_per_universe = 510    # multiple of 3, <= 510 (WLED: 170 RGB pixels per universe)
+#
+# [motor]
+# channel = 469                  # default: right after the pixels (pixels * 3 + 1); 0 = soft stop, 255 = soft start
 
 # Add the actual installation coordinates to enable Open-Meteo weather control.
 # [weather]

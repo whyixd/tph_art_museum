@@ -178,6 +178,12 @@ const unitEffectCases: [EffectPreset, number][] = [
     sweeps: 1, startStepFrames: 1, endStepSeconds: 0.3, dimSeconds: 1, spreadStepSeconds: 0,
     glitchSeconds: 0.5, glitchSpreadSeconds: 0.5, flickerFrames: 3,
   } }, 8],
+  // 本案 24 台轉燈。 / The museum installation's 24 spinners.
+  [createDefaultEffectPreset('unit-chase'), 24],
+  [createDefaultEffectPreset('unit-random'), 24],
+  [createDefaultEffectPreset('roulette-ring'), 24],
+  [createDefaultEffectPreset('sequential-center-fill'), 24],
+  [createDefaultEffectPreset('random-fill'), 24],
 ]
 const unitEffects = unitEffectCases.map(([preset, unitCount]) => {
   const totalFrames = 2 * getEffectCompletion(preset, 40, unitCount)!.frames

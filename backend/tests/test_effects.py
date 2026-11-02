@@ -335,7 +335,7 @@ if __name__ == "__main__":
 class UnitEffectTests(unittest.TestCase):
     def test_frontend_unit_effect_hashes(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
-        self.assertEqual(6, len(fixture["unitEffects"]))
+        self.assertEqual(11, len(fixture["unitEffects"]))
         for case in fixture["unitEffects"]:
             preset = validate_preset(case["preset"])
             unit_count = case["unitCount"]
