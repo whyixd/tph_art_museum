@@ -1,0 +1,21 @@
+# Frontend dependencies and build output
+node_modules/
+dist/
+
+# Python / uv local state
+.venv/
+__pycache__/
+*.pyc
+.uv-cache*/
+
+# Local Art-Net endpoints and runtime data (only *.example.* files are tracked)
+backend/config.toml
+backend/preset.json
+backend/sequence.json
+backend/palette.json
+
+# Temporary verification directories
+.tmp_*/
+
+# macOS Finder metadata
+.DS_Store
