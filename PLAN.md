@@ -69,52 +69,40 @@ reference 是「每組一條半圓 156 顆，兩條手臂共用資料」；本�
 
 ## 3. 球燈與洗牆燈（DMX fixtures）
 
-### 3.1 Fixture profile（config）
+### 3.1 已知燈具
+
+- **球燈**：37 顆，RGBW DMX 燈，位址已燒錄，編號 1–37（與 `DMX＿線間距.pdf` 的編號相同）。
+- **洗牆燈**：型號、數量、通道表都**待確認**；設定格式已支援，確定後只要加一段 profile + patch。
+
+### 3.2 設定格式（M3 已實作）
 
 ```toml
-[[fixture_profiles]]
-name = "ball-rgbw"                # 球燈型號 待確認
-channels = ["dimmer", "r", "g", "b", "w", "strobe"]   # 依燈具說明書順序
-defaults = { dimmer = 255, strobe = 0 }               # 非顏色通道的固定值
-white = "rgbw-min"                # RGB → RGBW 轉換：rgbw-min（W = min(R,G,B)）或 none
-curve = "linear"                  # 或 gamma2.2；燈具本身的調光曲線
+[[dmx.profiles]]
+name = "ball-rgbw"
+channels = ["r", "g", "b", "w"]   # 燈具的通道順序；r/g/b/w 以外的名稱（dimmer、strobe…）都要在 static 給固定值
+white = "min"                      # min：W = min(R,G,B)，並從 RGB 扣掉；none：W 不亮。有 w 通道時預設 min
+brightness = 1.0                   # 0..1
+static = {}                        # 例：{ dimmer = 255, strobe = 0 }
 
-[[fixture_profiles]]
-name = "wash-rgbaw"               # 洗牆燈型號 待確認
-channels = ["r", "g", "b", "a", "w", "dimmer"]
-defaults = { dimmer = 255 }
-```
+[[dmx.nodes]]                      # Art-Net → DMX 轉換器的一個 port = 一個 universe
+name = "ball-node"
+ip = "192.0.2.200"
+universe = 100
 
-- 支援的通道名：`r g b w a uv dimmer dimmer_fine strobe zoom pan tilt` 與 `fixed:<0..255>`（任意固定值）；未知名稱報錯。
-- 16-bit dimmer（`dimmer` + `dimmer_fine`）視燈具支援與否決定。
-
-### 3.2 Patch（config）
-
-```toml
-[[dmx.nodes]]                     # Art-Net → DMX 轉換器，可多台
-name = "node-a"
-ip = "2.0.0.201"
-universes = [10, 11]              # 每個 port 一個 universe
-
-[[balls]]                         # 37 筆
-id = 1
+[[dmx.patch]]                      # 一段連續編號的燈具
+group = "ball"                     # ball / wash
+first_id = 1
+count = 37
 profile = "ball-rgbw"
-universe = 10
-address = 1                       # DMX 起始位址 1..512
-position = { x = 0, y = 0, z = 340 }   # cm；z 取自 DMX＿線間距.pdf 的 H 值
-
-[[washes]]                        # N 筆，同上格式
-id = 1
-profile = "wash-rgbaw"
-universe = 12
-address = 1
-position = { x = 0, y = 0, z = 0 }
-aim = { x = 0, y = 0, z = 0 }     # 選填：照射方向，僅供模擬器
+node = "ball-node"
+address = 1                        # 第一顆的起始位址
+# address_step = 4                 # 預設 = profile 的通道數 → 1, 5, 9, … 145
 ```
 
-驗證規則照 reference 的嚴格程度：多餘欄位報錯；同一 universe 內位址範圍不可重疊；位址 + 通道數 ≤ 512；`id` 唯一；universe 必須屬於某個 node；DMX universe 不可與轉燈的 universe 衝突。
-
-另提供 `run.py --patch-report`：印出每個 universe 的位址表，給現場接線與燈具撥碼對照。
+- 驗證：多餘欄位、同一 universe 內位址重疊、超過 512、編號重複、profile／node 不存在、DMX universe 與轉燈的 IP/universe 衝突，都會報錯。
+- `run.py --patch-report`：印出每個 node universe 的位址表（群組、編號、通道範圍、通道名稱），給現場接線與對燈用。
+- 每個 node universe 每影格送一包完整 512 bytes；沒用到的通道為 0。
+- 燈具在場景中的座標（給前端模擬器、依空間位置的效果）留到 M5／M7，另外放一份 layout 檔，不放在 patch 裡。
 
 ### 3.3 Fixture effect engine
 
@@ -205,8 +193,8 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 | # | 問題 | 影響 |
 |---|---|---|
 | Q1 | 轉燈實體配置（燈條數、LED 數、共用資料與否、控制器、universe 數、馬達協定）——使用者後續描述 | M4、M6 |
-| Q2 | 球燈型號與 DMX 通道表（RGB？RGBW？有沒有 dimmer／strobe？） | M3 |
-| Q3 | 洗牆燈數量、型號、通道表、安裝位置與照射面 | M3、M6 |
+| Q2 | ~~球燈通道表~~ RGBW、37 顆、位址已燒錄（1–37）。**待確認**：「位址 1–37」是燈具編號（實際起始通道 1, 5, 9, …, 145，目前的預設），還是起始通道本身就是 1, 2, 3, …（那樣 RGBW 會互相重疊，不太可能）？另外通道順序是否確定為 R G B W、有沒有 dimmer／strobe 通道 | 現場接線前 |
+| Q3 | 洗牆燈數量、型號、通道表、安裝位置與照射面（設定格式已支援，確定後只改 config） | M6 |
 | Q4 | Art-Net → DMX node 型號、台數、port 數；球燈 DMX 鏈如何分段（`DMX＿線間距.pdf` 的線長是否就是串接順序 1→37） | M3、`--patch-report` |
 | Q5 | 所有燈桿與燈具的平面座標（x, y）：能否提供 CAD/DXF 匯出，或由 `image (6).png` 量 | M6 模擬器 |
 | Q6 | 主機平台：Raspberry Pi 5（reference）或 Windows（`moon_observe_re`）？ | M8 部署、效能 |
@@ -221,7 +209,7 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 |---|---|---|---|
 | M1 ✅ | 建 repo；複製 moon_observe backend/frontend；`uv sync --locked`、`npm ci` | 原有 backend、frontend 測試全部通過；fixture 重產逐 byte 相同（2026-11-03：來源 `moon_observe@b736485`（v0.1.12+1）以 `git archive` 匯出；backend 86、frontend 117 個測試通過；`tsc` + build 通過；`npx vite-node scripts/generateBackendVectors.ts` 的輸出與原檔逐 byte 相同（注意：不加 `--write` 只會印到 stdout，不會寫檔）） | – |
 | M2 ✅ | 通用化：`pixels`、`unit_count`、多 universe、`hardware.py`；效能基準測試 | 2026-11-03：見下方「M2 實作細節」；backend 96 個測試（新增 `test_hardware.py` 10 個）、frontend 117 個測試通過，`tsc` 通過；fixtures 加入 24 台的整台效果（`unit-chase`、`unit-random`、`roulette-ring`、`sequential-center-fill`、`random-fill`），前後端一致；24 台 × 312 顆實際送到本機 UDP listener 2 秒：48 個 universe、每個 79 包（≈ 40 FPS）、封包 510／428 bytes；效能結果見 §2 | – |
-| M3 | DMX：fixture profile、patch 解析與驗證、`dmx.py`（RGB → 通道、universe buffer）、`--patch-report` | 位址重疊／越界等驗證測試；golden test 逐 byte 比對 | Q2–Q4 |
+| M3 ✅ | DMX：fixture profile、patch 解析與驗證、`dmx.py`（RGB → 通道、universe buffer）、`--patch-report` | 2026-11-03：見 §3.2；新增 `test_dmx.py` 7 個測試，backend 共 103 個測試通過；`config.example.toml` 加入球燈範例。**尚未接進輸出迴圈**（M6） | – |
 | M4 | 轉燈幾何與 payload 依實體配置實作 | payload golden test；現場一台實測 | Q1 |
 | M5 | Fixture effect engine（TS + Python）、Sequence v2、天氣套用到 DMX 群組 | 前後端 fixture vectors 一致；v1 → v2 升級測試 | M3 |
 | M6 | `output.py` 整合三群組；結束流程；`/api/test/fixtures`、`/api/patch` | 本機 UDP listener 驗證每個 universe 封包、結束時全 0 | M3–M5 |

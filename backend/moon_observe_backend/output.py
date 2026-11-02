@@ -17,6 +17,7 @@ from stupidArtnet import StupidArtnet
 from .config import DEFAULT_HARDWARE, load_config
 from .control import PresetStore, make_server
 from .effects import Rgb, completion_frames
+from .dmx import patch_report
 from .hardware import build_packets, default_motor_channel, packet_sizes
 from .renderer import render_frame
 from .sequence import SequenceStore, render_sequence_frame
@@ -205,6 +206,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", type=Path, default=Path(__file__).resolve().parents[1] / "config.toml")
     parser.add_argument("--seconds", type=float, help="Stop after a duration; otherwise Ctrl+C")
     parser.add_argument("--check", action="store_true", help="Validate TOML and JSON without sending")
+    parser.add_argument("--patch-report", action="store_true", help="Print the DMX patch (node, universe, addresses) and exit")
     parser.add_argument("--api-only", action="store_true", help="Serve the control API without Art-Net output")
     parser.add_argument("--api-port", type=int, default=8765, help="Preset API port")
     parser.add_argument("--api-host", default="0.0.0.0", help="Page and API bind IPv4 address")
@@ -212,6 +214,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         config, preset = load_config(args.config)
+        if args.patch_report:
+            if config["dmx"] is None:
+                print("No [dmx] section: no DMX fixtures configured.")
+            else:
+                print("\n".join(patch_report(config["dmx"])))
+            return 0
         if not 0 <= args.api_port <= 65535:
             raise ValueError("api port must be 0..65535")
         sequence_path = Path(config["sequence_path"])

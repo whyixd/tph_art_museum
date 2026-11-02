@@ -9,6 +9,7 @@ from pathlib import Path
 import tomllib
 from typing import Any
 
+from .dmx import COLOR_CHANNELS, DMX_CHANNELS, GROUPS, WHITE_MODES
 from .effects import validate_preset
 from .hardware import CHANNELS_PER_PIXEL, COLOR_ORDERS, default_motor_channel, packet_sizes
 
@@ -71,6 +72,120 @@ def _motor(raw: Any, pixels: int, channels_per_universe: int) -> dict[str, Any]:
     return {"channel": channel}
 
 
+def _name(value: Any, name: str) -> str:
+    if not isinstance(value, str) or not 1 <= len(value) <= 40:
+        raise ValueError(f"{name} must be 1..40 characters")
+    return value
+
+
+def _table_list(value: Any, name: str, maximum: int) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or len(value) > maximum or not all(isinstance(entry, dict) for entry in value):
+        raise ValueError(f"{name} must list at most {maximum} tables")
+    return value
+
+
+def _dmx_profile(entry: dict[str, Any], name: str) -> dict[str, Any]:
+    if not {"name", "channels"} <= set(entry) or set(entry) - {"name", "channels", "white", "brightness", "static"}:
+        raise ValueError(f"{name} requires name and channels (optional: white, brightness, static)")
+    channels = entry["channels"]
+    if not isinstance(channels, list) or not 1 <= len(channels) <= 32 \
+            or not all(isinstance(channel, str) and channel for channel in channels) or len(set(channels)) != len(channels):
+        raise ValueError(f"{name}.channels must list 1..32 distinct channel names")
+    if not {"r", "g", "b"} <= set(channels):
+        raise ValueError(f"{name}.channels must include r, g and b")
+    static = entry.get("static", {})
+    if not isinstance(static, dict) or set(static) & set(COLOR_CHANNELS):
+        raise ValueError(f"{name}.static must map non-colour channels to values")
+    others = set(channels) - set(COLOR_CHANNELS)
+    if set(static) != others:
+        # 非顏色通道（dimmer、strobe…）都要給固定值，避免燈具停在未知狀態。
+        # Every non-colour channel (dimmer, strobe, ...) needs a fixed value so fixtures never sit in an unknown mode.
+        raise ValueError(f"{name}.static must give a value for exactly: {', '.join(sorted(others)) or '(none)'}")
+    white = entry.get("white", "min" if "w" in channels else "none")
+    if white not in WHITE_MODES:
+        raise ValueError(f"{name}.white must be one of {', '.join(WHITE_MODES)}")
+    if white == "min" and "w" not in channels:
+        raise ValueError(f"{name}.white = \"min\" needs a w channel")
+    return {
+        "channels": tuple(channels),
+        "white": white,
+        "brightness": _coordinate(entry.get("brightness", 1.0), f"{name}.brightness", 0, 1),
+        "static": {key: _integer(value, f"{name}.static.{key}", 0, 255) for key, value in static.items()},
+    }
+
+
+def _dmx(raw: Any, spinner_pairs: set[tuple[str, int]]) -> dict[str, Any]:
+    """[dmx]: fixture profiles, Art-Net -> DMX node universes, and the patch (where each fixture sits)."""
+    if not isinstance(raw, dict) or set(raw) - {"profiles", "nodes", "patch"}:
+        raise ValueError("unknown dmx config field")
+    profiles: dict[str, dict[str, Any]] = {}
+    for index, entry in enumerate(_table_list(raw.get("profiles", []), "dmx.profiles", 16)):
+        label = f"dmx.profiles[{index}]"
+        profile = _dmx_profile(entry, label)
+        key = _name(entry["name"], f"{label}.name")
+        if key in profiles:
+            raise ValueError(f"dmx profile name {key!r} repeats")
+        profiles[key] = profile
+    nodes: list[dict[str, Any]] = []
+    node_index: dict[str, int] = {}
+    for index, entry in enumerate(_table_list(raw.get("nodes", []), "dmx.nodes", 32)):
+        label = f"dmx.nodes[{index}]"
+        if set(entry) != {"name", "ip", "universe"}:
+            raise ValueError(f"{label} requires name, ip and universe")
+        node = {
+            "name": _name(entry["name"], f"{label}.name"),
+            "ip": _ipv4(entry["ip"], f"{label}.ip"),
+            "universe": _integer(entry["universe"], f"{label}.universe", 0, 32767),
+        }
+        if node["name"] in node_index:
+            raise ValueError(f"dmx node name {node['name']!r} repeats")
+        if any((node["ip"], node["universe"]) == (other["ip"], other["universe"]) for other in nodes):
+            raise ValueError(f"{label} repeats another node's IP/universe")
+        if (node["ip"], node["universe"]) in spinner_pairs:
+            raise ValueError(f"{label} IP/universe is already used by a spinner")
+        node_index[node["name"]] = len(nodes)
+        nodes.append(node)
+    fixtures: dict[str, list[dict[str, Any]]] = {group: [] for group in GROUPS}
+    used: dict[int, list[tuple[int, int, str]]] = {index: [] for index in range(len(nodes))}
+    for index, entry in enumerate(_table_list(raw.get("patch", []), "dmx.patch", 64)):
+        label = f"dmx.patch[{index}]"
+        required = {"group", "first_id", "count", "profile", "node", "address"}
+        if not required <= set(entry) or set(entry) - required - {"address_step"}:
+            raise ValueError(f"{label} requires {', '.join(sorted(required))} (optional: address_step)")
+        group = entry["group"]
+        if group not in GROUPS:
+            raise ValueError(f"{label}.group must be one of {', '.join(GROUPS)}")
+        profile_name = entry["profile"]
+        if profile_name not in profiles:
+            raise ValueError(f"{label}.profile {profile_name!r} is not a dmx profile")
+        if entry["node"] not in node_index:
+            raise ValueError(f"{label}.node {entry['node']!r} is not a dmx node")
+        width = len(profiles[profile_name]["channels"])
+        first_id = _integer(entry["first_id"], f"{label}.first_id", 1, 999)
+        count = _integer(entry["count"], f"{label}.count", 1, DMX_CHANNELS)
+        address = _integer(entry["address"], f"{label}.address", 1, DMX_CHANNELS)
+        # 預設每顆接續前一顆（位址間隔 = 通道數）。 / By default each fixture follows the previous one.
+        step = _integer(entry.get("address_step", width), f"{label}.address_step", 1, DMX_CHANNELS)
+        node = node_index[entry["node"]]
+        for offset in range(count):
+            fixture_id = first_id + offset
+            start = address + offset * step
+            end = start + width - 1
+            if end > DMX_CHANNELS:
+                raise ValueError(f"{group} {fixture_id} channels {start}-{end} exceed {DMX_CHANNELS}")
+            for other_start, other_end, other in used[node]:
+                if start <= other_end and other_start <= end:
+                    raise ValueError(f"{group} {fixture_id} channels {start}-{end} overlap {other} "
+                                     f"on dmx node {nodes[node]['name']!r}")
+            if any(fixture["id"] == fixture_id for fixture in fixtures[group]):
+                raise ValueError(f"{group} id {fixture_id} repeats")
+            used[node].append((start, end, f"{group} {fixture_id}"))
+            fixtures[group].append({"id": fixture_id, "profile": profile_name, "node": node, "address": start})
+    for group in GROUPS:
+        fixtures[group].sort(key=lambda fixture: fixture["id"])
+    return {"profiles": profiles, "nodes": nodes, "fixtures": fixtures}
+
+
 def _file_name(value: Any, name: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{name} must name a JSON file")
@@ -83,9 +198,9 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
     with config_path.open("rb") as stream:
         raw = tomllib.load(stream)
     sections = set(raw)
-    if not {"artnet", "render"} <= sections or sections - {"artnet", "render", "hardware", "motor", "weather"} \
+    if not {"artnet", "render"} <= sections or sections - {"artnet", "render", "hardware", "motor", "dmx", "weather"} \
             or not isinstance(raw["artnet"], dict) or not isinstance(raw["render"], dict):
-        raise ValueError("config requires [artnet] and [render] sections (optional: [hardware], [motor], [weather])")
+        raise ValueError("config requires [artnet] and [render] sections (optional: [hardware], [motor], [dmx], [weather])")
     artnet = raw["artnet"]
     render = raw["render"]
     if set(artnet) - {"ip", "universe", "source_ip", "targets"} or set(render) - {"preset", "sequence", "fps", "rpm", "pixels", "unit_id", "unit_count"}:
@@ -131,6 +246,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
     if len(set(pairs)) != len(pairs):
         raise ValueError("artnet target IP/universe pairs must be unique (each unit uses "
                          f"{len(sizes)} consecutive universe(s))")
+    dmx = _dmx(raw["dmx"], set(pairs)) if "dmx" in raw else None
 
     weather = None
     if "weather" in raw:
@@ -183,6 +299,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         "hardware": hardware,
         "motor": motor,
         "packet_sizes": sizes,
+        "dmx": dmx,
         "unit_id": targets[0]["unit_id"],
         "unit_count": unit_count,
         "preset_path": str(preset_path),

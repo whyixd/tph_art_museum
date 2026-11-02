@@ -29,6 +29,29 @@ unit_count = 9
 # [motor]
 # channel = 469                  # default: right after the pixels (pixels * 3 + 1); 0 = soft stop, 255 = soft start
 
+# DMX 燈具（球燈、洗牆燈）經 Art-Net -> DMX 轉換器；整段選填。`run.py --patch-report` 印出位址表。
+# DMX fixtures through Art-Net -> DMX nodes; optional. `run.py --patch-report` prints the address table.
+# [[dmx.profiles]]
+# name = "ball-rgbw"
+# channels = ["r", "g", "b", "w"]   # fixture channel order; other names (dimmer, strobe...) need a static value
+# white = "min"                      # min: W = min(R,G,B) taken out of RGB; none: W stays dark
+# brightness = 1.0                   # 0..1
+# static = {}                        # e.g. { dimmer = 255, strobe = 0 }
+#
+# [[dmx.nodes]]
+# name = "ball-node"
+# ip = "192.0.2.200"
+# universe = 100                     # must not be a spinner IP/universe
+#
+# [[dmx.patch]]
+# group = "ball"                     # ball / wash
+# first_id = 1                       # ids first_id .. first_id+count-1 (球燈編號 1-37)
+# count = 37
+# profile = "ball-rgbw"
+# node = "ball-node"
+# address = 1                        # start address of the first fixture
+# # address_step = 4                 # default: the profile's channel count (1, 5, 9, ...)
+
 # Add the actual installation coordinates to enable Open-Meteo weather control.
 # [weather]
 # latitude = 25.0330
