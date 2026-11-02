@@ -199,7 +199,7 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 | Q7 | Art-Net 網段與 IP 規劃（轉燈、DMX node、主機） | config 範本 |
 | Q8 | 是否仍要天氣功能、造訪地點清單 | M5 |
 | Q9 | 球燈／洗牆燈是否需要與轉燈「跟隨」連動，或主要獨立編排 | 效果優先順序 |
-| Q10 | ~~建立 git repo~~ 已建（remote `git@github.com:whyixd/tph_art_museum.git`，目前為 **public**）。`doc/` 內的 PDF／PNG（現場平面圖、裝置圖）是否要進公開 repo？目前未追蹤 | 推送前 |
+| Q10 | ~~建立 git repo、`doc/` 圖檔是否公開~~ 已決定：repo `git@github.com:whyixd/tph_art_museum.git`（public），`doc/` 圖檔一併公開 | – |
 
 ## 8. 里程碑
 
