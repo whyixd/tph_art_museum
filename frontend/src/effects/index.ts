@@ -116,13 +116,28 @@ export function getEffectCompletion(preset: EffectPreset, fps: number, unitCount
   }
 }
 
-export function createDefaultEffectPreset(effectId: EffectId): EffectPreset {
-  const parameters = Object.fromEntries(
+/**
+ * 依每條燈條顆數夾住預設值（後端 validate_preset 的限制）：129 顆時 periodic-leds 的預設 12 亮／12 間隔放不下。
+ * Clamp parameters to the strip length (backend validate_preset limits): with 129 LEDs the periodic-leds default
+ * of 12 lit / 12 gap does not fit.
+ */
+export function fitParametersToLedCount(effectId: EffectId, parameters: Record<string, number>, ledCount: number): Record<string, number> {
+  if (effectId === 'random-leds') return { ...parameters, litCount: Math.min(parameters.litCount, ledCount) }
+  if (effectId !== 'periodic-leds') return parameters
+  const litCount = Math.max(1, Math.min(parameters.litCount, ledCount))
+  const darkGap = litCount > 1 ? Math.min(parameters.darkGap, Math.floor((ledCount - 1) / (litCount - 1)) - 1) : parameters.darkGap
+  return { ...parameters, litCount, darkGap: Math.max(0, darkGap) }
+}
+
+/** Default preset; with `ledCount`, parameters are clamped to fit that strip length. */
+export function createDefaultEffectPreset(effectId: EffectId, ledCount?: number): EffectPreset {
+  const defaults = Object.fromEntries(
     getEffectManifest(effectId).parameters.map((parameter) => [
       parameter.key,
       parameter.defaultValue,
     ]),
   )
+  const parameters = ledCount === undefined ? defaults : fitParametersToLedCount(effectId, defaults, ledCount)
 
   return {
     schemaVersion: EFFECT_SCHEMA_VERSION,

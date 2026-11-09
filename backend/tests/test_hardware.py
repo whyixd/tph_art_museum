@@ -126,6 +126,18 @@ class MuseumSpinnerTests(unittest.TestCase):
         self.assertEqual(64, config["hardware"]["pixel_rotation"])
         self.assertEqual({"channel": 469}, config["motor"])
         self.assertEqual([470], config["packet_sizes"])
+        # 現場 IP（doc/新北美_ip控箱.pdf）：unit n = 2.0.0.(200 + n)。 / Site IPs: unit n = 2.0.0.(200 + n).
+        self.assertEqual([(unit, f"2.0.0.{200 + unit}", [0]) for unit in range(1, 25)],
+                         [(t["unit_id"], t["ip"], t["universes"]) for t in config["targets"]])
+        dmx = config["dmx"]
+        self.assertEqual([f"2.0.0.{box}" for box in (105, 101, 106, 102, 107, 103, 108, 109, 110, 111, 112)],
+                         [node["ip"] for node in dmx["nodes"]])
+        balls = dmx["fixtures"]["ball"]
+        self.assertEqual(list(range(1, 38)), [ball["id"] for ball in balls])
+        self.assertEqual([4 * index + 1 for index in range(37)], [ball["address"] for ball in balls])
+        node_of = {ball["id"]: dmx["nodes"][ball["node"]]["ip"] for ball in balls}
+        self.assertEqual(["2.0.0.109"] * 4, [node_of[i] for i in (24, 27, 28, 29)])
+        self.assertEqual(["2.0.0.110"] * 3, [node_of[i] for i in (25, 26, 30)])
 
 
 class ConfigTests(unittest.TestCase):

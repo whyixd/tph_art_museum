@@ -45,7 +45,7 @@ def main() -> int:
     for effect_id in args.effects:
         row = []
         for pixels in args.pixels:
-            preset = validate_preset(default_preset(effect_id), pixels)
+            preset = validate_preset(default_preset(effect_id, pixels), pixels)
             ms = frame_ms(preset, args.units, pixels, args.frames, args.fps, args.rain)
             worst[pixels] = max(worst[pixels], ms)
             row.append(f"{ms:10.1f}ms")

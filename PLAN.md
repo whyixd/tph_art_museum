@@ -222,10 +222,10 @@ M5 已實作（`sequence.py`）：
 | Q1 | ~~轉燈實體配置~~ 每台 3 條 × 129 顆、各繞垂直圓周一整圈（6 條半圓）；馬達沿用 moon_observe ch469（2026-11-09 確認）。3 條並聯共用資料、第 0 顆在頂部往下繞一圈、無空缺。效果中心在頂部（`pixel_rotation = 64`，見 §2） | M4、M6 |
 | Q2 | ~~球燈通道表~~ RGBW、37 顆、位址已燒錄（1–37）；通道順序 R G B W，沒有 dimmer／strobe（2026-11-09 確認，與目前範例設定相同）。**仍待確認**：「位址 1–37」是燈具編號（實際起始通道 1, 5, 9, …, 145，目前的預設），還是起始通道本身 | 現場接線前 |
 | Q3 | 洗牆燈數量、型號、通道表、安裝位置與照射面（設定格式已支援，確定後只改 config） | M6 |
-| Q4 | Art-Net → DMX node 型號、台數、port 數；球燈 DMX 鏈如何分段。`新北美_ip控箱.pdf`：12 個控箱各一個 node（2.0.0.101–112），各自帶一組球燈（例：105 → 1–4、101 → 5–7、109 → 24、27–29）——**config 範例仍是單一 node，待改** | M3、`--patch-report` |
+| Q4 | Art-Net → DMX node 型號、台數、port 數；球燈 DMX 鏈如何分段。`新北美_ip控箱.pdf`：12 個控箱各一個 node（2.0.0.101–112），各自帶一組球燈（例：105 → 1–4、101 → 5–7、109 → 24、27–29）。2026-11-10 已寫進 `config.example.toml`：11 個 node（控箱 104 沒有球燈，未列入）、universe 0，球燈位址沿用編號 4(n−1)+1（見 Q2） | M3、`--patch-report` |
 | Q5 | ~~平面座標~~ 2026-11-10 由 `doc/spaces05.png` 紅框內的上視圖＋側視圖交叉比對建立（`backend/layout.example.json`，標註圖 `doc/spaces05_annotated_top.png`／`_side.png`）。比例 1.836 cm/px（37 顆球燈高度擬合，RMS 6 cm；長牆間距量得 960 vs 標示 953）；兩圖 x 對齊誤差 < 1 px；燈桿間距與 `新北美_ip控箱.pdf` 尺寸相差 ≤ 12 cm。球燈高度已確認（14 號 360、26 號 750）；同桿前後兩顆球燈依側視圖遮擋判斷；同桿前後兩台轉燈由使用者確認（較低的在前側）。B22 y = 6 cm（高於圍牆，可）。轉燈 3、10、11、13、14、18、21 號沒有 H 標籤，中心高度 = 頂端 − 35 cm 估計 | M7 模擬器、`space-wave` |
-| Q6 | 主機平台：Raspberry Pi 5（reference）或 Windows（`moon_observe_re`）？ | M8 部署、效能 |
-| Q7 | Art-Net 網段與 IP 規劃。`新北美_ip控箱.pdf`：轉燈 2.0.0.201–224、DMX node 2.0.0.101–112。**暫定**轉燈 unit = IP − 200；每個控箱兩台中 IP 靠前的是較低那台，控箱 104 = 單獨燈桿那台 + 球燈 17–20 燈桿上最高那台（2026-11-10 使用者暫定）。主機 IP 未定；config 範例尚未改成這些 IP | config 範本 |
+| Q6 | ~~主機平台~~ **Raspberry Pi 5**（2026-11-10 確認）。效能（`benchmark_render.py`，24 台 × 129 顆、40 FPS、預算 25 ms，Apple M4 實測）：CPython 最慢 12.6 ms（`stardust-cloud`，預算 50%）、PyPy 最慢 3.3 ms（`roulette-ring`，13%），一般效果 0.5–1.6 ms。Pi 5 單核心約慢 3–4 倍 → **CPython 約 38–50 ms，不夠；PyPy 一般效果約 2–6 ms、最慢約 10–13 ms，可行**（轉場時兩層約 ×2，`roulette-ring` 轉場接近預算）。M8 部署需改用 PyPy，並在 Pi 5 實測 | M8 部署、效能 |
+| Q7 | Art-Net 網段與 IP 規劃。`新北美_ip控箱.pdf`：轉燈 2.0.0.201–224、DMX node 2.0.0.101–112。**暫定**轉燈 unit = IP − 200；每個控箱兩台中 IP 靠前的是較低那台，控箱 104 = 單獨燈桿那台 + 球燈 17–20 燈桿上最高那台（2026-11-10 使用者暫定）。2026-11-10 已寫進 `config.example.toml`（24 個 `[[artnet.targets]]`，universe 0；`fps` 由 60 改為 40）。主機在 2.0.0.0/8 網段的 IP（`source_ip`）未定 | config 範本 |
 | Q8 | 是否仍要天氣功能、造訪地點清單 | M5 |
 | Q9 | 球燈／洗牆燈是否需要與轉燈「跟隨」連動，或主要獨立編排 | 效果優先順序 |
 | Q10 | ~~建立 git repo、`doc/` 圖檔是否公開~~ 已決定：repo `git@github.com:whyixd/tph_art_museum.git`（public），`doc/` 圖檔一併公開 | – |
@@ -241,7 +241,7 @@ M5 已實作（`sequence.py`）：
 | M5 ✅ | Fixture effect engine（TS + Python）、Sequence v2、天氣套用到 DMX 群組 | 前後端 fixture vectors 一致；v1 → v2 升級測試。2026-11-09：見 §3.3、§3.4；backend 127 個測試（新增 `test_fixture_effects.py` 9、`test_sequence_v2.py` 8、`test_dmx.py` layout 3）、frontend 122 個測試（新增 `fixtures.test.ts` 4、`backendApi.test.ts` 1）通過，`tsc`、build 通過；轉燈 `effects_v2.json` 重產逐 byte 相同。**尚未接進輸出迴圈與 API**（M6） | M3 |
 | M6 ✅ | `output.py` 整合三群組；結束流程；`/api/test/fixtures`、`/api/patch` | 本機 UDP listener 驗證每個 universe 封包、結束時全 0。2026-11-09：見下方「M6 實作細節」 | M3–M5 |
 | M7 ✅ | 前端：全場 3D、群組編輯、對燈模式 | `npm test`、`tsc` 通過；Playwright 截圖。2026-11-10：見下方「M7 實作細節」 | M5、Q5 |
-| M8 | 部署（Pi systemd 或 Windows WinSW）與現場 checklist | 安裝 → 升級 → 回退 → 停止時燈全暗、馬達停 | Q6、Q7 |
+| M8 | 部署（Raspberry Pi 5、systemd、**PyPy**）與現場 checklist | 安裝 → 升級 → 回退 → 停止時燈全暗、馬達停；Pi 5 上重跑 `benchmark_render.py` | Q6 ✅、Q7 |
 | M9 | 更新 `doc/system-reference.md` 為本系統版本 | 文件與程式一致 | 全部 |
 
 ### M2 實作細節
@@ -295,4 +295,9 @@ M5 已實作（`sequence.py`）：
 - 驗證：frontend 124 個測試（新增 `site.test.ts` 8，移除 1×9 排列相關測試）、`tsc`、build 通過；backend 136 個測試通過。Playwright（`--api-only` + 37 球燈／2 洗牆燈 + layout）擷取全場、上視、單台、球燈編輯、串接、對燈面板，無頁面錯誤；對燈「只亮這顆」後 `/api/test/fixtures` 為只有 5 號亮白。
 - **燈桿**（2026-11-10 追加）：由 `doc/spaces05.png` 量出 15 根有掛燈的燈桿。x 取側視圖的燈桿線，y 取上視圖的燈桿符號（中心白色的小圓或方框），頂端高度取側視圖燈桿線的頂端（允許被前方燈具遮住的空隙）。量得 504、603、652、807、1008、1310、1512 cm，正好是 5、6、6.5、8、10、13、15 m 乘 1.008（和長牆 960 vs 953 是同一個 0.8% 比例誤差），所以取標準長度。風力感測器桿（x 約 3166）和 x 約 4219 的桿子沒有燈，未列入。layout 新增 `poles: [{x, y, z(頂端)}]`，後端驗證並由 `/api/patch` 回傳，只供前端繪製。3D 在「骨架」開啟時畫燈桿（直徑 20 cm）和懸臂：每台轉燈（接在頂端）、每顆球燈或洗牆燈（接在中心）連到平面 1.2 m 內最近的燈桿；範例 layout 的 24 台轉燈和 37 顆球燈都找得到燈桿。上視改用 12° 窄視角並拉遠（接近正投影，燈桿不會被透視拉成放射線），近平面加大避免地板格線閃爍。
 - 未做：`/3d.html` 仍是 moon_observe 的半圓燈測試頁；說明牌未繪製；`follow-spinner` 效果（Q9）。
+
+### 2026-11-10：現場 IP 與預設參數
+
+- `config.example.toml` 改為現場：24 台轉燈 2.0.0.201–224、11 個 DMX node 2.0.0.101–112（各帶該控箱的球燈）、`fps = 40`。測試檢查每台 IP、每顆球燈所在 node 與位址。
+- 修正：`periodic-leds` 的預設（亮 12、間隔 12）需要 143 顆，129 顆放不下，後端會拒絕。前端 `createDefaultEffectPreset(id, ledCount)`、後端 `default_preset(id, led_count)` 會依燈數夾住（129 顆：間隔 12 → 10）；不給燈數時與 reference 相同，一致性向量不變。前端選效果時與單一效果的預設都套用；`benchmark_render.py` 也改用。
 

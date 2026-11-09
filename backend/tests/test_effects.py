@@ -9,6 +9,16 @@ from moon_observe_backend.renderer import render_frame, rgb_bytes
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "effects_v2.json"
 
 
+class DefaultFitTests(unittest.TestCase):
+    def test_defaults_fit_129_leds(self):
+        preset = validate_preset(default_preset("periodic-leds", 129), 129)
+        self.assertEqual((12, 10), (preset["parameters"]["litCount"], preset["parameters"]["darkGap"]))
+        with self.assertRaisesRegex(ValueError, "exceed ledCount"):
+            validate_preset(default_preset("periodic-leds"), 129)   # the reference default does not fit
+        for effect_id in default_preset.__globals__["EFFECT_IDS"]:
+            validate_preset(default_preset(effect_id, 129), 129)
+
+
 class EffectParityTests(unittest.TestCase):
     def test_world_upper_third_gates_full_half_strip_by_phase(self) -> None:
         preset = validate_preset(default_preset("world-upper-half"))

@@ -51,7 +51,7 @@ export function App() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS)
   const [effectId, setEffectId] = useState<EffectId>('center-out-sine')
   const [effectPresets, setEffectPresets] = useState(() => Object.fromEntries(
-    EFFECT_MANIFEST.map(({ id }) => [id, createDefaultEffectPreset(id)]),
+    EFFECT_MANIFEST.map(({ id }) => [id, createDefaultEffectPreset(id, DEFAULT_SETTINGS.ledCount)]),
   ) as Record<EffectId, ReturnType<typeof createDefaultEffectPreset>>)
   const [sequenceEnabled, setSequenceEnabled] = useState(false)
   const [sequenceSteps, setSequenceSteps] = useState<SequenceStep[]>(() => [
@@ -409,13 +409,13 @@ export function App() {
   const selectEffect = useCallback((nextEffectId: EffectId) => {
     if (inSequence) {
       updateSelectedStep((step) => {
-        const preset = createDefaultEffectPreset(nextEffectId)
+        const preset = createDefaultEffectPreset(nextEffectId, settings.ledCount)
         return { ...step, preset, playback: defaultPlaybackRule(preset) }
       })
     } else {
       setEffectId(nextEffectId)
     }
-  }, [inSequence, updateSelectedStep])
+  }, [inSequence, updateSelectedStep, settings.ledCount])
 
   const updateEffectParameter = useCallback((key: string, value: number) => {
     const updatePreset = (preset: EffectPreset): EffectPreset => {

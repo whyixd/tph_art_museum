@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { fitParametersToLedCount } from '../src/effects'
 import { centerOutSine } from '../src/effects/centerOutSine'
 import { unitPalettePosition } from '../src/effects/randomFill'
 import { rouletteRing, rouletteTiming } from '../src/effects/rouletteRing'
@@ -795,5 +796,16 @@ describe('roulette-ring', () => {
     expect(litUnits(cycle)).toEqual([0])
     expect(ignoresWeatherTiming('roulette-ring')).toBe(true)
     expect(getVariableParameters('roulette-ring')).toEqual([])
+  })
+})
+
+describe('defaults fitted to the strip length', () => {
+  it('shrinks the periodic-leds gap so 12 lit LEDs fit 129', () => {
+    const preset = createDefaultEffectPreset('periodic-leds', 129)
+    expect(preset.parameters.litCount).toBe(12)
+    expect(preset.parameters.darkGap).toBe(10)
+    expect((preset.parameters.litCount - 1) * (preset.parameters.darkGap + 1)).toBeLessThan(129)
+    expect(createDefaultEffectPreset('periodic-leds').parameters.darkGap).toBe(12)   // reference default unchanged
+    expect(fitParametersToLedCount('random-leds', { litCount: 200 }, 129).litCount).toBe(129)
   })
 })

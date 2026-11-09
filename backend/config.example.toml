@@ -1,25 +1,141 @@
+# 美術館現場（doc/新北美_ip控箱.pdf）：Art-Net 網段 2.0.0.0/8，主機 Raspberry Pi 5。
+# Museum site (doc/新北美_ip控箱.pdf): Art-Net on 2.0.0.0/8, host Raspberry Pi 5.
 [artnet]
-ip = "192.0.2.50"
-universe = 0
-# source_ip = "192.0.2.10" # Optional: bind a specific network interface.
+# source_ip = "2.0.0.10"   # 主機在 Art-Net 網段的 IP（未定）；多張網卡時用來指定送出介面
+#                          # host IP on the Art-Net network (not decided yet); binds the sending interface
 
 [render]
 preset = "preset.example.json"
 sequence = "sequence.json"
-fps = 60
+fps = 40
 rpm = 340
 pixels = 129               # 每台 3 條燈條並聯（共用資料），每條 129 顆繞垂直圓周一圈
-unit_id = 1
 unit_count = 24
 # layout = "layout.json"   # 場景座標（cm）：轉燈依 unit、球燈／洗牆燈依編號；範例見 layout.example.json（取自 spaces05.png）
                            # scene positions (cm): spinners by unit, fixtures by id; see layout.example.json
 
-# To output all units from one backend (up to 64; this installation has 24),
-# replace ip/universe above with one [[artnet.targets]] entry per unit:
-# [[artnet.targets]]
-# unit_id = 1
-# ip = "192.0.2.51"
-# universe = 0   # first universe; a unit needing N universes uses universe..universe+N-1
+# 轉燈：unit n = 2.0.0.(200 + n)，WLED universe 0（firmware/wled/unit_settings.json）。
+# 每個控箱兩台，IP 靠前的是較低那台；控箱 104 = 13 號（單獨燈桿）+ 14 號（球燈 17-20 燈桿上最高那台）。暫定。
+# Spinners: unit n = 2.0.0.(200 + n), WLED universe 0. Per control box the lower spinner has the earlier IP (provisional).
+[[artnet.targets]]
+unit_id = 1
+ip = "2.0.0.201"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 2
+ip = "2.0.0.202"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 3
+ip = "2.0.0.203"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 4
+ip = "2.0.0.204"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 5
+ip = "2.0.0.205"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 6
+ip = "2.0.0.206"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 7
+ip = "2.0.0.207"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 8
+ip = "2.0.0.208"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 9
+ip = "2.0.0.209"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 10
+ip = "2.0.0.210"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 11
+ip = "2.0.0.211"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 12
+ip = "2.0.0.212"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 13
+ip = "2.0.0.213"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 14
+ip = "2.0.0.214"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 15
+ip = "2.0.0.215"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 16
+ip = "2.0.0.216"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 17
+ip = "2.0.0.217"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 18
+ip = "2.0.0.218"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 19
+ip = "2.0.0.219"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 20
+ip = "2.0.0.220"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 21
+ip = "2.0.0.221"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 22
+ip = "2.0.0.222"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 23
+ip = "2.0.0.223"
+universe = 0
+
+[[artnet.targets]]
+unit_id = 24
+ip = "2.0.0.224"
+universe = 0
 
 # 轉燈硬體（整段與各欄位皆可省略；省略時與參考系統的 156 顆、470 bytes 相同）。
 # Spinner hardware; every field is optional (omitting both sections keeps the reference payload).
@@ -34,28 +150,178 @@ pixel_rotation = 64              # 實體第 i 顆顯示效果的第 (i+64) mod 
 channel = 469                    # must be explicit (default would be pixels * 3 + 1 = 388); the WLED usermod reads ch469
                                  # of the first universe; 0 = soft stop, 255 = soft start
 
-# DMX 燈具（球燈、洗牆燈）經 Art-Net -> DMX 轉換器；整段選填。`run.py --patch-report` 印出位址表。
-# DMX fixtures through Art-Net -> DMX nodes; optional. `run.py --patch-report` prints the address table.
-# [[dmx.profiles]]
-# name = "ball-rgbw"
-# channels = ["r", "g", "b", "w"]   # fixture channel order; other names (dimmer, strobe...) need a static value
-# white = "min"                      # min: W = min(R,G,B) taken out of RGB; none: W stays dark
-# brightness = 1.0                   # 0..1
-# static = {}                        # e.g. { dimmer = 255, strobe = 0 }
-#
-# [[dmx.nodes]]
-# name = "ball-node"
-# ip = "192.0.2.200"
-# universe = 100                     # must not be a spinner IP/universe
-#
-# [[dmx.patch]]
-# group = "ball"                     # ball / wash
-# first_id = 1                       # ids first_id .. first_id+count-1 (球燈編號 1-37)
-# count = 37
-# profile = "ball-rgbw"
-# node = "ball-node"
-# address = 1                        # start address of the first fixture
-# # address_step = 4                 # default: the profile's channel count (1, 5, 9, ...)
+# DMX 燈具（球燈、洗牆燈）經 Art-Net -> DMX 轉換器。`run.py --patch-report` 印出位址表。
+# DMX fixtures through Art-Net -> DMX nodes. `run.py --patch-report` prints the address table.
+# 球燈：RGBW、無 dimmer／strobe，位址已燒錄。每個控箱一台轉換器（2.0.0.101-112，universe 0），帶該控箱的球燈。
+# 位址沿用編號：第 n 顆起始通道 4(n-1)+1（與全部串在一條鏈時相同）。若現場位址是每個控箱各自從 1 起算，改各段 address。
+# 控箱 104（2.0.0.104）沒有球燈，未列入。
+# Balls: RGBW, no dimmer/strobe, addresses burned in. One node per control box (2.0.0.101-112, universe 0).
+# Ball n starts at channel 4(n-1)+1 (as on one chain); if the site re-addresses per box from 1, change `address`.
+# Control box 104 has no balls and is left out.
+[[dmx.profiles]]
+name = "ball-rgbw"
+channels = ["r", "g", "b", "w"]   # fixture channel order; other names (dimmer, strobe...) need a static value
+white = "min"                      # min: W = min(R,G,B) taken out of RGB; none: W stays dark
+brightness = 1.0                   # 0..1 (also the safety ceiling for wall washers' own profile)
+
+[[dmx.nodes]]
+name = "box-105"
+ip = "2.0.0.105"
+universe = 0
+
+[[dmx.nodes]]
+name = "box-101"
+ip = "2.0.0.101"
+universe = 0
+
+[[dmx.nodes]]
+name = "box-106"
+ip = "2.0.0.106"
+universe = 0
+
+[[dmx.nodes]]
+name = "box-102"
+ip = "2.0.0.102"
+universe = 0
+
+[[dmx.nodes]]
+name = "box-107"
+ip = "2.0.0.107"
+universe = 0
+
+[[dmx.nodes]]
+name = "box-103"
+ip = "2.0.0.103"
+universe = 0
+
+[[dmx.nodes]]
+name = "box-108"
+ip = "2.0.0.108"
+universe = 0
+
+[[dmx.nodes]]
+name = "box-109"
+ip = "2.0.0.109"
+universe = 0
+
+[[dmx.nodes]]
+name = "box-110"
+ip = "2.0.0.110"
+universe = 0
+
+[[dmx.nodes]]
+name = "box-111"
+ip = "2.0.0.111"
+universe = 0
+
+[[dmx.nodes]]
+name = "box-112"
+ip = "2.0.0.112"
+universe = 0
+
+[[dmx.patch]]
+group = "ball"
+first_id = 1
+count = 4
+profile = "ball-rgbw"
+node = "box-105"
+address = 1
+
+[[dmx.patch]]
+group = "ball"
+first_id = 5
+count = 3
+profile = "ball-rgbw"
+node = "box-101"
+address = 17
+
+[[dmx.patch]]
+group = "ball"
+first_id = 8
+count = 3
+profile = "ball-rgbw"
+node = "box-106"
+address = 29
+
+[[dmx.patch]]
+group = "ball"
+first_id = 11
+count = 3
+profile = "ball-rgbw"
+node = "box-102"
+address = 41
+
+[[dmx.patch]]
+group = "ball"
+first_id = 14
+count = 3
+profile = "ball-rgbw"
+node = "box-107"
+address = 53
+
+[[dmx.patch]]
+group = "ball"
+first_id = 17
+count = 4
+profile = "ball-rgbw"
+node = "box-103"
+address = 65
+
+[[dmx.patch]]
+group = "ball"
+first_id = 21
+count = 3
+profile = "ball-rgbw"
+node = "box-108"
+address = 81
+
+[[dmx.patch]]
+group = "ball"
+first_id = 24
+count = 1
+profile = "ball-rgbw"
+node = "box-109"
+address = 93
+
+[[dmx.patch]]
+group = "ball"
+first_id = 27
+count = 3
+profile = "ball-rgbw"
+node = "box-109"
+address = 105
+
+[[dmx.patch]]
+group = "ball"
+first_id = 25
+count = 2
+profile = "ball-rgbw"
+node = "box-110"
+address = 97
+
+[[dmx.patch]]
+group = "ball"
+first_id = 30
+count = 1
+profile = "ball-rgbw"
+node = "box-110"
+address = 117
+
+[[dmx.patch]]
+group = "ball"
+first_id = 31
+count = 3
+profile = "ball-rgbw"
+node = "box-111"
+address = 121
+
+[[dmx.patch]]
+group = "ball"
+first_id = 34
+count = 4
+profile = "ball-rgbw"
+node = "box-112"
+address = 133
 
 # Add the actual installation coordinates to enable Open-Meteo weather control.
 # [weather]

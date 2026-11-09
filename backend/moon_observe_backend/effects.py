@@ -281,10 +281,26 @@ def axis_change_weight(change: Mapping[str, Any], elapsed_frame: int, fps: float
     return once(phase) if phase < half else 1 - once(phase - half)
 
 
-def default_preset(effect_id: str) -> dict[str, Any]:
+def fit_parameters(effect_id: str, params: Mapping[str, float], led_count: int) -> dict[str, float]:
+    """Clamp parameters to the strip length (validate_preset limits); mirrors frontend fitParametersToLedCount."""
+    result = dict(params)
+    if effect_id == "random-leds":
+        result["litCount"] = min(result["litCount"], led_count)
+    elif effect_id == "periodic-leds":
+        lit = max(1, min(result["litCount"], led_count))
+        result["litCount"] = lit
+        if lit > 1:
+            result["darkGap"] = max(0, min(result["darkGap"], (led_count - 1) // (lit - 1) - 1))
+    return result
+
+
+def default_preset(effect_id: str, led_count: int | None = None) -> dict[str, Any]:
+    """Default preset; with ``led_count``, parameters are clamped to fit (129 LEDs: periodic-leds gap 12 -> 10)."""
     if effect_id not in EFFECT_IDS:
         raise ValueError("unknown effectId")
     params = {key: default for key, (_, _, default, _) in PARAMETERS[effect_id].items()}
+    if led_count is not None:
+        params = fit_parameters(effect_id, params, led_count)
     if effect_id in ("spectrum-cycle", "random-fill"):
         color: dict[str, Any] = {
             "mode": "gradient", "axis": "unit" if effect_id == "random-fill" else "strip",
