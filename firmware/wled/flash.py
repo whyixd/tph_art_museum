@@ -126,7 +126,7 @@ def precheck(host: str, version: str) -> Unit:
         problems.append("/json/info has no mac")
     # A stream in progress means the Pi is live; a flash would cut it and stop the motor.
     if unit.info.get("live"):
-        problems.append("realtime stream is active; stop moon-observe first")
+        problems.append("realtime stream is active; stop tph-art-museum first")
     if unit.info.get("moonMotor", {}).get("output") == "run":
         problems.append("motor output is RUN; stop the motor first")
     if problems:

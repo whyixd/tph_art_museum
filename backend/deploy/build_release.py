@@ -23,7 +23,7 @@ import tarfile
 import tempfile
 from typing import Callable
 
-APP = "moon-observe-backend"
+APP = "tph-art-museum"
 # Keep identical to VERSION_PATTERN in bootstrap.sh and install-release.sh.
 VERSION_PATTERN = r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z][0-9A-Za-z.]*)?$"
 # Paths relative to backend/ that make up the runtime. Everything else stays out.
@@ -37,7 +37,7 @@ RUNTIME_FILES = (
     "layout.example.json",
     "deploy/bootstrap.sh",
     "deploy/install-release.sh",
-    "deploy/moon-observe.service",
+    "deploy/tph-art-museum.service",
 )
 RUNTIME_DIRS = ("moon_observe_backend",)
 # 前端建置需要的路徑：frontend/ 會匯入 backend 的範例場景配置（src/site/layout.ts）。

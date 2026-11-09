@@ -304,9 +304,9 @@ M5 已實作（`sequence.py`）：
 ### M8 實作細節
 
 - **打包**：`build_release.py` 建置前端時一併匯出 `backend/layout.example.json`（M7 起前端會匯入它，原本只匯出 `frontend/` 會建置失敗）；以 `HEAD` 實際建置驗證。release 內含 `layout.example.json`。
-- **PyPy**：installer 以 `uv sync --python pypy@3.12`（`MOON_OBSERVE_PYTHON` 可改）建 `.venv`，並確認環境真的是 PyPy。開發機以同一份 `uv.lock` 建 PyPy 環境，backend 全部測試通過（CPython 36 s → PyPy 15 s）。
+- **PyPy**：installer 以 `uv sync --python pypy@3.12`（`TPH_ART_MUSEUM_PYTHON` 可改）建 `.venv`，並確認環境真的是 PyPy。開發機以同一份 `uv.lock` 建 PyPy 環境，backend 全部測試通過（CPython 36 s → PyPy 15 s）。
 - **repo 與 token**：預設 `whyixd/tph_art_museum`；公開 repo 不需要 token（bootstrap 詢問時 Enter 略過，installer 沒有 token 就不帶認證）。
-- **首次安裝**：seed `config.toml` 時啟用 `render.layout = "layout.json"`，並 seed `/etc/moon-observe/layout.json`。測試以 installer 自己的 `sed` 規則產生設定並實際載入。
+- **首次安裝**：seed `config.toml` 時啟用 `render.layout = "layout.json"`，並 seed `/etc/tph-art-museum/layout.json`。測試以 installer 自己的 `sed` 規則產生設定並實際載入。
 - **輸出統計**：`OutputStats`（每 60 秒：影格、跳格、每格渲染＋送出平均／最長、預算），log 一行、`GET /api/output`、前端「後端」分頁顯示。
 - **效能**：
   - 量測（Apple M4、PyPy、24 台＋11 個 DMX universe 送到本機）：實際迴圈每格平均 5.9 ms；同一份程式全速跑只要 0.8 ms，加上 40 FPS 的 sleep 節奏就變成約 7 倍 → 是 CPU 降頻／排到省電核心，不是程式。對策：service 啟動前把 `scaling_governor` 設為 `performance`（`ExecStartPre=+`，`$$g` 避免 systemd 展開；需主動散熱器）。Pi 5 上以 log 的輸出統計確認。
@@ -314,5 +314,5 @@ M5 已實作（`sequence.py`）：
   - `_virtual_height` 只在 `world-upper-half` 計算。
 - **韌體測試**：從 moon_observe 補搬 `firmware/tests/`（`test_flash.py` 40 個通過；`moon_motor_logic_host`、`motor_control_io_host` 通過；`motor_pwm_test_host` 在 moon_observe 原本就失敗：測試預期 PWM 每 20 ms +5，sketch 是每 80 ms +1，待決定）與 `firmware/docs/`。
 - **文件**：`backend/deploy/README.md` 改為本案（Pi 5、PyPy、governor、網路兩種接法與 nmcli、輸出統計）；新增 `doc/site-checklist.md`（網路、每台轉燈、編號對位置、方向測試、球燈對燈、服務、停止／重開機／拔線、升級回退、待回填）。
-- 服務／帳號／路徑仍叫 `moon-observe`。
+- 2026-11-10：服務、帳號、路徑、release 檔名改為 `tph-art-museum`（`/opt/tph-art-museum`、`/etc/tph-art-museum`、`tph-art-museum.service`、`tph-art-museum-<版本>.tar.gz`），環境變數前綴 `TPH_ART_MUSEUM_`；Python 套件名仍是 `moon_observe_backend`。
 

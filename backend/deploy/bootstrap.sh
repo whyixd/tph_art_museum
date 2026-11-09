@@ -7,10 +7,10 @@ set -euo pipefail
 
 # Keep identical to VERSION_PATTERN in build_release.py and install-release.sh.
 VERSION_PATTERN='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z][0-9A-Za-z.]*)?$'
-REPOSITORY="${MOON_OBSERVE_REPOSITORY:-whyixd/tph_art_museum}"
-INSTALL_ROOT="${MOON_OBSERVE_INSTALL_ROOT:-/opt/moon-observe}"
-CONFIG_ROOT="${MOON_OBSERVE_CONFIG_ROOT:-/etc/moon-observe}"
-TOKEN_FILE="${MOON_OBSERVE_GITHUB_TOKEN_FILE:-$CONFIG_ROOT/github-token}"
+REPOSITORY="${TPH_ART_MUSEUM_REPOSITORY:-whyixd/tph_art_museum}"
+INSTALL_ROOT="${TPH_ART_MUSEUM_INSTALL_ROOT:-/opt/tph-art-museum}"
+CONFIG_ROOT="${TPH_ART_MUSEUM_CONFIG_ROOT:-/etc/tph-art-museum}"
+TOKEN_FILE="${TPH_ART_MUSEUM_GITHUB_TOKEN_FILE:-$CONFIG_ROOT/github-token}"
 
 die() { echo "bootstrap: $*" >&2; exit 1; }
 
@@ -37,7 +37,7 @@ fi
 
 # 公開 repo 不需要 token；私有 repo 時輸入 fine-grained token（Contents: Read），直接 Enter 略過。
 # The public repository needs no token; for a private one enter a fine-grained token (Contents: Read), or Enter to skip.
-if [[ ! -s $TOKEN_FILE && -r /dev/tty && -z ${MOON_OBSERVE_NO_TOKEN:-} ]]; then
+if [[ ! -s $TOKEN_FILE && -r /dev/tty && -z ${TPH_ART_MUSEUM_NO_TOKEN:-} ]]; then
   read -r -s -p "GitHub token for $REPOSITORY (Enter to skip for a public repository): " token </dev/tty
   echo
   if [[ -n $token ]]; then
@@ -62,8 +62,8 @@ curl -fsSL "${auth[@]}" \
   -o "$workdir/install-release.sh" \
   "https://api.github.com/repos/$REPOSITORY/contents/backend/deploy/install-release.sh?ref=$VERSION"
 
-MOON_OBSERVE_REPOSITORY="$REPOSITORY" \
-MOON_OBSERVE_INSTALL_ROOT="$INSTALL_ROOT" \
-MOON_OBSERVE_CONFIG_ROOT="$CONFIG_ROOT" \
-MOON_OBSERVE_GITHUB_TOKEN_FILE="$TOKEN_FILE" \
+TPH_ART_MUSEUM_REPOSITORY="$REPOSITORY" \
+TPH_ART_MUSEUM_INSTALL_ROOT="$INSTALL_ROOT" \
+TPH_ART_MUSEUM_CONFIG_ROOT="$CONFIG_ROOT" \
+TPH_ART_MUSEUM_GITHUB_TOKEN_FILE="$TOKEN_FILE" \
   bash "$workdir/install-release.sh" "$VERSION"

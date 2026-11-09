@@ -45,13 +45,13 @@
 
 - [ ] `sudo bash bootstrap.sh <版本>`（token 直接 Enter）
 - [ ] `config.toml`：多網卡時設 `artnet.source_ip`
-- [ ] `sudo systemctl start moon-observe`；`journalctl -u moon-observe -f`
+- [ ] `sudo systemctl start tph-art-museum`；`journalctl -u tph-art-museum -f`
 - [ ] 60 秒後 `output:` 行：**0 skipped**，`max` 低於 25 ms（播放最慢的效果「輪盤收束」與轉場時再看一次）
 - [ ] 控制頁面全場 3D：24 台轉燈、37 顆球燈、15 根燈桿位置正確
 
 ## 5. 安全與恢復
 
-- [ ] `sudo systemctl stop moon-observe`：馬達緩停、球燈全暗
+- [ ] `sudo systemctl stop tph-art-museum`：馬達緩停、球燈全暗
 - [ ] 重新開機：服務自動啟動、恢復串接播放（馬達預設關閉，需手動開啟）
 - [ ] 拔掉 Pi 的 Ethernet：各台馬達在約 1 秒後開始緩停（WLED usermod 逾時）
 - [ ] 升級演練：裝新版 → 健康檢查通過；回退演練：`install-release.sh <舊版>`

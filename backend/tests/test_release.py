@@ -42,15 +42,15 @@ class VersionTests(unittest.TestCase):
             self.assertIn(line, (DEPLOY / script).read_text(encoding="utf-8").splitlines(), script)
 
     def test_service_serves_the_release_frontend(self):
-        unit = (DEPLOY / "moon-observe.service").read_text(encoding="utf-8")
+        unit = (DEPLOY / "tph-art-museum.service").read_text(encoding="utf-8")
         self.assertIn("--frontend-dir @INSTALL_ROOT@/current/frontend", unit)
 
     def test_installer_uses_pypy_and_this_repository(self):
         installer = (DEPLOY / "install-release.sh").read_text(encoding="utf-8")
-        self.assertIn('PYTHON_SPEC="${MOON_OBSERVE_PYTHON:-pypy@3.12}"', installer)
+        self.assertIn('PYTHON_SPEC="${TPH_ART_MUSEUM_PYTHON:-pypy@3.12}"', installer)
         self.assertIn('--python "$PYTHON_SPEC"', installer)
         for script in ("bootstrap.sh", "install-release.sh"):
-            self.assertIn('REPOSITORY="${MOON_OBSERVE_REPOSITORY:-whyixd/tph_art_museum}"',
+            self.assertIn('REPOSITORY="${TPH_ART_MUSEUM_REPOSITORY:-whyixd/tph_art_museum}"',
                           (DEPLOY / script).read_text(encoding="utf-8"), script)
 
     def test_seeded_config_loads_with_layout(self):
@@ -73,8 +73,15 @@ class VersionTests(unittest.TestCase):
         self.assertEqual(15, len(config["poles"]))
         self.assertEqual(24, len(config["targets"]))
 
+    def test_installer_accepts_a_local_archive(self):
+        installer = (DEPLOY / "install-release.sh").read_text(encoding="utf-8")
+        self.assertIn('LOCAL_ARCHIVE="${TPH_ART_MUSEUM_ARCHIVE:-}"', installer)
+        # The local path still goes through the same SHA-256 and member checks.
+        local = installer[installer.index('if [[ -n $LOCAL_ARCHIVE ]]; then'):installer.index('  fi', installer.index('if [[ -n $LOCAL_ARCHIVE ]]; then'))]
+        self.assertIn("verify_release", local)
+
     def test_service_pins_the_cpu_governor(self):
-        unit = (DEPLOY / "moon-observe.service").read_text(encoding="utf-8")
+        unit = (DEPLOY / "tph-art-museum.service").read_text(encoding="utf-8")
         self.assertIn("ExecStartPre=+/bin/sh -c", unit)
         self.assertIn("echo performance", unit)
         # systemd expands $VAR in Exec lines; shell variables must be written $$name.
@@ -82,7 +89,7 @@ class VersionTests(unittest.TestCase):
         self.assertNotRegex(governor.replace("$$", ""), r"\$[A-Za-z_{]")
 
     def test_deploy_scripts_use_lf(self):
-        for name in ("bootstrap.sh", "install-release.sh", "moon-observe.service"):
+        for name in ("bootstrap.sh", "install-release.sh", "tph-art-museum.service"):
             self.assertNotIn(b"\r", (DEPLOY / name).read_bytes(), name)
 
 
@@ -110,7 +117,7 @@ class BuildTests(unittest.TestCase):
     def test_archive_contains_only_the_tagged_runtime(self):
         (self.repo / "backend" / "run.py").write_text("# untagged change\n", encoding="utf-8")
         archive, sums = build_release.build(self.repo, "v0.1.0", self.out, frontend_builder=fake_frontend)
-        top = "moon-observe-backend-v0.1.0"
+        top = "tph-art-museum-v0.1.0"
         self.assertEqual(archive.name, f"{top}.tar.gz")
         with tarfile.open(archive) as bundle:
             members = {member.name: member for member in bundle.getmembers()}

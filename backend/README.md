@@ -33,16 +33,16 @@ uv run --locked --project backend python backend/run.py
 
 最後一行會持續輸出並同時啟動頁面與 API，按 `Ctrl+C` 停止。尚未連接 Art-Net 設備、只想在 UI 編輯與儲存串接時，可改用 `uv run --locked --project backend python backend/run.py --api-only`；此模式提供相同的讀寫 API，但不發送 Art-Net。短時間測試可加 `--seconds 10`；其他位置的設定檔可用 `--config PATH_TO_CONFIG.toml`。啟動後不需 WLED API；接收端本身須已設定 Art-Net。`stupidArtnet` 的 `send()` 不提供接收確認，顯示結果仍需實機檢查。
 
-前端開發伺服器的 `/api` 會代理到 `127.0.0.1:8765`。正式使用前先在 `frontend/` 執行 `npm run build`，後端會自動提供 `frontend/dist`；若兩者不在同一份 repository 目錄下，以 `--frontend-dir /opt/moon-observe/frontend/dist` 指定建置檔位置。相機、骨架與場景設定只影響前端；FPS/RPM 仍由 TOML 管理。
+前端開發伺服器的 `/api` 會代理到 `127.0.0.1:8765`。正式使用前先在 `frontend/` 執行 `npm run build`，後端會自動提供 `frontend/dist`；若兩者不在同一份 repository 目錄下，以 `--frontend-dir /opt/tph-art-museum/current/frontend` 指定建置檔位置。相機、骨架與場景設定只影響前端；FPS/RPM 仍由 TOML 管理。
 
 ## Raspberry Pi 資料位置
 
-部署後可將程式與 `config.toml` 放在不同位置。建議唯一可寫的串接檔放在 `/var/lib/moon-observe/sequence.json`，不放在前端靜態檔或唯讀程式目錄。於 Pi 的 TOML 設定絕對路徑：
+部署後可將程式與 `config.toml` 放在不同位置。建議唯一可寫的串接檔放在 `/etc/tph-art-museum/preset/sequence.json`（部署腳本的配置，見 `deploy/README.md`），不放在前端靜態檔或唯讀程式目錄。於 Pi 的 TOML 設定絕對路徑：
 
 ```toml
 [render]
-preset = "/var/lib/moon-observe/preset.json"
-sequence = "/var/lib/moon-observe/sequence.json"
+preset = "/etc/tph-art-museum/preset/preset.json"
+sequence = "/etc/tph-art-museum/preset/sequence.json"
 fps = 40
 rpm = 360
 pixels = 156
@@ -50,7 +50,7 @@ unit_id = 1
 unit_count = 9
 ```
 
-部署前建立 `/var/lib/moon-observe`，並讓執行後端的 service 使用者擁有該目錄與 JSON 檔的寫入權限。可將 `sequence.example.json` 複製到該路徑作為初始檔；後續 UI 的「儲存串接」會原子覆寫同一份檔案。`--check` 若檔案已存在會驗證格式，不啟動 Art-Net 輸出。
+部署前建立 `/etc/tph-art-museum/preset`（部署腳本會自動建立），並讓執行後端的 service 使用者擁有該目錄與 JSON 檔的寫入權限。可將 `sequence.example.json` 複製到該路徑作為初始檔；後續 UI 的「儲存串接」會原子覆寫同一份檔案。`--check` 若檔案已存在會驗證格式，不啟動 Art-Net 輸出。
 
 ## 現場跨設備使用
 

@@ -4,25 +4,30 @@
 # reactivates it without network access (this is also the rollback command).
 #
 #   sudo bash install-release.sh v0.1.0
+#   sudo TPH_ART_MUSEUM_ARCHIVE=/tmp/tph-art-museum-v0.1.0.tar.gz bash install-release.sh v0.1.0
+#     (offline: the archive and its SHA256SUMS copied next to each other, e.g. with scp; no GitHub access)
 set -euo pipefail
 
 # Keep identical to VERSION_PATTERN in build_release.py and bootstrap.sh.
 VERSION_PATTERN='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z][0-9A-Za-z.]*)?$'
-APP=moon-observe-backend
-SERVICE=moon-observe
-REPOSITORY="${MOON_OBSERVE_REPOSITORY:-whyixd/tph_art_museum}"
-INSTALL_ROOT="${MOON_OBSERVE_INSTALL_ROOT:-/opt/moon-observe}"
-CONFIG_ROOT="${MOON_OBSERVE_CONFIG_ROOT:-/etc/moon-observe}"
-TOKEN_FILE="${MOON_OBSERVE_GITHUB_TOKEN_FILE:-$CONFIG_ROOT/github-token}"
-SERVICE_USER="${MOON_OBSERVE_SERVICE_USER:-moon-observe}"
-KEEP_RELEASES="${MOON_OBSERVE_KEEP_RELEASES:-3}"
-HEALTH_URL="${MOON_OBSERVE_HEALTH_URL:-http://127.0.0.1:8765/api/state}"
-PAGE_URL="${MOON_OBSERVE_PAGE_URL:-http://127.0.0.1:8765/}"
-HEALTH_TIMEOUT="${MOON_OBSERVE_HEALTH_TIMEOUT:-20}"
+APP=tph-art-museum
+SERVICE=tph-art-museum
+REPOSITORY="${TPH_ART_MUSEUM_REPOSITORY:-whyixd/tph_art_museum}"
+INSTALL_ROOT="${TPH_ART_MUSEUM_INSTALL_ROOT:-/opt/tph-art-museum}"
+CONFIG_ROOT="${TPH_ART_MUSEUM_CONFIG_ROOT:-/etc/tph-art-museum}"
+TOKEN_FILE="${TPH_ART_MUSEUM_GITHUB_TOKEN_FILE:-$CONFIG_ROOT/github-token}"
+SERVICE_USER="${TPH_ART_MUSEUM_SERVICE_USER:-tph-art-museum}"
+KEEP_RELEASES="${TPH_ART_MUSEUM_KEEP_RELEASES:-3}"
+HEALTH_URL="${TPH_ART_MUSEUM_HEALTH_URL:-http://127.0.0.1:8765/api/state}"
+PAGE_URL="${TPH_ART_MUSEUM_PAGE_URL:-http://127.0.0.1:8765/}"
+HEALTH_TIMEOUT="${TPH_ART_MUSEUM_HEALTH_TIMEOUT:-20}"
 UV="${UV:-$(command -v uv || echo /usr/local/bin/uv)}"
 # Raspberry Pi 5 上 CPython 跟不上 24 台轉燈 × 129 顆 @ 40 FPS，用 PyPy（uv 管理）。
 # CPython cannot keep up with 24 spinners x 129 LEDs at 40 FPS on a Raspberry Pi 5, so the service runs on PyPy.
-PYTHON_SPEC="${MOON_OBSERVE_PYTHON:-pypy@3.12}"
+PYTHON_SPEC="${TPH_ART_MUSEUM_PYTHON:-pypy@3.12}"
+# 選填：本機的 release 壓縮檔（旁邊要有 SHA256SUMS），不從 GitHub 下載。
+# Optional local release archive (with SHA256SUMS beside it) instead of downloading from GitHub.
+LOCAL_ARCHIVE="${TPH_ART_MUSEUM_ARCHIVE:-}"
 COMPLETE_MARKER=.install-complete
 
 die() { echo "install-release: $*" >&2; exit 1; }
@@ -35,8 +40,8 @@ VERSION="$1"
 for root in "$INSTALL_ROOT" "$CONFIG_ROOT"; do
   [[ $root == /* && $root != *[[:space:]\|\&\\]* ]] || die "install/config roots must be absolute paths without spaces or | & \\: $root"
 done
-[[ $KEEP_RELEASES =~ ^[1-9][0-9]*$ ]] || die "MOON_OBSERVE_KEEP_RELEASES must be a positive integer"
-[[ $HEALTH_TIMEOUT =~ ^[1-9][0-9]*$ ]] || die "MOON_OBSERVE_HEALTH_TIMEOUT must be a positive integer"
+[[ $KEEP_RELEASES =~ ^[1-9][0-9]*$ ]] || die "TPH_ART_MUSEUM_KEEP_RELEASES must be a positive integer"
+[[ $HEALTH_TIMEOUT =~ ^[1-9][0-9]*$ ]] || die "TPH_ART_MUSEUM_HEALTH_TIMEOUT must be a positive integer"
 for command in curl python3 sha256sum tar systemctl runuser useradd; do
   command -v "$command" >/dev/null || die "$command is required"
 done
@@ -72,6 +77,16 @@ fi
 
 fetch_release() {
   local token="${GITHUB_TOKEN:-}" ids archive_id sums_id expected actual
+  if [[ -n $LOCAL_ARCHIVE ]]; then
+    [[ $(basename "$LOCAL_ARCHIVE") == "$ARCHIVE" ]] || die "local archive must be named $ARCHIVE"
+    [[ -f $LOCAL_ARCHIVE && -f $(dirname "$LOCAL_ARCHIVE")/SHA256SUMS ]] \
+      || die "need $LOCAL_ARCHIVE and SHA256SUMS in the same directory"
+    log "Using local $ARCHIVE"
+    cp -- "$LOCAL_ARCHIVE" "$workdir/$ARCHIVE"
+    cp -- "$(dirname "$LOCAL_ARCHIVE")/SHA256SUMS" "$workdir/SHA256SUMS"
+    verify_release
+    return
+  fi
   # 公開 repo 不需要 token；有 token 時（私有 repo 或避免 API 次數限制）才帶。
   # A public repository needs no token; one is used when given (private repository or API rate limits).
   if [[ -z $token && -r $TOKEN_FILE ]]; then
@@ -111,7 +126,11 @@ PY
     "https://api.github.com/repos/$REPOSITORY/releases/assets/$archive_id"
   api -H 'Accept: application/octet-stream' -o "$workdir/SHA256SUMS" \
     "https://api.github.com/repos/$REPOSITORY/releases/assets/$sums_id"
+  verify_release
+}
 
+verify_release() {
+  local expected actual
   expected="$(awk -v name="$ARCHIVE" '$2 == name || $2 == "*" name { print $1; count++ } END { exit count != 1 }' \
     "$workdir/SHA256SUMS")" || die "SHA256SUMS must list $ARCHIVE exactly once"
   [[ $expected =~ ^[0-9a-f]{64}$ ]] || die "malformed checksum for $ARCHIVE"

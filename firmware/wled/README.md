@@ -31,7 +31,7 @@ IO13 以 open-drain 方式輸出：**運轉 = 輸出 LOW；停止 = 高阻抗**�
 WLED 主頁的 **Info** 面板會顯示「馬達輸出」「Art-Net ch469」「禁止運轉」「手動運轉」四列，按鈕文字為英文，按下後面板會自動更新。
 
 - **禁止運轉**：只存在 RAM，重開機後恢復為未禁止。按 **LOCK** 開啟，開啟時會取消進行中的手動運轉。解除要按兩次 **UNLOCK**：第一次按鈕顯示 `TAP AGAIN: UNLOCK`，5 秒內再按一次才送出。**若 Pi 目前命令為運轉，解除後馬達會立即啟動，按鈕上沒有另外提醒。** 不用 `confirm()`，因為 iOS 的 WLED App 不會顯示該視窗，按鈕會沒有反應。
-- **手動運轉**：只在 1 秒內沒有收到 Art-Net 時可用。Pi 的 backend 即使馬達命令為 0 也一直在送封包，所以要先停止 `moon-observe` 服務或拔掉 Pi 端網路線。持續秒數在設定頁設定（預設 60 秒，範圍 10–600），按 **MOTOR ON 60s**（依設定秒數顯示）同樣要在 5 秒內按兩次。時間到、按 **MOTOR OFF**、開啟禁止運轉、收到任何 Art-Net、OTA、重開機都會結束手動運轉。
+- **手動運轉**：只在 1 秒內沒有收到 Art-Net 時可用。Pi 的 backend 即使馬達命令為 0 也一直在送封包，所以要先停止 `tph-art-museum` 服務或拔掉 Pi 端網路線。持續秒數在設定頁設定（預設 60 秒，範圍 10–600），按 **MOTOR ON 60s**（依設定秒數顯示）同樣要在 5 秒內按兩次。時間到、按 **MOTOR OFF**、開啟禁止運轉、收到任何 Art-Net、OTA、重開機都會結束手動運轉。
 
 JSON API（`POST /json/state`）：
 
@@ -100,7 +100,7 @@ USB 加 `--no-backup` 跳過 `full_flash.bin`（約 2 分鐘），仍會備份 J
 
 腳本會自動做下面的手動步驟：
 
-- 檢查 `release`、`ver`、`eth.type`、Ethernet 腳位；realtime 串流進行中或馬達運轉時拒絕刷機，要先停止 `moon-observe`。OTA 會在第一次寫入前檢查完所有板子。
+- 檢查 `release`、`ver`、`eth.type`、Ethernet 腳位；realtime 串流進行中或馬達運轉時拒絕刷機，要先停止 `tph-art-museum`。OTA 會在第一次寫入前檢查完所有板子。
 - 備份 `info.json`、`cfg.json`、`presets.json` 到 `backups/<MAC>-<時間>/`。USB 另外比對分割表與 MAC，並備份整顆 flash 為 `full_flash.bin`。
 - 顯示 bin 的 SHA256，輸入 `yes` 後才寫入（`--yes` 可略過）。
 - 等板子重開機，確認 `moonMotor` 存在、輸出為停止、腳位為 13，Ethernet 設定未變；`presets.json` 或其他設定有變動時顯示警告。有一台失敗就停止，不刷後面的板子。
@@ -150,7 +150,7 @@ esptool --port $PORT erase_region 0xe000 0x2000
 
 - [ ] Pi `PUT /api/motor` `{"enabled":true}` → 約 75 ms 內運轉；`false` → 停止
 - [ ] WLED 關燈、亮度 0、切換 preset、改 LED 設定時輸出不變
-- [ ] `systemctl stop moon-observe` → 立即停止（backend 正常退出會送一包 0）
+- [ ] `systemctl stop tph-art-museum` → 立即停止（backend 正常退出會送一包 0）
 - [ ] `kill -9` backend、拔網路線 → 約 1 秒內停止
 - [ ] 送到其他 universe、或 ArtDmx 長度小於 469 → 不影響
 - [ ] 禁止運轉：開啟即停止；Pi 命令為運轉時解除要按兩次，第二次後立即運轉；重開機後恢復為未禁止
