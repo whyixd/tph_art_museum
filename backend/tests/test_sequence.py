@@ -39,6 +39,14 @@ def document():
     }
 
 
+def upgraded(raw):
+    """The v2 document the backend stores for a v1 one: each step's preset becomes spinner."""
+    return {**raw, "schemaVersion": 2, "steps": [
+        {"id": step["id"], "spinner": step["preset"], "playback": step["playback"], "transition": step["transition"]}
+        for step in raw["steps"]
+    ]}
+
+
 class FakeClient:
     def __init__(self, *_args, **_kwargs):
         self.packets = []
@@ -74,7 +82,7 @@ class SequenceTests(unittest.TestCase):
         preset = default_preset("sine-swell")
         preset["unitVariation"] = {"parameter": "speedHz", "from": 0.2, "to": 1, "distribution": "skip"}
         raw["steps"][0]["preset"] = preset
-        self.assertEqual(preset, validate_sequence(raw)["steps"][0]["preset"])
+        self.assertEqual(preset, validate_sequence(raw)["steps"][0]["spinner"])
         # Slowest unit runs 0.2 Hz: 200 frames per repeat, two repeats.
         self.assertEqual(400, compile_sequence(raw, 40, 9)[0]["duration"])
 
@@ -206,7 +214,7 @@ class SequenceTests(unittest.TestCase):
             store.use_single_preset()
             self.assertEqual("single", store.snapshot()[0])
             reopened = SequenceStore(path, 156, 40, 9, fallback)
-            self.assertEqual(document(), reopened.state()["sequence"])
+            self.assertEqual(upgraded(document()), reopened.state()["sequence"])
             self.assertEqual("sequence", reopened.snapshot()[0])
             self.assertEqual(["sequence.json"], [entry.name for entry in Path(directory).iterdir()])
 
@@ -231,7 +239,7 @@ class SequenceTests(unittest.TestCase):
                                     {"Content-Type": "application/json"}, method="PUT")
                     with urlopen(saved) as response:
                         self.assertEqual(2, len(json.load(response)["sequence"]["steps"]))
-                    self.assertEqual(document(), json.loads(sequence_path.read_text(encoding="utf-8")))
+                    self.assertEqual(upgraded(document()), json.loads(sequence_path.read_text(encoding="utf-8")))
                     single = Request(url + "/api/preset", json.dumps(default_preset("moving-rings")).encode(),
                                      {"Content-Type": "application/json"}, method="PUT")
                     with urlopen(single):

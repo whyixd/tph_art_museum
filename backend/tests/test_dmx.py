@@ -43,6 +43,47 @@ def load_dmx(dmx: str):
         return load_config(write_config(Path(directory), dmx))[0]["dmx"]
 
 
+BACKEND = Path(__file__).resolve().parents[1]
+
+
+def load_with_layout(layout) -> dict:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        (root / "layout.json").write_text(json.dumps(layout), encoding="utf-8")
+        return load_config(write_config(root, '[dmx]\nlayout = "layout.json"\n' + BALLS))[0]["dmx"]
+
+
+class LayoutTests(unittest.TestCase):
+    def test_example_layout_gives_ball_heights(self):
+        layout = json.loads((BACKEND / "layout.example.json").read_text(encoding="utf-8"))
+        dmx = load_with_layout(layout)
+        self.assertEqual({"z": 340.0}, dmx["positions"]["ball"][0])
+        heights = [row[0] for row in dmx["geometry"]["ball"]]
+        self.assertEqual(0.0, heights[10])        # ball 11, H245 (lowest; ball 17 too)
+        self.assertEqual(1.0, heights[35])        # ball 36, H1030
+        self.assertAlmostEqual((340 - 245) / (1030 - 245), heights[0])
+        xs = [row[1] for row in dmx["geometry"]["ball"]]
+        self.assertEqual([index / 36 for index in range(37)], xs)  # no x yet: fixture order
+        self.assertEqual([], dmx["geometry"]["wash"])
+
+    def test_without_layout_every_axis_follows_order(self):
+        dmx = load_dmx(BALLS)
+        self.assertEqual([None] * 37, dmx["positions"]["ball"])
+        self.assertEqual((0.5, 0.5, 0.5), dmx["geometry"]["ball"][18])
+
+    def test_layout_errors(self):
+        cases = {
+            "schemaVersion 1": {"schemaVersion": 2, "fixtures": {}},
+            "keyed by group": {"schemaVersion": 1, "fixtures": {"spinner": {}}},
+            "ids 38 are not in the patch": {"schemaVersion": 1, "fixtures": {"ball": {"38": {"z": 1}}}},
+            "some of x, y, z": {"schemaVersion": 1, "fixtures": {"ball": {"1": {"h": 1}}}},
+            r"ball 1\.z": {"schemaVersion": 1, "fixtures": {"ball": {"1": {"z": "high"}}}},
+        }
+        for message, layout in cases.items():
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                load_with_layout(layout)
+
+
 class ColorTests(unittest.TestCase):
     def test_white_extraction(self):
         self.assertEqual({"r": 0.0, "g": 0.0, "b": 0.0, "w": 1.0}, color_levels((1.0, 1.0, 1.0), "min"))

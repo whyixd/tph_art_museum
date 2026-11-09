@@ -11,6 +11,7 @@ from typing import Any
 
 from .dmx import COLOR_CHANNELS, DMX_CHANNELS, GROUPS, WHITE_MODES
 from .effects import validate_preset
+from .fixture_effects import fixture_geometry
 from .hardware import CHANNELS_PER_PIXEL, COLOR_ORDERS, default_motor_channel, packet_sizes
 
 MAX_PIXELS = 2048
@@ -119,7 +120,7 @@ def _dmx_profile(entry: dict[str, Any], name: str) -> dict[str, Any]:
 
 def _dmx(raw: Any, spinner_pairs: set[tuple[str, int]]) -> dict[str, Any]:
     """[dmx]: fixture profiles, Art-Net -> DMX node universes, and the patch (where each fixture sits)."""
-    if not isinstance(raw, dict) or set(raw) - {"profiles", "nodes", "patch"}:
+    if not isinstance(raw, dict) or set(raw) - {"profiles", "nodes", "patch", "layout"}:
         raise ValueError("unknown dmx config field")
     profiles: dict[str, dict[str, Any]] = {}
     for index, entry in enumerate(_table_list(raw.get("profiles", []), "dmx.profiles", 16)):
@@ -189,6 +190,46 @@ def _dmx(raw: Any, spinner_pairs: set[tuple[str, int]]) -> dict[str, Any]:
     return {"profiles": profiles, "nodes": nodes, "fixtures": fixtures}
 
 
+LAYOUT_SCHEMA_VERSION = 1
+LAYOUT_AXES = ("x", "y", "z")
+LAYOUT_LIMIT_CM = 100_000
+
+
+def _layout(path: Path, fixtures: dict[str, list[dict[str, Any]]]) -> dict[str, list[dict[str, float] | None]]:
+    """Fixture positions (cm) from the layout JSON, in each group's fixture order; missing ones are None.
+
+    {"schemaVersion": 1, "fixtures": {"ball": {"1": {"x": 120, "y": 40, "z": 340}, ...}, "wash": {...}}}
+    Any of x / y / z may be left out; an axis missing on any fixture of a group falls back to fixture order.
+    燈具座標（cm）；x/y/z 可缺，群組內任一顆缺某軸時，該軸改依編號排列。
+    """
+    with path.open("r", encoding="utf-8") as stream:
+        raw = json.load(stream)
+    if not isinstance(raw, dict) or set(raw) != {"schemaVersion", "fixtures"} or raw["schemaVersion"] != LAYOUT_SCHEMA_VERSION:
+        raise ValueError("dmx layout must contain schemaVersion 1 and fixtures")
+    entries = raw["fixtures"]
+    if not isinstance(entries, dict) or set(entries) - set(GROUPS):
+        raise ValueError(f"dmx layout fixtures must be keyed by group ({', '.join(GROUPS)})")
+    positions: dict[str, list[dict[str, float] | None]] = {}
+    for group in GROUPS:
+        by_id = entries.get(group, {})
+        if not isinstance(by_id, dict):
+            raise ValueError(f"dmx layout {group} must map fixture ids to positions")
+        known = {str(fixture["id"]) for fixture in fixtures[group]}
+        unknown = sorted(set(by_id) - known, key=lambda key: (len(key), key))
+        if unknown:
+            raise ValueError(f"dmx layout {group} ids {', '.join(unknown)} are not in the patch")
+        for key, position in by_id.items():
+            if not isinstance(position, dict) or not position or set(position) - set(LAYOUT_AXES):
+                raise ValueError(f"dmx layout {group} {key} must have some of x, y, z")
+            for axis, value in position.items():
+                _coordinate(value, f"dmx layout {group} {key}.{axis}", -LAYOUT_LIMIT_CM, LAYOUT_LIMIT_CM)
+        positions[group] = [
+            {axis: float(value) for axis, value in by_id[str(fixture["id"])].items()} if str(fixture["id"]) in by_id else None
+            for fixture in fixtures[group]
+        ]
+    return positions
+
+
 def _file_name(value: Any, name: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{name} must name a JSON file")
@@ -250,6 +291,14 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         raise ValueError("artnet target IP/universe pairs must be unique (each unit uses "
                          f"{len(sizes)} consecutive universe(s))")
     dmx = _dmx(raw["dmx"], set(pairs)) if "dmx" in raw else None
+    if dmx is not None:
+        layout_name = raw["dmx"].get("layout")
+        dmx["positions"] = (
+            _layout((config_path.parent / _file_name(layout_name, "dmx.layout")).resolve(), dmx["fixtures"])
+            if layout_name is not None else {group: [None] * len(fixtures) for group, fixtures in dmx["fixtures"].items()}
+        )
+        # 每顆的 (高度, x, y)，群組內 0..1；給球燈／洗牆燈效果。 / Per-fixture (height, x, y) within the group, 0..1.
+        dmx["geometry"] = {group: fixture_geometry(positions) for group, positions in dmx["positions"].items()}
 
     weather = None
     if "weather" in raw:

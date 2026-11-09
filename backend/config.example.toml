@@ -34,6 +34,10 @@ channel = 469                    # must be explicit (default would be pixels * 3
 
 # DMX 燈具（球燈、洗牆燈）經 Art-Net -> DMX 轉換器；整段選填。`run.py --patch-report` 印出位址表。
 # DMX fixtures through Art-Net -> DMX nodes; optional. `run.py --patch-report` prints the address table.
+# [dmx]
+# layout = "layout.example.json"   # 燈具座標（cm，x/y/z 可缺）；球燈高度取自 DMX＿線間距.pdf。缺某軸時依編號排列
+#                                  # fixture positions (cm; any axis may be missing -> fixture order on that axis)
+#
 # [[dmx.profiles]]
 # name = "ball-rgbw"
 # channels = ["r", "g", "b", "w"]   # fixture channel order; other names (dimmer, strobe...) need a static value

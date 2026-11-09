@@ -34,6 +34,7 @@ RUNTIME_FILES = (
     "run.py",
     "config.example.toml",
     "preset.example.json",
+    "layout.example.json",
     "deploy/bootstrap.sh",
     "deploy/install-release.sh",
     "deploy/moon-observe.service",

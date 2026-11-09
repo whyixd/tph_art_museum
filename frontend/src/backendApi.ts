@@ -1,5 +1,53 @@
 import type { EffectPreset, RgbColor } from './effects'
-import type { SequenceDocument } from './simulation/sequence'
+import type { FixturePreset } from './fixtures'
+import type { SequenceDocument, SequenceStep } from './simulation/sequence'
+
+/**
+ * 後端 Sequence v2：每段 spinner（轉燈）＋選填 ball／wash（球燈／洗牆燈，省略 = 全暗）。
+ * 前端內部仍用 v1 形狀（step.preset = 轉燈），球燈／洗牆燈放在 step.fixtures 原樣保留，M7 再提供編輯。
+ * Backend Sequence v2: spinner plus optional ball / wash per step (omitted = dark). The frontend keeps its v1 shape
+ * internally (step.preset = spinner) and carries ball / wash through step.fixtures untouched until M7 edits them.
+ */
+export type BackendSequenceStep = {
+  id: number
+  spinner: EffectPreset
+  ball?: FixturePreset
+  wash?: FixturePreset
+  playback: SequenceStep['playback']
+  transition: SequenceStep['transition']
+}
+
+export type BackendSequenceDocument = {
+  schemaVersion: 2
+  ending: SequenceDocument['ending']
+  steps: BackendSequenceStep[]
+}
+
+export function fromBackendSequence(document: SequenceDocument | BackendSequenceDocument): SequenceDocument {
+  if (document.schemaVersion === 1) return document
+  return {
+    schemaVersion: 1,
+    ending: document.ending,
+    steps: document.steps.map(({ id, spinner, ball, wash, playback, transition }) => ({
+      id, preset: spinner, playback, transition,
+      ...(ball || wash ? { fixtures: { ...(ball ? { ball } : {}), ...(wash ? { wash } : {}) } } : {}),
+    })),
+  }
+}
+
+export function toBackendSequence(document: SequenceDocument): BackendSequenceDocument {
+  return {
+    schemaVersion: 2,
+    ending: document.ending,
+    steps: document.steps.map(({ id, preset, playback, transition, fixtures }) => ({
+      id, spinner: preset, ...fixtures, playback, transition,
+    })),
+  }
+}
+
+function withInternalSequence(state: BackendSequenceState): BackendSequenceState {
+  return { ...state, sequence: fromBackendSequence(state.sequence as SequenceDocument | BackendSequenceDocument) }
+}
 
 export type BackendState = {
   revision: number
@@ -54,24 +102,24 @@ export async function setBackendMotor(enabled: boolean): Promise<BackendState> {
 }
 
 export async function getBackendSequence(): Promise<BackendSequenceState> {
-  return readState<BackendSequenceState>(await fetch('/api/sequence', { cache: 'no-store' }))
+  return withInternalSequence(await readState<BackendSequenceState>(await fetch('/api/sequence', { cache: 'no-store' })))
 }
 
 export async function saveBackendSequence(sequence: SequenceDocument): Promise<BackendSequenceState> {
-  return readState<BackendSequenceState>(await fetch('/api/sequence', {
+  return withInternalSequence(await readState<BackendSequenceState>(await fetch('/api/sequence', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(sequence),
-  }))
+    body: JSON.stringify(toBackendSequence(sequence)),
+  })))
 }
 
 // 從第 0 影格重播後端已儲存的串接或已套用的效果。 / Replay the saved sequence or applied preset from frame 0.
 export async function restartBackendPlayback(source: 'sequence' | 'single'): Promise<BackendSequenceState> {
-  return readState<BackendSequenceState>(await fetch('/api/playback/restart', {
+  return withInternalSequence(await readState<BackendSequenceState>(await fetch('/api/playback/restart', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ source }),
-  }))
+  })))
 }
 
 export type WeatherCategory = 'clear' | 'cloudy' | 'rain'

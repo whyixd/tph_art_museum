@@ -11,11 +11,18 @@ import tempfile
 from threading import Lock
 from typing import Any, Mapping
 
-from .effects import completion_frames as _completion_frames, preset_to_json, validate_preset
+from .effects import Rgb, completion_frames as _completion_frames, preset_to_json, validate_preset
+from .fixture_effects import fixture_completion_frames, fixture_preset_to_json, render_fixture_frame, validate_fixture_preset
 from .renderer import render_frame
 
-SEQUENCE_SCHEMA_VERSION = 1
+# v2：每段同時指定轉燈（spinner，必填）、球燈（ball）、洗牆燈（wash）；省略 ball／wash = 全暗。v1 讀入時自動升級。
+# v2: each step sets the spinner preset (required) and optional ball / wash fixture presets (omitted = off).
+# v1 documents ({"preset": ...} per step) are upgraded on read.
+SEQUENCE_SCHEMA_VERSION = 2
+LEGACY_SEQUENCE_SCHEMA_VERSION = 1
 MAX_STEPS = 64
+FIXTURE_GROUPS = ("ball", "wash")
+CLOCKS = ("spinner", *FIXTURE_GROUPS)
 
 
 def _rounded_frames(value: float) -> int:
@@ -23,10 +30,30 @@ def _rounded_frames(value: float) -> int:
 
 
 
-def validate_sequence(raw: Any, pixels: int = 156, fps: int = 40, unit_count: int = 9) -> dict[str, Any]:
+def _fixture_count(fixture_counts: Mapping[str, int] | None, group: str) -> int:
+    return max(1, int((fixture_counts or {}).get(group, 1)))
+
+
+def _step_cycle(step: Mapping[str, Any], fps: int, unit_count: int, fixture_counts: Mapping[str, int] | None) -> int | None:
+    """Frames of one cycle of the step's clock group (spinner unless playback.clock says otherwise)."""
+    clock = step["playback"].get("clock", "spinner")
+    if clock == "spinner":
+        return _completion_frames(step["spinner"], fps, unit_count)
+    return fixture_completion_frames(step[clock], fps, _fixture_count(fixture_counts, clock))
+
+
+def validate_sequence(
+    raw: Any, pixels: int = 156, fps: int = 40, unit_count: int = 9,
+    fixture_counts: Mapping[str, int] | None = None,
+) -> dict[str, Any]:
+    """Validate a v1 or v2 sequence and return canonical v2.
+
+    ``fixture_counts`` ({"ball": 37, ...}) is only needed for count-based steps clocked by fixture-chase.
+    """
     if not isinstance(raw, dict) or not {"schemaVersion", "steps"} <= set(raw) or set(raw) - {"schemaVersion", "steps", "ending"}:
         raise ValueError("sequence must contain schemaVersion and steps")
-    if type(raw["schemaVersion"]) is not int or raw["schemaVersion"] != SEQUENCE_SCHEMA_VERSION:
+    version = raw["schemaVersion"]
+    if type(version) is not int or version not in (LEGACY_SEQUENCE_SCHEMA_VERSION, SEQUENCE_SCHEMA_VERSION):
         raise ValueError("unsupported sequence schemaVersion")
     ending = raw.get("ending", {"kind": "hold"})
     if not isinstance(ending, dict):
@@ -45,21 +72,34 @@ def validate_sequence(raw: Any, pixels: int = 156, fps: int = 40, unit_count: in
     ids: set[int] = set()
     result: list[dict[str, Any]] = []
     for index, step in enumerate(steps):
-        if not isinstance(step, dict) or set(step) != {"id", "preset", "playback", "transition"}:
-            raise ValueError(f"step {index + 1} must contain id, preset, playback and transition")
+        if version == LEGACY_SEQUENCE_SCHEMA_VERSION:
+            if not isinstance(step, dict) or set(step) != {"id", "preset", "playback", "transition"}:
+                raise ValueError(f"step {index + 1} must contain id, preset, playback and transition")
+            step = {"id": step["id"], "spinner": step["preset"], "playback": step["playback"], "transition": step["transition"]}
+        elif not isinstance(step, dict) or not {"id", "spinner", "playback", "transition"} <= set(step) \
+                or set(step) - {"id", "spinner", *FIXTURE_GROUPS, "playback", "transition"}:
+            raise ValueError(f"step {index + 1} must contain id, spinner, playback and transition (optional: ball, wash)")
         step_id = step["id"]
         if type(step_id) is not int or step_id <= 0 or step_id in ids:
             raise ValueError("sequence step ids must be distinct positive integers")
         ids.add(step_id)
-        normalized_preset = validate_preset(step["preset"], pixels)
+        normalized = {"spinner": validate_preset(step["spinner"], pixels)}
+        for group in FIXTURE_GROUPS:
+            if group in step:
+                normalized[group] = validate_fixture_preset(step[group])
         playback = step["playback"]
         if not isinstance(playback, dict):
             raise ValueError("invalid sequence playback")
-        if playback.get("kind") == "count" and set(playback) == {"kind", "count"}:
+        if playback.get("kind") == "count" and {"kind", "count"} <= set(playback) <= {"kind", "count", "clock"}:
             count = playback["count"]
             if type(count) is not int or not 1 <= count <= 100:
                 raise ValueError("playback count must be 1..100")
-            if _completion_frames(normalized_preset, fps, unit_count) is None:
+            clock = playback.get("clock", "spinner")
+            if clock not in CLOCKS:
+                raise ValueError("playback clock must be spinner, ball or wash")
+            if clock not in normalized:
+                raise ValueError(f"playback clock {clock} needs a {clock} preset in the step")
+            if _step_cycle({**normalized, "playback": playback}, fps, unit_count, fixture_counts) is None:
                 raise ValueError("playback count requires an effect completion boundary")
         elif playback.get("kind") == "time" and set(playback) == {"kind", "seconds"}:
             seconds = playback["seconds"]
@@ -75,25 +115,44 @@ def validate_sequence(raw: Any, pixels: int = 156, fps: int = 40, unit_count: in
         seconds = transition["seconds"]
         if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or not math.isfinite(seconds) or not 0 <= seconds <= 10:
             raise ValueError("transition seconds must be finite and within 0..10")
-        result.append({**copy.deepcopy(step), "preset": preset_to_json(normalized_preset)})
+        canonical: dict[str, Any] = {"id": step_id, "spinner": preset_to_json(normalized["spinner"])}
+        for group in FIXTURE_GROUPS:
+            if group in normalized:
+                canonical[group] = fixture_preset_to_json(normalized[group])
+        canonical["playback"] = copy.deepcopy(playback)
+        canonical["transition"] = copy.deepcopy(transition)
+        result.append(canonical)
     return {"schemaVersion": SEQUENCE_SCHEMA_VERSION, "ending": copy.deepcopy(ending), "steps": result}
 
 
-def compile_sequence(document: Mapping[str, Any], fps: int, unit_count: int, pixels: int = 156) -> tuple[dict[str, Any], ...]:
-    raw = validate_sequence(document, pixels, fps, unit_count)
+def compile_sequence(
+    document: Mapping[str, Any], fps: int, unit_count: int, pixels: int = 156,
+    fixture_counts: Mapping[str, int] | None = None,
+) -> tuple[dict[str, Any], ...]:
+    """Frame schedule. ``preset`` is the spinner preset; ``ball`` / ``wash`` are fixture presets or None (off).
+
+    ``cycle`` is the clock group's cycle (count steps); only that group wraps its frames per repeat,
+    the other groups run freely through the step.
+    """
+    raw = validate_sequence(document, pixels, fps, unit_count, fixture_counts)
     compiled: list[dict[str, Any]] = []
     start = 0
     for index, step in enumerate(raw["steps"]):
-        preset = validate_preset(step["preset"], pixels)
+        preset = validate_preset(step["spinner"], pixels)
+        fixtures = {group: validate_fixture_preset(step[group]) if group in step else None for group in FIXTURE_GROUPS}
         playback = step["playback"]
-        cycle = _completion_frames(preset, fps, unit_count) if playback["kind"] == "count" else None
+        clock = playback.get("clock", "spinner") if playback["kind"] == "count" else None
+        cycle = _step_cycle({"spinner": preset, **fixtures, "playback": playback}, fps, unit_count, fixture_counts) \
+            if playback["kind"] == "count" else None
         duration = cycle * playback["count"] if cycle is not None else max(1, _rounded_frames(playback["seconds"] * fps))
         previous = raw["steps"][index - 1] if index else None
         transition_frames = 0 if previous is None or previous["transition"]["kind"] == "cut" else min(
             duration, max(0, _rounded_frames(previous["transition"]["seconds"] * fps))
         )
         compiled.append({
-            "id": step["id"], "preset": preset, "start": start, "duration": duration, "cycle": cycle,
+            "id": step["id"], "preset": preset, **fixtures, "start": start, "duration": duration, "cycle": cycle,
+            "clock": clock,
+            "group_cycles": {group: cycle if clock == group else None for group in CLOCKS},
             "transition_frames": transition_frames,
             "transition_kind": step["transition"]["kind"],
         })
@@ -127,11 +186,21 @@ def unit_fade_weight(fade: tuple[int, int], unit_index: int, unit_count: int) ->
 def _layer_details(
     compiled: tuple[dict[str, Any], ...], frame: int,
 ) -> tuple[tuple[Mapping[str, Any], int, int | None, int, float, UnitFade], ...]:
-    """Layers as (preset, elapsed frames in step, step cycle, source frame, weight, unit fade).
+    """Spinner layers as (preset, elapsed frames in step, wrap cycle, source frame, weight, unit fade).
 
     unit fade is (elapsed, frames of the fade-out half) on the outgoing layer of a
     unit-fade-black transition, else None.
     """
+    return tuple(
+        (step["preset"], elapsed, step["group_cycles"]["spinner"], source, weight, fade)
+        for step, elapsed, source, weight, fade in _step_layers(compiled, frame)
+    )
+
+
+def _step_layers(
+    compiled: tuple[dict[str, Any], ...], frame: int,
+) -> tuple[tuple[Mapping[str, Any], int, int, float, UnitFade], ...]:
+    """Layers as (compiled step, elapsed frames in step, source frame, weight, unit fade)."""
     total = compiled[-1]["start"] + compiled[-1]["duration"]
     frame = max(0, frame)
     loop = compiled[0]["ending"]["kind"] == "loop"
@@ -142,13 +211,13 @@ def _layer_details(
         last = compiled[-1]
         fade_frames = compiled[0]["end_fade_frames"]
         weight = max(0.0, 1 - (frame - total + 1) / fade_frames) if fade_frames else 1.0
-        return ((last["preset"], last["duration"] - 1, last["cycle"], total - 1, weight, None),)
+        return ((last, last["duration"] - 1, total - 1, weight, None),)
 
     index = next(i for i, step in enumerate(compiled) if cycle_frame < step["start"] + step["duration"])
     step = compiled[index]
     elapsed = cycle_frame - step["start"]
     source_frame = cycle_start + step["start"] + elapsed
-    current = (step["preset"], elapsed, step["cycle"], source_frame, 1.0, None)
+    current = (step, elapsed, source_frame, 1.0, None)
     frames = compiled[0]["loop_transition_frames"] if index == 0 and cycle_start > 0 else step["transition_frames"]
     if elapsed >= frames:
         return (current,)
@@ -170,8 +239,8 @@ def _layer_details(
             outgoing_weight = 1 - (elapsed + 1) / (midpoint + 1) if elapsed < midpoint else 0.0
     prior_elapsed = previous["duration"] - 1
     prior_source = cycle_start + previous["start"] + prior_elapsed - (total if index == 0 else 0)
-    outgoing = (previous["preset"], prior_elapsed, previous["cycle"], prior_source, outgoing_weight, unit_fade)
-    return (outgoing, (step["preset"], elapsed, step["cycle"], source_frame, current_weight, None))
+    outgoing = (previous, prior_elapsed, prior_source, outgoing_weight, unit_fade)
+    return (outgoing, (step, elapsed, source_frame, current_weight, None))
 
 
 def sequence_position(compiled: tuple[dict[str, Any], ...], frame: int) -> dict[str, Any]:
@@ -249,10 +318,46 @@ def render_sequence_frame(
     return [tuple(color) for color in result]
 
 
+def render_sequence_fixtures(
+    compiled: tuple[dict[str, Any], ...],
+    group: str,
+    geometry: list[tuple[float, float, float]],
+    frame: int,
+    *,
+    fps: int,
+    rain: bool = False,
+    color_override: Mapping[str, Any] | None = None,
+    frame_step: int = 0,
+) -> list[Rgb]:
+    """One DMX group's colours; a step without that group's preset is dark.
+
+    unit-fade-black fades the fixtures out one after another in id (DMX chain) order.
+    """
+    if group not in FIXTURE_GROUPS:
+        raise ValueError(f"group must be one of {', '.join(FIXTURE_GROUPS)}")
+    count = len(geometry)
+    result = [[0.0, 0.0, 0.0] for _ in range(count)]
+    for step, elapsed, _, weight, unit_fade in _step_layers(compiled, frame):
+        preset = step[group]
+        if preset is None or weight <= 0:
+            continue
+        colors = render_fixture_frame(
+            preset, geometry, elapsed, fps=fps, raining=rain, color_override=color_override,
+            frame_step=frame_step, cycle_frames=step["group_cycles"][group],
+        )
+        for index, (target, color) in enumerate(zip(result, colors)):
+            scale = weight * (unit_fade_weight(unit_fade, index, count) if unit_fade is not None else 1.0)
+            for channel in range(3):
+                target[channel] += color[channel] * scale
+    return [tuple(color) for color in result]  # type: ignore[misc]
+
+
 class SequenceStore:
-    def __init__(self, path: str | Path, pixels: int, fps: int, unit_count: int, fallback_preset: Mapping[str, Any]) -> None:
+    def __init__(self, path: str | Path, pixels: int, fps: int, unit_count: int, fallback_preset: Mapping[str, Any],
+                 fixture_counts: Mapping[str, int] | None = None) -> None:
         self.path = Path(path)
         self.pixels = pixels
+        self.fixture_counts = dict(fixture_counts or {})
         self.fps = fps
         self.unit_count = unit_count
         self.lock = Lock()
@@ -261,19 +366,19 @@ class SequenceStore:
         self.mode = "sequence"
         if self.path.exists():
             raw = json.loads(self.path.read_text(encoding="utf-8"))
-            self.raw = validate_sequence(raw, pixels, fps, unit_count)
+            self.raw = validate_sequence(raw, pixels, fps, unit_count, self.fixture_counts)
         else:
             self.raw = validate_sequence({
                 "schemaVersion": SEQUENCE_SCHEMA_VERSION,
                 "ending": {"kind": "hold"},
                 "steps": [{
-                    "id": 1, "preset": fallback_preset,
+                    "id": 1, "spinner": fallback_preset,
                     "playback": {"kind": "time", "seconds": 8},
                     "transition": {"kind": "cut", "seconds": 0.5},
                 }],
-            }, pixels, fps, unit_count)
+            }, pixels, fps, unit_count, self.fixture_counts)
             self._write(self.raw)
-        self.compiled = compile_sequence(self.raw, fps, unit_count, pixels)
+        self.compiled = compile_sequence(self.raw, fps, unit_count, pixels, self.fixture_counts)
 
     def _write(self, document: Mapping[str, Any]) -> None:
         encoded = (json.dumps(document, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
@@ -299,8 +404,8 @@ class SequenceStore:
             return self.mode, self.compiled, self.generation
 
     def apply(self, raw: Any) -> dict[str, Any]:
-        document = validate_sequence(raw, self.pixels, self.fps, self.unit_count)
-        compiled = compile_sequence(document, self.fps, self.unit_count, self.pixels)
+        document = validate_sequence(raw, self.pixels, self.fps, self.unit_count, self.fixture_counts)
+        compiled = compile_sequence(document, self.fps, self.unit_count, self.pixels, self.fixture_counts)
         with self.lock:
             self._write(document)
             self.raw = document

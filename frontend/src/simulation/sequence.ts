@@ -1,17 +1,25 @@
 import { getEffectCompletion, type EffectPreset } from '../effects'
+import type { FixturePreset } from '../fixtures'
 
 /** unit-fade-black: units fade out one after another (1→9), then the next step fades in on all units. */
 export type TransitionKind = 'cut' | 'fade-black' | 'crossfade' | 'unit-fade-black'
 export type SequenceEnding = { kind: 'hold' | 'loop' } | { kind: 'fade-black'; seconds: number }
+/** Which group's cycle a count step counts (backend Sequence v2); the simulator still counts the spinner. */
+export type SequenceClock = 'spinner' | 'ball' | 'wash'
 export type PlaybackRule =
   | { kind: 'time'; seconds: number }
-  | { kind: 'count'; count: number }
+  | { kind: 'count'; count: number; clock?: SequenceClock }
+
+/** Ball / wall-washer presets of a step (backend Sequence v2); omitted groups are dark. Edited in M7. */
+export type StepFixtures = { ball?: FixturePreset; wash?: FixturePreset }
 
 export type SequenceStep = {
   id: number
+  /** The spinner preset (Sequence v2 `spinner`). */
   preset: EffectPreset
   playback: PlaybackRule
   transition: { kind: TransitionKind; seconds: number }
+  fixtures?: StepFixtures
 }
 
 export type SequenceDocument = {

@@ -125,34 +125,36 @@ address = 1                        # 第一顆的起始位址
 - 驗證：多餘欄位、同一 universe 內位址重疊、超過 512、編號重複、profile／node 不存在、DMX universe 與轉燈的 IP/universe 衝突，都會報錯。
 - `run.py --patch-report`：印出每個 node universe 的位址表（群組、編號、通道範圍、通道名稱），給現場接線與對燈用。
 - 每個 node universe 每影格送一包完整 512 bytes；沒用到的通道為 0。
-- 燈具在場景中的座標（給前端模擬器、依空間位置的效果）留到 M5／M7，另外放一份 layout 檔，不放在 patch 裡。
+- 燈具在場景中的座標放在另一份 layout 檔（M5 已實作，見 §3.3），不放在 patch 裡。
 
-### 3.3 Fixture effect engine
+### 3.3 Fixture effect engine（M5 已實作）
 
-純函式，與 reference 同樣以影格為時間：
+純函式，與轉燈效果一樣以影格為時間；前端 `frontend/src/fixtures/index.ts` 為參考實作，後端 `fixture_effects.py` 逐值一致（`scripts/generateFixtureVectors.ts` → `backend/fixtures/fixtures_v1.json`）。
 
 ```
-sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
+sampleFixture(preset, context, raining) -> RGB（0–1）    # 顏色 × 亮度 × maxLevel
+renderFixtureFrame(preset, geometry, frame, {fps, raining, palette, frameStep, cycleFrames}) -> RGB[]
 ```
 
-`FixtureContext`：`controllerFrame`、`globalControllerFrame`、`controllerFps`、`fixtureIndex`／`fixtureCount`、`position {x,y,z}`、`normalizedHeight`（z 在群組內的 0–1）、`normalizedX`／`normalizedY`、`nearestSpinner`（最近的轉燈 unitIndex，供跟隨）。
+`FixtureContext`：`controllerFrame`、`controllerFps`、`fixtureIndex`／`fixtureCount`（依編號 = DMX 鏈順序）、`normalizedHeight`／`normalizedX`／`normalizedY`（群組內 0–1）。
 
-建議的第一批效果（之後依需求增減）：
+**FixturePreset v1**：`{schemaVersion: 1, effectId, parameters, color, maxLevel?}`；`color` 同 EffectPreset 的 solid／gradient（2–8 色、可 `weatherPalette: false`），漸層 `axis` 為 `height`／`x`／`y`／`index`；`maxLevel`（0–1）是群組亮度上限。
 
-| effectId | 說明 | 有週期 |
-|---|---|---|
-| `fixture-solid` | 全部同色（可配合 color/gradient 依高度或 x 軸分佈） | – |
-| `fixture-breathing` | 整體呼吸 | ✓ |
-| `height-sweep` | 光帶依高度由下往上（或反向）掃過 | ✓ |
-| `space-wave` | 波由空間一端（入口）推進到另一端，依 x 位置 | ✓ |
-| `fixture-twinkle` | 隨機閃爍（固定種子，前後端一致） | – |
-| `fixture-chase` | 依編號／DMX 鏈順序逐顆巡行 | ✓ |
-| `follow-spinner` | 取最近一台轉燈當下的平均顏色 | 跟隨轉燈 |
-| `off` | 全暗 | – |
+| effectId | 說明 | 參數（預設） | 週期 |
+|---|---|---|---|
+| `off` | 全暗（雨天也不亮） | – | – |
+| `fixture-solid` | 恆亮 | – | – |
+| `fixture-breathing` | 整體呼吸，最暗保留 `minLevel` | `breatheHz` 0.2、`minLevel` 0.1 | `ceil(fps/breatheHz)` |
+| `height-sweep` | 光帶依高度由下往上（`direction` 1：由上往下）掃過 | `speedHz` 0.25、`width` 0.3、`direction` 0 | `ceil(fps/speedHz)` |
+| `space-wave` | 亮度波沿 x 推進 | `speedHz` 0.2、`waveCount` 1、`direction` 0 | `ceil(fps/speedHz)` |
+| `fixture-twinkle` | 每顆各自隨機亮起並淡出（固定種子） | `holdSeconds` 1、`density` 0.3 | – |
+| `fixture-chase` | 依編號逐顆巡行，拖 `tailCount` 顆漸暗 | `stepSeconds` 0.3、`tailCount` 2、`direction` 0 | 每步影格 × 顆數 |
 
-- 色彩模型沿用 EffectPreset v2 的 `color`（solid / gradient），`axis` 改為 `height`／`x`／`y`／`index`。
-- 天氣：色盤套色同 reference；`cloudy` 依位置錯開；`rain` 有雨天版本（例如短暫下落的亮點，由高往低）。
-- 洗牆燈通常較少顆且亮度高：preset 另有 `maxLevel`（0–1）作為群組上限，config 也有 `[hardware].wash_max_level` 安全上限。
+- `follow-spinner`（跟隨最近的轉燈）**未做**：要等 Q9（是否需要連動）與 Q5（座標），且需要輸出迴圈先算好轉燈顏色（M6）。
+- **幾何／layout**：`[dmx] layout = "layout.json"`（選填）。格式 `{"schemaVersion": 1, "fixtures": {"ball": {"1": {"x":…, "y":…, "z":…}}, "wash": {…}}}`，單位 cm，x／y／z 都可缺；群組內每顆都有某軸時才依該軸正規化到 0–1，否則該軸改依編號排列。設定載入後放在 `config["dmx"]["geometry"][group]`。
+- `backend/layout.example.json`：37 顆球燈的高度 z，取自 `DMX＿線間距.pdf`（依圖面比例換算後與 H 標籤配對、再以紅字線長交叉檢查）；x／y 待 Q5。**請確認高度**。
+- **天氣**：色盤只換顏色，漸層效果保留自己的 axis，純色效果改依 `height` 分佈；`cloudy` 每顆依 x 錯開 `round(x × 8 × cloud_step)` 影格；`rain` 每顆在自己的隨機相位閃亮後衰減（0.7 Hz、閃亮佔 25%、其餘保留 20% 亮度），`off` 除外。常數在兩邊同名（`FIXTURE_RAIN`／`RAIN_*`、`CLOUD_SPREAD_STEPS`）。
+- 洗牆燈另需 config 安全上限 `[hardware].wash_max_level`：留到 M6 接輸出時做。
 
 ### 3.4 Sequence v2
 
@@ -173,10 +175,12 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 }
 ```
 
-- `playback.count` 以哪個群組的週期為準由 `clock` 指定（預設 `spinner`）；其他群組在該段內自由運行。
-- `ball`／`wash` 可省略 = 維持上一段（不重播）或 `off`，**待決定**（建議：省略 = `off`，明確比較好預測）。
-- 讀到 reference 的 Sequence v1 時自動升級為 v2（`spinner` = 原 preset，`ball`／`wash` = `off`）。
-- `fade-black`、`unit-fade-black` 對 DMX 群組：前者整體淡出，後者依 DMX 鏈順序逐顆淡出。
+M5 已實作（`sequence.py`）：
+- `spinner` 必填；`ball`／`wash` 選填，**省略 = 全暗**（採用建議）。轉燈要暗可用 `full-on` 配黑色。
+- `playback.count` 可加 `clock`（`spinner`／`ball`／`wash`，預設 `spinner`），以該群組效果的週期計次；只有 clock 群組每次重播時回到第 0 影格，其他群組在段內自由運行。clock 群組必須有 preset 且有週期，否則報錯。`fixture-chase` 的週期依顆數，`compile_sequence`／`SequenceStore` 接受 `fixture_counts`（M6 由 config 傳入）。
+- 讀到 Sequence v1 時升級為 v2（`spinner` = 原 preset，無 `ball`／`wash`）；`SequenceStore` 讀到 v1 檔不會改寫，下次儲存才寫成 v2。`GET /api/sequence` 一律回傳 v2。
+- 轉場對 DMX 群組：`crossfade`、`fade-black` 與轉燈相同權重；`unit-fade-black` 依編號（DMX 鏈順序）逐顆淡出。
+- 前端在 `backendApi.ts` 轉換：讀入 v2 時轉成內部 v1 形狀（`step.preset` = 轉燈，`step.fixtures` 原樣保留 ball／wash），儲存時轉回 v2；現有編輯器只編轉燈，球燈／洗牆燈設定不會遺失（編輯 UI 在 M7）。前端串接預覽仍以轉燈週期計次，`clock` 只在後端生效。
 
 ## 4. 輸出迴圈（`output.py`）
 
@@ -219,7 +223,7 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 | Q2 | ~~球燈通道表~~ RGBW、37 顆、位址已燒錄（1–37）；通道順序 R G B W，沒有 dimmer／strobe（2026-11-09 確認，與目前範例設定相同）。**仍待確認**：「位址 1–37」是燈具編號（實際起始通道 1, 5, 9, …, 145，目前的預設），還是起始通道本身 | 現場接線前 |
 | Q3 | 洗牆燈數量、型號、通道表、安裝位置與照射面（設定格式已支援，確定後只改 config） | M6 |
 | Q4 | Art-Net → DMX node 型號、台數、port 數；球燈 DMX 鏈如何分段（`DMX＿線間距.pdf` 的線長是否就是串接順序 1→37） | M3、`--patch-report` |
-| Q5 | 所有燈桿與燈具的平面座標（x, y）：能否提供 CAD/DXF 匯出，或由 `image (6).png` 量 | M6 模擬器 |
+| Q5 | 所有燈桿與燈具的平面座標（x, y）：能否提供 CAD/DXF 匯出，或由 `image (6).png` 量。球燈高度 z 已由 `DMX＿線間距.pdf` 讀出（`backend/layout.example.json`），**待確認** | M6 模擬器、`space-wave` |
 | Q6 | 主機平台：Raspberry Pi 5（reference）或 Windows（`moon_observe_re`）？ | M8 部署、效能 |
 | Q7 | Art-Net 網段與 IP 規劃（轉燈、DMX node、主機） | config 範本 |
 | Q8 | 是否仍要天氣功能、造訪地點清單 | M5 |
@@ -234,7 +238,7 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 | M2 ✅ | 通用化：`pixels`、`unit_count`、多 universe、`hardware.py`；效能基準測試 | 2026-11-03：見下方「M2 實作細節」；backend 96 個測試（新增 `test_hardware.py` 10 個）、frontend 117 個測試通過，`tsc` 通過；fixtures 加入 24 台的整台效果（`unit-chase`、`unit-random`、`roulette-ring`、`sequential-center-fill`、`random-fill`），前後端一致；24 台 × 312 顆實際送到本機 UDP listener 2 秒：48 個 universe、每個 79 包（≈ 40 FPS）、封包 510／428 bytes；效能結果見 §2 | – |
 | M3 ✅ | DMX：fixture profile、patch 解析與驗證、`dmx.py`（RGB → 通道、universe buffer）、`--patch-report` | 2026-11-03：見 §3.2；新增 `test_dmx.py` 7 個測試，backend 共 103 個測試通過；`config.example.toml` 加入球燈範例。**尚未接進輸出迴圈**（M6） | – |
 | M4 🔶 | 轉燈幾何與 payload 依實體配置實作 | payload golden test；現場一台實測。2026-11-09：程式與測試完成（見下方「M4 實作細節」），**待現場一台實測** | Q1 |
-| M5 | Fixture effect engine（TS + Python）、Sequence v2、天氣套用到 DMX 群組 | 前後端 fixture vectors 一致；v1 → v2 升級測試 | M3 |
+| M5 ✅ | Fixture effect engine（TS + Python）、Sequence v2、天氣套用到 DMX 群組 | 前後端 fixture vectors 一致；v1 → v2 升級測試。2026-11-09：見 §3.3、§3.4；backend 127 個測試（新增 `test_fixture_effects.py` 9、`test_sequence_v2.py` 8、`test_dmx.py` layout 3）、frontend 122 個測試（新增 `fixtures.test.ts` 4、`backendApi.test.ts` 1）通過，`tsc`、build 通過；轉燈 `effects_v2.json` 重產逐 byte 相同。**尚未接進輸出迴圈與 API**（M6） | M3 |
 | M6 | `output.py` 整合三群組；結束流程；`/api/test/fixtures`、`/api/patch` | 本機 UDP listener 驗證每個 universe 封包、結束時全 0 | M3–M5 |
 | M7 | 前端：全場 3D、群組編輯、對燈模式 | `npm test`、`tsc` 通過；Playwright 截圖 | M5、Q5 |
 | M8 | 部署（Pi systemd 或 Windows WinSW）與現場 checklist | 安裝 → 升級 → 回退 → 停止時燈全暗、馬達停 | Q6、Q7 |
