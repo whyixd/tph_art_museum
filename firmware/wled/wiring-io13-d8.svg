@@ -13,7 +13,7 @@
 
   <rect x="560" y="40" width="200" height="250" rx="8" fill="#f6f8fa" stroke="#1f2328" stroke-width="1.5"/>
   <text x="660" y="110" text-anchor="middle" font-size="16" font-weight="bold">XIAO SAMD21</text>
-  <text x="660" y="130" text-anchor="middle" font-size="12" fill="#57606a">motor_control_d8</text>
+  <text x="660" y="130" text-anchor="middle" font-size="12" fill="#57606a">motor_control_io</text>
   <text x="572" y="75">3.3V</text>
   <text x="572" y="155">D8</text>
   <text x="572" y="173" font-size="12" fill="#57606a">INPUT_PULLUP</text>

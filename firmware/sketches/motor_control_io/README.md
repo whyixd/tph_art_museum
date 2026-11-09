@@ -1,6 +1,6 @@
 # Moon Observe motor control
 
-Select **Seeeduino XIAO** (SAMD21) in Arduino IDE and open `motor_control_d8.ino`. Set `TARGET_PWM_DUTY` in `board_config.h` to the duty established by `motor_pwm_test`. The current configured value is 82, with a compile-time range of 0–90. Zero disables motor start.
+Select **Seeeduino XIAO** (SAMD21) in Arduino IDE and open `motor_control_io.ino`. Set `TARGET_PWM_DUTY` in `board_config.h` to the duty established by `motor_pwm_test`. The current configured value is 82, with a compile-time range of 0–90. Zero disables motor start.
 
 ## D8 normal run/stop input
 

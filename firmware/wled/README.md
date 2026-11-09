@@ -1,6 +1,6 @@
 # WLED 馬達命令轉接（GL-C-616WL IO13 → SAMD21 D8）
 
-以 WLED **v0.15.x** 為基礎（版本見 `WLED_VERSION`，必須與現場 GL-C-616WL 相同），加一個 usermod，把 backend 每包 Art-Net 的 **channel 469** 轉成 GL-C-616WL **IO13** 的數位訊號，接到 XIAO SAMD21 的 D8（`../sketches/motor_control_d8`）。這條路徑獨立於 WLED 的 LED 控制：WLED 的開關、亮度、preset、DMX 模式、segment、realtime timeout 都不影響馬達命令。backend 與 SAMD21 firmware 不需修改。
+以 WLED **v0.15.x** 為基礎（版本見 `WLED_VERSION`，必須與現場 GL-C-616WL 相同），加一個 usermod，把 backend 每包 Art-Net 的 **channel 469** 轉成 GL-C-616WL **IO13** 的數位訊號，接到 XIAO SAMD21 的 D8（`../sketches/motor_control_io`）。這條路徑獨立於 WLED 的 LED 控制：WLED 的開關、亮度、preset、DMX 模式、segment、realtime timeout 都不影響馬達命令。backend 與 SAMD21 firmware 不需修改。
 
 這不是緊急停止；停止後馬達照 SAMD21 的流程緩停（約 10 秒）。
 
@@ -158,7 +158,7 @@ esptool --port $PORT erase_region 0xe000 0x2000
 - [ ] 手動運轉：Pi 在送封包時無法使用；停止 Pi 後可運轉並在設定秒數後停止；期間 Pi 恢復且命令為 255 時持續運轉、為 0 時停止
 - [ ] WLED 重開機、OTA 開始 → 停止，開機期間 D8 維持 HIGH
 
-接上 `motor_control_d8` 後，先只接 relay 確認啟停順序與緩停，再接馬達，並量 GL-C-616WL 與 XIAO 之間的地偏移。
+接上 `motor_control_io` 後，先只接 relay 確認啟停順序與緩停，再接馬達，並量 GL-C-616WL 與 XIAO 之間的地偏移。
 
 ## 注意
 

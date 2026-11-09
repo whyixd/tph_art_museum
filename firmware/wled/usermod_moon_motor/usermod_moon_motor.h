@@ -1,7 +1,7 @@
 #pragma once
 
 // Moon Observe motor command relay for the Gledopto GL-C-616WL (WLED v0.15.x, see WLED_VERSION).
-// Art-Net channel 469 of the first universe drives IO13 → SAMD21 D8 (motor_control_d8):
+// Art-Net channel 469 of the first universe drives IO13 → SAMD21 D8 (motor_control_io):
 // LOW requests run, high impedance (D8 pull-up) requests stop. It bypasses every
 // LED/realtime setting. The WLED page adds a RAM-only inhibit and a timed manual run
 // that is only allowed while no Art-Net arrives.

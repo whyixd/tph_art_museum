@@ -18,7 +18,7 @@
 | `DMX＿線間距 (1).pdf` | 球燈 1–37 編號、各顆高度 H（cm）、紅字為相鄰球燈間的 DMX 線長 | DMX 位址順序、線路分組、模擬器高度 |
 | `image (6).png` | 上視圖，空間 2833 × 953 cm | 燈桿平面座標 |
 | `image (1) (1).png` | 上視圖局部（說明牌區域尺寸） | 參考 |
-| `firmware/wled/`、`firmware/sketches/motor_pwm_test/`、`firmware/sketches/motor_control_d8/` | 2026-11-09 從 `~/Dev/moon_observe/firmware` 複製（含該 repo 當時未 commit 的 README 修改與 `wiring-io13-d8.svg`）：WLED usermod（Art-Net ch469 → GL-C-616WL IO13 → XIAO SAMD21 D8）、刷機腳本、馬達 PWM 測試與 D8 馬達控制 sketch | M4 轉燈馬達 |
+| `firmware/wled/`、`firmware/sketches/motor_pwm_test/`、`firmware/sketches/motor_control_io/` | 2026-11-09 從 `~/Dev/moon_observe/firmware` 複製（含該 repo 當時未 commit 的 README 修改與 `wiring-io13-d8.svg`）：WLED usermod（Art-Net ch469 → GL-C-616WL IO13 → XIAO SAMD21 D8）、刷機腳本、馬達 PWM 測試與馬達控制 sketch（2026-11-09 由 `motor_control_d8` 改名為 `motor_control_io`，輸入腳位目前仍是 D8） | M4 轉燈馬達 |
 
 ## 1. 決策（先採用的預設，可調整）
 
