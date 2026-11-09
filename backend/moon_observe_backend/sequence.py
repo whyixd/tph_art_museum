@@ -297,6 +297,7 @@ def render_sequence_frame(
     rpm: int,
     rain: bool = False,
     color_override: Mapping[str, Any] | None = None,
+    shared: dict[Any, list[Rgb]] | None = None,
 ) -> list[tuple[float, float, float]]:
     layers = _layer_details(compiled, frame)
     count = int(unit["logicalPixelCount"])
@@ -310,7 +311,7 @@ def render_sequence_frame(
         colors = render_frame(
             preset, unit, elapsed, unit_count=unit_count, fps=fps, rpm=rpm,
             phase_frame=source_frame, raining=rain, cycle_frames=cycle,
-            color_override=color_override,
+            color_override=color_override, shared=shared,
         )
         for target, color in zip(result, colors):
             for channel in range(3):

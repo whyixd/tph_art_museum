@@ -126,6 +126,25 @@ export async function getBackendPatch(): Promise<BackendPatch | null> {
   return readState<BackendPatch>(response)
 }
 
+/** 輸出迴圈的影格時間（最近一個 60 秒區間）。 / Output loop frame timing over the last 60 s window. */
+export type OutputStats =
+  | { active: false }
+  | {
+    active: true
+    partial?: true
+    windowSeconds: number
+    frames: number
+    skippedFrames: number
+    renderMs: { avg: number; max: number }
+    budgetMs: number
+  }
+
+export async function getOutputStats(): Promise<OutputStats | null> {
+  const response = await fetch('/api/output', { cache: 'no-store' })
+  if (response.status === 404) return null
+  return readState<OutputStats>(response)
+}
+
 export type FixtureColorTest = Partial<Record<BackendFixtureGroup, UnitColorTest>>
 
 export async function getFixtureColorTest(): Promise<FixtureColorTest | null> {

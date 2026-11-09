@@ -160,6 +160,7 @@ def make_server(
     playback_monitor: Any = None,
     unit_color_store: Any = None,
     fixture_color_store: Any = None,
+    output_stats: Any = None,
 ) -> ThreadingHTTPServer:
     if not 0 <= port <= 65535:
         raise ValueError("api port must be 0..65535")
@@ -218,6 +219,9 @@ def make_server(
                 self._respond(200, fixture_color_store.snapshot())
             elif self.path == "/api/patch":
                 self._respond(200, patch_table(config))
+            elif self.path == "/api/output":
+                # 輸出迴圈的影格時間（--api-only 時沒有輸出）。 / Output loop frame timing (none with --api-only).
+                self._respond(200, output_stats.snapshot() if output_stats is not None else {"active": False})
             elif self.path.startswith("/api/") or static_dir is None:
                 self._respond(404, {"error": "not found"})
             else:

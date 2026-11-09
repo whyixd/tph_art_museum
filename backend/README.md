@@ -8,6 +8,8 @@ Backend 持續將與 frontend `EffectPreset v2` 一致的效果輸出為 Art-Net
 
 **球燈／洗牆燈（DMX，`[dmx]`）**：同一個輸出迴圈每影格也送出每個 DMX node universe 的完整 512 bytes。串接（Sequence v2）每段可帶 `ball`／`wash` 的 FixturePreset，省略即全暗；`GET /api/sequence` 一律回傳 v2，v1 會自動升級。單一效果模式：`PUT /api/preset` 接收舊格式（只換轉燈）或 `{"spinner"?, "ball"?, "wash"?}`（只換給的群組，`"ball": null` = 全暗），`GET /api/state` 的 `fixtures` 回報各群組顆數與 preset。`PUT /api/test/fixtures` 接收 `{"group":"ball"|"wash","colors":[{r,g,b}|null × 顆數],"seconds":秒數|null}` 讓指定燈具顯示單色（null 照常播放；現場對燈用），`DELETE` 結束、`GET` 查詢，只在記憶體。`GET /api/patch` 列出所有轉燈 target、DMX node 與每顆燈具的 universe／通道／座標。天氣（色盤、多雲錯開、雨天）同樣套用到 DMX 燈具。正常退出時先停馬達，再對每個 DMX universe 送兩次全 0（含 dimmer 等固定通道）。洗牆燈的亮度安全上限用 profile 的 `brightness`。
 
+**輸出統計**：輸出迴圈每 60 秒 log 一行 `output: … frames, … skipped, render … ms avg / … ms max (budget … ms)`，`GET /api/output` 回傳最近一個 60 秒區間（`--api-only` 時 `{"active":false}`）。畫面相同的轉燈（不用燈台編號的效果、沒有雨與各台錯開時，見 `effects.UNIT_INDEPENDENT_EFFECTS`）每格只渲染一次。
+
 單色測試（前端「後端」分頁）：`PUT /api/test/units` 接收 `{"colors":[…],"seconds":…}`，`colors` 依 unit 順序列出 `unit_count` 個 `{"r","g","b"}`（0–1）或 `null`，被指定的燈台整條燈帶以該顏色全亮、跳過效果計算，`null` 的燈台照常播放（至少要指定一台）；`seconds` 為 1–86400 秒後自動結束，或 `null` 表示維持到 `DELETE /api/test/units`。`GET /api/test/units` 回報 `active`、`colors` 與 `remainingSeconds`（手動結束時為 `null`）。測試進行中時 `GET /api/playback` 也會附上 `unitColors`（同 `colors`），前端「後端控制」的 3D 畫面據此顯示測試顏色。測試只存在記憶體，後端重啟即結束；馬達命令照舊，底下的串接或效果與天氣造訪照常前進，結束後接回當下進度、不重播。v0.1.8（含）以前的後端沒有這個 API。
 
 ## 設定

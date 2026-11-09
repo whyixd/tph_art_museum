@@ -19,3 +19,6 @@ backend/palette.json
 
 # macOS Finder metadata
 .DS_Store
+
+# firmware host-test binaries
+firmware/tests/*.exe

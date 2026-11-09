@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Raspberry Pi entry point: install base tools and uv, store the GitHub token,
-# then fetch install-release.sh from the given tag and run it.
+# Raspberry Pi entry point: install base tools and uv, optionally store a GitHub token
+# (not needed for the public repository), then fetch install-release.sh from the given tag and run it.
 #
 #   sudo bash bootstrap.sh v0.1.0
 set -euo pipefail
 
 # Keep identical to VERSION_PATTERN in build_release.py and install-release.sh.
 VERSION_PATTERN='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z][0-9A-Za-z.]*)?$'
-REPOSITORY="${MOON_OBSERVE_REPOSITORY:-whyixd/moon_observe}"
+REPOSITORY="${MOON_OBSERVE_REPOSITORY:-whyixd/tph_art_museum}"
 INSTALL_ROOT="${MOON_OBSERVE_INSTALL_ROOT:-/opt/moon-observe}"
 CONFIG_ROOT="${MOON_OBSERVE_CONFIG_ROOT:-/etc/moon-observe}"
 TOKEN_FILE="${MOON_OBSERVE_GITHUB_TOKEN_FILE:-$CONFIG_ROOT/github-token}"
@@ -35,23 +35,28 @@ if [[ ! -d $CONFIG_ROOT ]]; then
   install -d -m 0700 -o root -g root "$CONFIG_ROOT"
 fi
 
-if [[ ! -s $TOKEN_FILE ]]; then
-  [[ -r /dev/tty ]] || die "no TTY to read the GitHub token; create $TOKEN_FILE (mode 0600) first"
-  read -r -s -p "GitHub fine-grained token (Contents: Read on $REPOSITORY): " token </dev/tty
+# 公開 repo 不需要 token；私有 repo 時輸入 fine-grained token（Contents: Read），直接 Enter 略過。
+# The public repository needs no token; for a private one enter a fine-grained token (Contents: Read), or Enter to skip.
+if [[ ! -s $TOKEN_FILE && -r /dev/tty && -z ${MOON_OBSERVE_NO_TOKEN:-} ]]; then
+  read -r -s -p "GitHub token for $REPOSITORY (Enter to skip for a public repository): " token </dev/tty
   echo
-  [[ -n $token ]] || die "empty token"
-  (umask 077 && printf '%s\n' "$token" >"$TOKEN_FILE")
+  if [[ -n $token ]]; then
+    (umask 077 && printf '%s\n' "$token" >"$TOKEN_FILE")
+  fi
   unset token
 fi
-chown root:root "$TOKEN_FILE"
-chmod 0600 "$TOKEN_FILE"
-
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
-(umask 077 && printf 'Authorization: Bearer %s\n' "$(tr -d '[:space:]' <"$TOKEN_FILE")" >"$workdir/auth")
+auth=()
+if [[ -s $TOKEN_FILE ]]; then
+  chown root:root "$TOKEN_FILE"
+  chmod 0600 "$TOKEN_FILE"
+  (umask 077 && printf 'Authorization: Bearer %s\n' "$(tr -d '[:space:]' <"$TOKEN_FILE")" >"$workdir/auth")
+  auth=(-H @"$workdir/auth")
+fi
 
 echo "==> Fetching install-release.sh at $VERSION"
-curl -fsSL -H @"$workdir/auth" \
+curl -fsSL "${auth[@]}" \
   -H 'Accept: application/vnd.github.raw+json' \
   -H 'X-GitHub-Api-Version: 2022-11-28' \
   -o "$workdir/install-release.sh" \

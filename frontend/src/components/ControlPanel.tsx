@@ -22,6 +22,7 @@ import { PlaybackProgress } from './PlaybackProgress'
 import { SavedSequenceView } from './SavedSequenceView'
 import { SequenceEditor } from './SequenceEditor'
 import { UnitColorTestPanel } from './UnitColorTestPanel'
+import { OutputStatsLine } from './OutputStatsLine'
 import { FixtureEditor, GROUP_LABELS, type FixtureGroup } from './FixtureEditor'
 import { FixtureTestPanel, type FixtureSelection } from './FixtureTestPanel'
 import { CATEGORY_LABELS, WeatherPanel } from './WeatherPanel'
@@ -600,6 +601,7 @@ export function ControlPanel({
                 : '尚未連線'}
             </p>
             {backendError && <p className="backend-error" role="alert">{backendError}</p>}
+            {backendState && <OutputStatsLine />}
             <div className="button-row">
               <button type="button" className="secondary" onClick={onRefreshBackend} disabled={backendBusy}>重新讀取</button>
               <button type="button" onClick={onApplyBackend}

@@ -1,6 +1,6 @@
 # Template: install-release.sh replaces @INSTALL_ROOT@, @CONFIG_ROOT@ and @SERVICE_USER@.
 [Unit]
-Description=Moon Observe Art-Net backend and control page
+Description=TPH Art Museum Art-Net backend and control page (spinners, ball lights, wall washers)
 Wants=network-online.target
 After=network-online.target
 
@@ -9,6 +9,11 @@ Type=simple
 User=@SERVICE_USER@
 Group=@SERVICE_USER@
 WorkingDirectory=@INSTALL_ROOT@/current
+# 40 FPS 的間歇負載會讓 CPU 降頻，每格時間變成數倍；固定最高時脈（需主動散熱器）。沒有 cpufreq 時略過。
+# A bursty 40 FPS load lets the CPU clock down and multiplies the frame time; pin the performance governor
+# (needs the active cooler). Skipped where cpufreq is absent. "+" runs this one step as root.
+# systemd expands $VAR itself, so the shell variable is written $$g.
+ExecStartPre=+/bin/sh -c 'for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do [ -w "$$g" ] && echo performance > "$$g"; done; true'
 # One process serves Art-Net output, the API and the built frontend on port 8765 (all interfaces).
 ExecStart=@INSTALL_ROOT@/current/.venv/bin/python run.py --config @CONFIG_ROOT@/config.toml --frontend-dir @INSTALL_ROOT@/current/frontend
 Restart=on-failure

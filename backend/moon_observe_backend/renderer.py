@@ -5,7 +5,9 @@ from __future__ import annotations
 import math
 from typing import Any, Mapping
 
-from .effects import WEATHER_TIMING_FREE, EffectContext, Rgb, clamp01, completion_frames, preset_for_unit, sample_effect
+from .effects import (
+    WEATHER_TIMING_FREE, EffectContext, Rgb, clamp01, completion_frames, preset_for_unit, same_on_every_unit, sample_effect,
+)
 
 
 def _virtual_height(led_index: int, led_count: int, global_frame: int, fps: int, rpm: int, phase_seed: float) -> float:
@@ -30,15 +32,23 @@ def render_frame(
     raining: bool = False,
     cycle_frames: int | None = None,
     color_override: Mapping[str, Any] | None = None,
+    shared: dict[Any, list[Rgb]] | None = None,
 ) -> list[Rgb]:
     """Render one frame; ``global_frame`` counts from playback (or step) start.
 
     ``raining`` switches effects to their rain lines (see effects.RAIN_LINES).
     ``cycle_frames`` wraps the frame for count-based sequence steps.
+    ``shared`` (one dict per output frame) lets units that show the same picture reuse one render
+    (see effects.same_on_every_unit); callers must not modify the returned list.
     """
     if type(global_frame) is not int or global_frame < 0:
         raise ValueError("global_frame must be a nonnegative integer")
     count = int(unit["logicalPixelCount"])
+    key = None
+    if shared is not None and int(unit["frameOffset"]) == 0 and same_on_every_unit(preset, raining):
+        key = (id(preset), id(color_override), global_frame, cycle_frames, count, unit_count, fps)
+        if key in shared:
+            return shared[key]
     if "unitVariation" in preset:
         # 各燈台參數不同時，循環依該台自己的週期。 / Per-unit values: the wrap uses this unit's own cycle.
         preset = preset_for_unit(preset, int(unit["unitId"]) - 1, unit_count)
@@ -67,7 +77,10 @@ def render_frame(
         if own["mode"] == "gradient" and "axisChange" in own:
             color["axisChange"] = own["axisChange"]
         preset = {**preset, "color": color}
-    return [
+    # 只有 world-upper-half 用到各台相位估計的高度。 / Only world-upper-half reads the phase-estimated height.
+    upper_half = preset["effectId"] == "world-upper-half"
+    projection = -math.sin(phase + phase_frame * math.tau * (rpm / 60) / fps)
+    colors = [
         sample_effect(
             preset,
             EffectContext(
@@ -78,16 +91,17 @@ def render_frame(
                 unit_index=int(unit["unitId"]) - 1,
                 unit_count=unit_count,
                 global_controller_frame=global_frame,
-                unit_relative_y=_virtual_height(index, count, phase_frame, fps, rpm, phase),
-                unit_phase_projection=-math.sin(
-                    phase + phase_frame * math.tau * (rpm / 60) / fps
-                ),
+                unit_relative_y=_virtual_height(index, count, phase_frame, fps, rpm, phase) if upper_half else 0.0,
+                unit_phase_projection=projection,
             ),
             global_frame,
             raining,
         )
         for index in range(count)
     ]
+    if key is not None:
+        shared[key] = colors
+    return colors
 
 
 def rgb_bytes(frame: list[Rgb]) -> bytes:

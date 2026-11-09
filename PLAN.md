@@ -241,7 +241,7 @@ M5 已實作（`sequence.py`）：
 | M5 ✅ | Fixture effect engine（TS + Python）、Sequence v2、天氣套用到 DMX 群組 | 前後端 fixture vectors 一致；v1 → v2 升級測試。2026-11-09：見 §3.3、§3.4；backend 127 個測試（新增 `test_fixture_effects.py` 9、`test_sequence_v2.py` 8、`test_dmx.py` layout 3）、frontend 122 個測試（新增 `fixtures.test.ts` 4、`backendApi.test.ts` 1）通過，`tsc`、build 通過；轉燈 `effects_v2.json` 重產逐 byte 相同。**尚未接進輸出迴圈與 API**（M6） | M3 |
 | M6 ✅ | `output.py` 整合三群組；結束流程；`/api/test/fixtures`、`/api/patch` | 本機 UDP listener 驗證每個 universe 封包、結束時全 0。2026-11-09：見下方「M6 實作細節」 | M3–M5 |
 | M7 ✅ | 前端：全場 3D、群組編輯、對燈模式 | `npm test`、`tsc` 通過；Playwright 截圖。2026-11-10：見下方「M7 實作細節」 | M5、Q5 |
-| M8 | 部署（Raspberry Pi 5、systemd、**PyPy**）與現場 checklist | 安裝 → 升級 → 回退 → 停止時燈全暗、馬達停；Pi 5 上重跑 `benchmark_render.py` | Q6 ✅、Q7 |
+| M8 🔶 | 部署（Raspberry Pi 5、systemd、**PyPy**）與現場 checklist | 安裝 → 升級 → 回退 → 停止時燈全暗、馬達停；Pi 5 上重跑 `benchmark_render.py`。2026-11-10：程式、腳本與文件完成（見下方「M8 實作細節」），**待 Pi 5 實機安裝與 `doc/site-checklist.md`** | Q6 ✅、Q7 |
 | M9 | 更新 `doc/system-reference.md` 為本系統版本 | 文件與程式一致 | 全部 |
 
 ### M2 實作細節
@@ -300,4 +300,19 @@ M5 已實作（`sequence.py`）：
 
 - `config.example.toml` 改為現場：24 台轉燈 2.0.0.201–224、11 個 DMX node 2.0.0.101–112（各帶該控箱的球燈）、`fps = 40`。測試檢查每台 IP、每顆球燈所在 node 與位址。
 - 修正：`periodic-leds` 的預設（亮 12、間隔 12）需要 143 顆，129 顆放不下，後端會拒絕。前端 `createDefaultEffectPreset(id, ledCount)`、後端 `default_preset(id, led_count)` 會依燈數夾住（129 顆：間隔 12 → 10）；不給燈數時與 reference 相同，一致性向量不變。前端選效果時與單一效果的預設都套用；`benchmark_render.py` 也改用。
+
+### M8 實作細節
+
+- **打包**：`build_release.py` 建置前端時一併匯出 `backend/layout.example.json`（M7 起前端會匯入它，原本只匯出 `frontend/` 會建置失敗）；以 `HEAD` 實際建置驗證。release 內含 `layout.example.json`。
+- **PyPy**：installer 以 `uv sync --python pypy@3.12`（`MOON_OBSERVE_PYTHON` 可改）建 `.venv`，並確認環境真的是 PyPy。開發機以同一份 `uv.lock` 建 PyPy 環境，backend 全部測試通過（CPython 36 s → PyPy 15 s）。
+- **repo 與 token**：預設 `whyixd/tph_art_museum`；公開 repo 不需要 token（bootstrap 詢問時 Enter 略過，installer 沒有 token 就不帶認證）。
+- **首次安裝**：seed `config.toml` 時啟用 `render.layout = "layout.json"`，並 seed `/etc/moon-observe/layout.json`。測試以 installer 自己的 `sed` 規則產生設定並實際載入。
+- **輸出統計**：`OutputStats`（每 60 秒：影格、跳格、每格渲染＋送出平均／最長、預算），log 一行、`GET /api/output`、前端「後端」分頁顯示。
+- **效能**：
+  - 量測（Apple M4、PyPy、24 台＋11 個 DMX universe 送到本機）：實際迴圈每格平均 5.9 ms；同一份程式全速跑只要 0.8 ms，加上 40 FPS 的 sleep 節奏就變成約 7 倍 → 是 CPU 降頻／排到省電核心，不是程式。對策：service 啟動前把 `scaling_governor` 設為 `performance`（`ExecStartPre=+`，`$$g` 避免 systemd 展開；需主動散熱器）。Pi 5 上以 log 的輸出統計確認。
+  - 畫面相同的轉燈只渲染一次：`effects.UNIT_INDEPENDENT_EFFECTS`（12 個不讀燈台編號／相位的效果）在沒有雨、沒有各台錯開、顏色不依燈台、沒有 unitVariation 時，每格共用一次渲染。`test_unit_sharing.py` 逐台渲染確認名單內效果 24 台完全相同、名單外效果確實不同，並比對輸出迴圈的封包與逐台各算逐 byte 相同。
+  - `_virtual_height` 只在 `world-upper-half` 計算。
+- **韌體測試**：從 moon_observe 補搬 `firmware/tests/`（`test_flash.py` 40 個通過；`moon_motor_logic_host`、`motor_control_io_host` 通過；`motor_pwm_test_host` 在 moon_observe 原本就失敗：測試預期 PWM 每 20 ms +5，sketch 是每 80 ms +1，待決定）與 `firmware/docs/`。
+- **文件**：`backend/deploy/README.md` 改為本案（Pi 5、PyPy、governor、網路兩種接法與 nmcli、輸出統計）；新增 `doc/site-checklist.md`（網路、每台轉燈、編號對位置、方向測試、球燈對燈、服務、停止／重開機／拔線、升級回退、待回填）。
+- 服務／帳號／路徑仍叫 `moon-observe`。
 

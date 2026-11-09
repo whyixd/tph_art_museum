@@ -10,7 +10,7 @@ set -euo pipefail
 VERSION_PATTERN='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z][0-9A-Za-z.]*)?$'
 APP=moon-observe-backend
 SERVICE=moon-observe
-REPOSITORY="${MOON_OBSERVE_REPOSITORY:-whyixd/moon_observe}"
+REPOSITORY="${MOON_OBSERVE_REPOSITORY:-whyixd/tph_art_museum}"
 INSTALL_ROOT="${MOON_OBSERVE_INSTALL_ROOT:-/opt/moon-observe}"
 CONFIG_ROOT="${MOON_OBSERVE_CONFIG_ROOT:-/etc/moon-observe}"
 TOKEN_FILE="${MOON_OBSERVE_GITHUB_TOKEN_FILE:-$CONFIG_ROOT/github-token}"
@@ -20,6 +20,9 @@ HEALTH_URL="${MOON_OBSERVE_HEALTH_URL:-http://127.0.0.1:8765/api/state}"
 PAGE_URL="${MOON_OBSERVE_PAGE_URL:-http://127.0.0.1:8765/}"
 HEALTH_TIMEOUT="${MOON_OBSERVE_HEALTH_TIMEOUT:-20}"
 UV="${UV:-$(command -v uv || echo /usr/local/bin/uv)}"
+# Raspberry Pi 5 上 CPython 跟不上 24 台轉燈 × 129 顆 @ 40 FPS，用 PyPy（uv 管理）。
+# CPython cannot keep up with 24 spinners x 129 LEDs at 40 FPS on a Raspberry Pi 5, so the service runs on PyPy.
+PYTHON_SPEC="${MOON_OBSERVE_PYTHON:-pypy@3.12}"
 COMPLETE_MARKER=.install-complete
 
 die() { echo "install-release: $*" >&2; exit 1; }
@@ -69,14 +72,18 @@ fi
 
 fetch_release() {
   local token="${GITHUB_TOKEN:-}" ids archive_id sums_id expected actual
-  if [[ -z $token ]]; then
-    [[ -r $TOKEN_FILE ]] || die "no GITHUB_TOKEN and $TOKEN_FILE is not readable"
+  # 公開 repo 不需要 token；有 token 時（私有 repo 或避免 API 次數限制）才帶。
+  # A public repository needs no token; one is used when given (private repository or API rate limits).
+  if [[ -z $token && -r $TOKEN_FILE ]]; then
     token="$(tr -d '[:space:]' <"$TOKEN_FILE")"
   fi
-  [[ -n $token ]] || die "empty GitHub token"
-  (umask 077 && printf 'Authorization: Bearer %s\n' "$token" >"$workdir/auth")
+  auth=()
+  if [[ -n $token ]]; then
+    (umask 077 && printf 'Authorization: Bearer %s\n' "$token" >"$workdir/auth")
+    auth=(-H @"$workdir/auth")
+  fi
   unset token
-  api() { curl -fsSL -H @"$workdir/auth" -H 'X-GitHub-Api-Version: 2022-11-28' "$@"; }
+  api() { curl -fsSL "${auth[@]}" -H 'X-GitHub-Api-Version: 2022-11-28' "$@"; }
 
   log "Looking up release $VERSION in $REPOSITORY"
   api -H 'Accept: application/vnd.github+json' -o "$workdir/release.json" \
@@ -146,9 +153,15 @@ install_release() {
   [[ "$(cat "$RELEASE_DIR/VERSION")" == "$VERSION" ]] || die "VERSION file does not match $VERSION"
   [[ -f $RELEASE_DIR/frontend/index.html ]] || die "$ARCHIVE has no built frontend (frontend/index.html)"
 
-  log "Creating Python environment (uv sync --frozen)"
+  log "Creating Python environment ($PYTHON_SPEC, uv sync --frozen)"
   chown -R "$SERVICE_USER:$SERVICE_USER" "$RELEASE_DIR"
-  uv_as_service_user sync --managed-python --frozen --no-dev --compile-bytecode --project "$RELEASE_DIR"
+  uv_as_service_user sync --managed-python --frozen --no-dev --compile-bytecode --python "$PYTHON_SPEC" \
+    --project "$RELEASE_DIR"
+  implementation="$("$RELEASE_DIR/.venv/bin/python" -c 'import platform; print(platform.python_implementation())')"
+  if [[ $PYTHON_SPEC == pypy* && $implementation != PyPy ]]; then
+    die "expected PyPy for $PYTHON_SPEC but the environment runs $implementation"
+  fi
+  log "Python environment: $implementation $("$RELEASE_DIR/.venv/bin/python" -c 'import sys; print(sys.version.split()[0])')"
   # The service only reads the release; root ownership keeps it immutable at runtime.
   chown -R root:root "$RELEASE_DIR"
   chmod -R go-w "$RELEASE_DIR"
@@ -178,12 +191,20 @@ if [[ ! -e $CONFIG_ROOT/config.toml ]]; then
   sed -e 's|^preset = .*|preset = "preset/preset.json"|' \
     -e 's|^sequence = .*|sequence = "preset/sequence.json"|' \
     -e 's|^# palette = "palette.json"|# palette = "preset/palette.json"|' \
+    -e 's|^# layout = "layout.json"|layout = "layout.json"|' \
     "$RELEASE_DIR/config.example.toml" >"$workdir/config.toml"
   grep -qx 'preset = "preset/preset.json"' "$workdir/config.toml" || die "could not set render.preset in seeded config"
   grep -qx 'sequence = "preset/sequence.json"' "$workdir/config.toml" || die "could not set render.sequence in seeded config"
+  grep -q '^layout = "layout.json"' "$workdir/config.toml" || die "could not enable render.layout in seeded config"
   install -m 0640 -o root -g "$SERVICE_USER" "$workdir/config.toml" "$CONFIG_ROOT/config.toml"
   new_config=1
   log "Seeded $CONFIG_ROOT/config.toml from config.example.toml"
+fi
+# 場景座標（3D 模擬與依位置的球燈效果）；只在缺少時放入，之後可手動編輯。
+# Site positions (3D view, position-based fixture effects); seeded only when missing, editable afterwards.
+if [[ ! -e $CONFIG_ROOT/layout.json ]]; then
+  install -m 0640 -o root -g "$SERVICE_USER" "$RELEASE_DIR/layout.example.json" "$CONFIG_ROOT/layout.json"
+  log "Seeded $CONFIG_ROOT/layout.json from layout.example.json"
 fi
 if [[ ! -e $CONFIG_ROOT/preset/preset.json ]]; then
   install -m 0660 -o "$SERVICE_USER" -g "$SERVICE_USER" "$RELEASE_DIR/preset.example.json" "$CONFIG_ROOT/preset/preset.json"
@@ -246,7 +267,8 @@ activate "$RELEASE_DIR"
 if (( new_config )); then
   cat <<EOF
 
-First install: the service is enabled but NOT started. Set the Art-Net target first:
+First install: the service is enabled but NOT started. Check the Art-Net settings first
+(site IPs are pre-filled; set artnet.source_ip to this Pi's 2.0.0.x address if it has several interfaces):
   sudo nano $CONFIG_ROOT/config.toml
   sudo systemctl start $SERVICE
   systemctl status $SERVICE

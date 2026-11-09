@@ -40,6 +40,9 @@ RUNTIME_FILES = (
     "deploy/moon-observe.service",
 )
 RUNTIME_DIRS = ("moon_observe_backend",)
+# 前端建置需要的路徑：frontend/ 會匯入 backend 的範例場景配置（src/site/layout.ts）。
+# Paths the frontend build reads: frontend/ imports the backend's example site layout (src/site/layout.ts).
+FRONTEND_INPUTS = ("frontend", "backend/layout.example.json")
 LF_ONLY_SUFFIXES = (".sh", ".service")
 
 
@@ -66,7 +69,7 @@ def build_frontend(repo: Path, version: str) -> dict[str, bytes]:
     npm = shutil.which("npm")
     if npm is None:
         raise RuntimeError("npm is required to build the frontend")
-    raw = _git(repo, "-c", "core.autocrlf=false", "archive", "--format=tar", version, "--", "frontend")
+    raw = _git(repo, "-c", "core.autocrlf=false", "archive", "--format=tar", version, "--", *FRONTEND_INPUTS)
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp)
         with tarfile.open(fileobj=io.BytesIO(raw), mode="r:") as source:

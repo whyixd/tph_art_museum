@@ -231,6 +231,7 @@ class FixtureApiTests(unittest.TestCase):
                     self.assertIn("37 fixtures", json.load(caught.exception)["error"])
                     self.assertFalse(call("DELETE", "/api/test/fixtures")["wash"]["active"])
 
+                    self.assertEqual({"active": False}, call("GET", "/api/output"))
                     patch = call("GET", "/api/patch")
                     self.assertEqual([{"unitId": 1, "ip": "192.0.2.20", "universes": [0],
                                        "position": {"x": 961.0, "y": 118.0, "z": 565.0}}], patch["spinners"])

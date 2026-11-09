@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 import time
 import tomllib
-from threading import Thread
+from threading import Lock, Thread
 from typing import Any, Callable, Mapping, Sequence
 
 from stupidArtnet import StupidArtnet
@@ -29,6 +29,65 @@ from .weather import WeatherStore
 
 SINGLE_ROUND_SECONDS = 60  # A single effect "round" for weather visits: at least this long.
 DMX_EXIT_REPEATS = 2  # 結束時每個 DMX universe 送幾次全 0。 / All-zero frames per DMX universe on exit.
+
+
+class OutputStats:
+    """Frame timing of the output loop, in windows of ``window`` seconds.
+
+    For each window: frames sent, frames skipped because the loop fell behind, and the render-and-send time
+    per frame (average and maximum) against the frame budget. ``snapshot`` returns the last complete window;
+    ``record`` returns a log line when a window completes.
+    輸出迴圈的影格時間：每個區間的已送影格、落後而跳過的影格、每格渲染加送出的平均／最長時間。
+    """
+
+    def __init__(self, fps: int, window: float = 60.0) -> None:
+        self.fps = fps
+        self.window = window
+        self.lock = Lock()
+        self._start: float | None = None
+        self._current = self._empty()
+        self._last: dict[str, Any] | None = None
+
+    @staticmethod
+    def _empty() -> dict[str, Any]:
+        return {"frames": 0, "skipped": 0, "total_ms": 0.0, "max_ms": 0.0}
+
+    def record(self, now: float, skipped: int, work_seconds: float) -> str | None:
+        with self.lock:
+            if self._start is None:
+                self._start = now
+            current = self._current
+            current["frames"] += 1
+            current["skipped"] += skipped
+            ms = work_seconds * 1000
+            current["total_ms"] += ms
+            current["max_ms"] = max(current["max_ms"], ms)
+            if now - self._start < self.window:
+                return None
+            self._last = self._summary(current, now - self._start)
+            self._current = self._empty()
+            self._start = now
+            last = self._last
+        return (f"output: {last['frames']} frames in {last['windowSeconds']:.0f} s, {last['skippedFrames']} skipped, "
+                f"render {last['renderMs']['avg']:.1f} ms avg / {last['renderMs']['max']:.1f} ms max "
+                f"(budget {last['budgetMs']:.1f} ms)")
+
+    def _summary(self, current: Mapping[str, Any], seconds: float) -> dict[str, Any]:
+        frames = max(1, current["frames"])
+        return {
+            "windowSeconds": round(seconds, 1), "frames": current["frames"], "skippedFrames": current["skipped"],
+            "renderMs": {"avg": round(current["total_ms"] / frames, 2), "max": round(current["max_ms"], 2)},
+            "budgetMs": round(1000 / self.fps, 2),
+        }
+
+    def snapshot(self) -> dict[str, Any]:
+        """Last complete window, or the window so far before the first one completes."""
+        with self.lock:
+            if self._last is not None:
+                return {"active": True, **self._last}
+            if self._start is None:
+                return {"active": False}
+            return {"active": True, "partial": True, **self._summary(self._current, 0.0)}
 
 
 def fixture_counts(config: Mapping[str, Any]) -> dict[str, int]:
@@ -76,6 +135,7 @@ def stream(
     unit_colors_provider: Callable[[], Sequence[Rgb | None] | None] | None = None,
     fixture_preset_provider: Callable[[], Mapping[str, Mapping[str, Any] | None]] | None = None,
     fixture_colors_provider: Callable[[], Mapping[str, Sequence[Rgb | None]]] | None = None,
+    stats: OutputStats | None = None,
     clock: Callable[[], float] = time.perf_counter,
     sleep: Callable[[float], None] = time.sleep,
 ) -> int:
@@ -146,7 +206,9 @@ def stream(
             if due < frame:
                 sleep(min((frame / fps) - elapsed, seconds - elapsed if seconds is not None else math.inf))
                 continue
+            skipped = due - frame
             frame = due
+            frame_started = clock()
             sequence_state = sequence_provider() if sequence_provider is not None else None
             sequence_generation = sequence_state[2] if sequence_state is not None else None
             restarted = sequence_generation != last_sequence_generation
@@ -186,6 +248,8 @@ def stream(
             # 測試單色時，被指定的燈台整條填色；底下的播放照常前進。
             # A unit colour test fills the chosen units; playback underneath keeps advancing.
             unit_colors = unit_colors_provider() if unit_colors_provider is not None else None
+            # 同一格內畫面相同的燈台共用一次渲染。 / Units showing the same picture share one render per frame.
+            shared: dict[Any, list[Rgb]] = {}
             for target, unit_clients in clients:
                 unit_id = target["unit_id"]
                 test_color = unit_colors[unit_id - 1] if unit_colors is not None and unit_id <= len(unit_colors) else None
@@ -202,14 +266,14 @@ def stream(
                     pixels = render_sequence_frame(
                         sequence_state[1], unit, playback_frame,
                         unit_count=config["unit_count"], fps=fps, rpm=config["rpm"],
-                        rain=category == "rain", color_override=color_override,
+                        rain=category == "rain", color_override=color_override, shared=shared,
                     )
                 else:
                     pixels = render_frame(
                         active_preset,
                         unit, playback_frame, unit_count=config["unit_count"],
                         fps=fps, rpm=config["rpm"], raining=category == "rain",
-                        color_override=color_override,
+                        color_override=color_override, shared=shared,
                     )
                 packets = build_packets(pixels, hardware=hardware, motor_channel=motor_channel, motor_value=motor_value)
                 for client, packet in zip(unit_clients, packets, strict=True):
@@ -245,6 +309,11 @@ def stream(
                 for client, data in zip(dmx_clients, build_universes(colors, dmx), strict=True):
                     client.send(data)
                     sent += 1
+            if stats is not None:
+                finished = clock()
+                line = stats.record(finished, skipped, finished - frame_started)
+                if line is not None:
+                    print(line, flush=True)
             frame += 1
         return sent
     finally:
@@ -317,10 +386,12 @@ def main(argv: list[str] | None = None) -> int:
         playback_monitor = PlaybackMonitor(config["fps"], config["unit_count"])
         unit_color_store = UnitColorStore(config["unit_count"])
         fixture_color_store = FixtureColorStore(counts)
+        output_stats = OutputStats(config["fps"])
         with make_server(store, config, args.api_port, host=args.api_host,
                          sequence_store=sequence_store, frontend_dir=frontend_dir,
                          weather_store=weather_store, playback_monitor=playback_monitor,
-                         unit_color_store=unit_color_store, fixture_color_store=fixture_color_store) as server:
+                         unit_color_store=unit_color_store, fixture_color_store=fixture_color_store,
+                         output_stats=output_stats) as server:
             if weather_store is not None:
                 weather_store.start()
             try:
@@ -340,7 +411,8 @@ def main(argv: list[str] | None = None) -> int:
                                   playback_advance=weather_store.advance if weather_store is not None else None,
                                   unit_colors_provider=unit_color_store.current,
                                   fixture_preset_provider=store.fixture_snapshot,
-                                  fixture_colors_provider=fixture_color_store.current)
+                                  fixture_colors_provider=fixture_color_store.current,
+                                  stats=output_stats)
                 finally:
                     playback_monitor.stop()
                     server.shutdown()

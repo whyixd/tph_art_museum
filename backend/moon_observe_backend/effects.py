@@ -127,6 +127,23 @@ FIXED_PARAMETERS: dict[str, tuple[str, ...]] = {
 # Shared-schedule effects that skip weather cloud offsets (frontend ignoresWeatherTiming); they have no rain lines either.
 WEATHER_TIMING_FREE = ("unit-chase", "unit-random", "roulette-ring")
 UNIT_VARIATION_DISTRIBUTIONS = ("linear", "skip", "random")
+# 不用到燈台編號／相位的效果：沒有雨、各台不錯開時，每台畫面相同，只需算一次（輸出迴圈依此共用）。
+# 其他效果依 unit_index（隨機種子、逐台排程、燈台色盤）或各台相位而不同。測試逐台比對確認。
+# Effects that never read the unit index or phase: without rain or per-unit offsets every unit shows the same
+# picture, so the output loop renders it once. The others depend on unit_index (random seeds, per-unit
+# schedules, unit palette) or the unit phase. A test renders every unit to confirm the list.
+UNIT_INDEPENDENT_EFFECTS = (
+    "spectrum-cycle", "center-out-sine", "moving-rings", "periodic-leds", "reverse-tide", "wide-rings",
+    "comet-tail", "color-breathing", "sector-smear", "twenty-beat", "sine-swell", "full-on",
+)
+
+
+def same_on_every_unit(preset: Mapping[str, Any], raining: bool) -> bool:
+    """True when every unit renders the same picture (given equal frame offsets)."""
+    if raining or "unitVariation" in preset or preset["effectId"] not in UNIT_INDEPENDENT_EFFECTS:
+        return False
+    color = preset["color"]
+    return color["mode"] == "solid" or (color["axis"] != "unit" and color.get("axisChange", {}).get("to") != "unit")
 SPECTRUM = (
     (0x47 / 255, 0xD7 / 255, 1.0),
     (0x7A / 255, 0x5C / 255, 1.0),
