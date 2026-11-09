@@ -1,0 +1,31 @@
+{
+  "if": {
+    "live": {
+      "en": true,
+      "port": 6454,
+      "dmx": {"uni": 0, "addr": 1, "mode": 4}
+    }
+  },
+  "hw": {
+    "led": {
+      "total": 129,
+      "maxpwr": 0,
+      "ins": [
+        {
+          "start": 0,
+          "len": 129,
+          "pin": [16],
+          "order": 0,
+          "rev": false,
+          "skip": 0,
+          "type": 22,
+          "ref": false,
+          "rgbwm": 0,
+          "freq": 0,
+          "maxpwr": 0,
+          "ledma": 30
+        }
+      ]
+    }
+  }
+}

@@ -18,6 +18,7 @@
 | `DMX＿線間距 (1).pdf` | 球燈 1–37 編號、各顆高度 H（cm）、紅字為相鄰球燈間的 DMX 線長 | DMX 位址順序、線路分組、模擬器高度 |
 | `image (6).png` | 上視圖，空間 2833 × 953 cm | 燈桿平面座標 |
 | `image (1) (1).png` | 上視圖局部（說明牌區域尺寸） | 參考 |
+| `firmware/wled/`、`firmware/sketches/motor_pwm_test/`、`firmware/sketches/motor_control_d8/` | 2026-11-09 從 `~/Dev/moon_observe/firmware` 複製（含該 repo 當時未 commit 的 README 修改與 `wiring-io13-d8.svg`）：WLED usermod（Art-Net ch469 → GL-C-616WL IO13 → XIAO SAMD21 D8）、刷機腳本、馬達 PWM 測試與 D8 馬達控制 sketch | M4 轉燈馬達 |
 
 ## 1. 決策（先採用的預設，可調整）
 
@@ -71,7 +72,7 @@ reference 是「每組一條半圓 156 顆，兩條手臂共用資料」；本�
 
 ### 3.1 已知燈具
 
-- **球燈**：37 顆，RGBW DMX 燈，位址已燒錄，編號 1–37（與 `DMX＿線間距.pdf` 的編號相同）。
+- **球燈**：37 顆，RGBW DMX 燈，通道順序 R G B W、沒有 dimmer／strobe；位址已燒錄，編號 1–37（與 `DMX＿線間距.pdf` 的編號相同）。
 - **洗牆燈**：型號、數量、通道表都**待確認**；設定格式已支援，確定後只要加一段 profile + patch。
 
 ### 3.2 設定格式（M3 已實作）
@@ -193,7 +194,7 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 | # | 問題 | 影響 |
 |---|---|---|
 | Q1 | 轉燈實體配置（燈條數、LED 數、共用資料與否、控制器、universe 數、馬達協定）——使用者後續描述 | M4、M6 |
-| Q2 | ~~球燈通道表~~ RGBW、37 顆、位址已燒錄（1–37）。**待確認**：「位址 1–37」是燈具編號（實際起始通道 1, 5, 9, …, 145，目前的預設），還是起始通道本身就是 1, 2, 3, …（那樣 RGBW 會互相重疊，不太可能）？另外通道順序是否確定為 R G B W、有沒有 dimmer／strobe 通道 | 現場接線前 |
+| Q2 | ~~球燈通道表~~ RGBW、37 顆、位址已燒錄（1–37）；通道順序 R G B W，沒有 dimmer／strobe（2026-11-09 確認，與目前範例設定相同）。**仍待確認**：「位址 1–37」是燈具編號（實際起始通道 1, 5, 9, …, 145，目前的預設），還是起始通道本身 | 現場接線前 |
 | Q3 | 洗牆燈數量、型號、通道表、安裝位置與照射面（設定格式已支援，確定後只改 config） | M6 |
 | Q4 | Art-Net → DMX node 型號、台數、port 數；球燈 DMX 鏈如何分段（`DMX＿線間距.pdf` 的線長是否就是串接順序 1→37） | M3、`--patch-report` |
 | Q5 | 所有燈桿與燈具的平面座標（x, y）：能否提供 CAD/DXF 匯出，或由 `image (6).png` 量 | M6 模擬器 |

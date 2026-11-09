@@ -1,0 +1,44 @@
+diff --git a/wled00/e131.cpp b/wled00/e131.cpp
+index 0520206..9cf43b7 100644
+--- a/wled00/e131.cpp
++++ b/wled00/e131.cpp
+@@ -5,4 +5,9 @@
+ #define MAX_CHANNELS_PER_UNIVERSE 512
+ 
++#ifdef USERMOD_MOON_MOTOR
++// Moon Observe motor relay (usermods/moon_motor): raw Art-Net data before LED/realtime handling.
++void moonMotorOnArtnet(unsigned universeOffset, const uint8_t* data, unsigned length);
++#endif
++
+ /*
+  * E1.31 handler
+@@ -114,4 +119,8 @@ void handleE131Packet(e131_packet_t* p, IPAddress clientIP, byte protocol){
+   e131LastSequenceNumber[previousUniverses] = seq;
+ 
++  #ifdef USERMOD_MOON_MOTOR
++  if (protocol == P_ARTNET) moonMotorOnArtnet(previousUniverses, e131_data, dmxChannels);
++  #endif
++
+   // update status info
+   realtimeIP = clientIP;
+diff --git a/wled00/usermods_list.cpp b/wled00/usermods_list.cpp
+index 36bd122..bc1238c 100644
+--- a/wled00/usermods_list.cpp
++++ b/wled00/usermods_list.cpp
+@@ -219,4 +219,8 @@
+ #endif
+ 
++#ifdef USERMOD_MOON_MOTOR
++  #include "../usermods/moon_motor/usermod_moon_motor.h"
++#endif
++
+ #ifdef USERMOD_STAIRCASE_WIPE
+   #include "../usermods/stairway_wipe_basic/stairway-wipe-usermod-v2.h"
+@@ -471,3 +475,7 @@ void registerUsermods()
+   UsermodManager::add(new PovDisplayUsermod());
+   #endif
++
++  #ifdef USERMOD_MOON_MOTOR
++  UsermodManager::add(new MoonMotorUsermod());
++  #endif
+ }

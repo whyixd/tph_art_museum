@@ -1,0 +1,5 @@
+# WLED source tree and firmware produced by build.sh
+.build/
+dist/
+# flash.py backups: full flash dumps contain the unit's Wi-Fi and other passwords
+backups/
