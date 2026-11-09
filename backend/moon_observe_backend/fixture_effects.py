@@ -281,3 +281,27 @@ def render_fixture_frame(
         for index, (height, x, y) in enumerate(geometry)
     ]
 
+
+PRESET_GROUPS = ("spinner", "ball", "wash")
+
+
+def parse_preset_document(raw: Any, pixels: int) -> dict[str, Any]:
+    """A single-effect document: an EffectPreset v2 (spinner only), or {"spinner"?, "ball"?, "wash"?}.
+
+    Returns the groups present, normalized; ``ball`` / ``wash`` may be None (dark). Used for preset.json
+    and ``PUT /api/preset`` (where only the given groups change).
+    單一效果文件：舊格式（只有轉燈）或 {"spinner"?, "ball"?, "wash"?}；ball／wash 可為 null（全暗）。
+    """
+    from .effects import validate_preset
+
+    if isinstance(raw, dict) and "schemaVersion" in raw:
+        return {"spinner": validate_preset(raw, pixels)}
+    if not isinstance(raw, dict) or not raw or set(raw) - set(PRESET_GROUPS):
+        raise ValueError("preset must be an EffectPreset or {\"spinner\"?, \"ball\"?, \"wash\"?}")
+    result: dict[str, Any] = {}
+    if "spinner" in raw:
+        result["spinner"] = validate_preset(raw["spinner"], pixels)
+    for group in ("ball", "wash"):
+        if group in raw:
+            result[group] = None if raw[group] is None else validate_fixture_preset(raw[group])
+    return result

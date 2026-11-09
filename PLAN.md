@@ -154,7 +154,7 @@ renderFixtureFrame(preset, geometry, frame, {fps, raining, palette, frameStep, c
 - **幾何／layout**：`[dmx] layout = "layout.json"`（選填）。格式 `{"schemaVersion": 1, "fixtures": {"ball": {"1": {"x":…, "y":…, "z":…}}, "wash": {…}}}`，單位 cm，x／y／z 都可缺；群組內每顆都有某軸時才依該軸正規化到 0–1，否則該軸改依編號排列。設定載入後放在 `config["dmx"]["geometry"][group]`。
 - `backend/layout.example.json`：37 顆球燈的高度 z，取自 `DMX＿線間距.pdf`（依圖面比例換算後與 H 標籤配對、再以紅字線長交叉檢查）；x／y 待 Q5。**請確認高度**。
 - **天氣**：色盤只換顏色，漸層效果保留自己的 axis，純色效果改依 `height` 分佈；`cloudy` 每顆依 x 錯開 `round(x × 8 × cloud_step)` 影格；`rain` 每顆在自己的隨機相位閃亮後衰減（0.7 Hz、閃亮佔 25%、其餘保留 20% 亮度），`off` 除外。常數在兩邊同名（`FIXTURE_RAIN`／`RAIN_*`、`CLOUD_SPREAD_STEPS`）。
-- 洗牆燈另需 config 安全上限 `[hardware].wash_max_level`：留到 M6 接輸出時做。
+- 洗牆燈的亮度安全上限：用 DMX profile 既有的 `brightness`（送出前套用，M3 已實作），不另設 `wash_max_level`。
 
 ### 3.4 Sequence v2
 
@@ -239,7 +239,7 @@ M5 已實作（`sequence.py`）：
 | M3 ✅ | DMX：fixture profile、patch 解析與驗證、`dmx.py`（RGB → 通道、universe buffer）、`--patch-report` | 2026-11-03：見 §3.2；新增 `test_dmx.py` 7 個測試，backend 共 103 個測試通過；`config.example.toml` 加入球燈範例。**尚未接進輸出迴圈**（M6） | – |
 | M4 🔶 | 轉燈幾何與 payload 依實體配置實作 | payload golden test；現場一台實測。2026-11-09：程式與測試完成（見下方「M4 實作細節」），**待現場一台實測** | Q1 |
 | M5 ✅ | Fixture effect engine（TS + Python）、Sequence v2、天氣套用到 DMX 群組 | 前後端 fixture vectors 一致；v1 → v2 升級測試。2026-11-09：見 §3.3、§3.4；backend 127 個測試（新增 `test_fixture_effects.py` 9、`test_sequence_v2.py` 8、`test_dmx.py` layout 3）、frontend 122 個測試（新增 `fixtures.test.ts` 4、`backendApi.test.ts` 1）通過，`tsc`、build 通過；轉燈 `effects_v2.json` 重產逐 byte 相同。**尚未接進輸出迴圈與 API**（M6） | M3 |
-| M6 | `output.py` 整合三群組；結束流程；`/api/test/fixtures`、`/api/patch` | 本機 UDP listener 驗證每個 universe 封包、結束時全 0 | M3–M5 |
+| M6 ✅ | `output.py` 整合三群組；結束流程；`/api/test/fixtures`、`/api/patch` | 本機 UDP listener 驗證每個 universe 封包、結束時全 0。2026-11-09：見下方「M6 實作細節」 | M3–M5 |
 | M7 | 前端：全場 3D、群組編輯、對燈模式 | `npm test`、`tsc` 通過；Playwright 截圖 | M5、Q5 |
 | M8 | 部署（Pi systemd 或 Windows WinSW）與現場 checklist | 安裝 → 升級 → 回退 → 停止時燈全暗、馬達停 | Q6、Q7 |
 | M9 | 更新 `doc/system-reference.md` 為本系統版本 | 文件與程式一致 | 全部 |
@@ -270,3 +270,16 @@ M5 已實作（`sequence.py`）：
    `{"schemaVersion":2,"effectId":"full-on","parameters":{},"color":{"mode":"gradient","axis":"radius","colors":[{"r":1,"g":0,"b":0},{"r":0,"g":0,"b":1}]}}`
 3. 馬達停止時確認：3 條燈條都由**頂部紅**漸變到**底部藍**、左右兩側對稱、整圈沒有錯位或斷點。若紅色在底部，表示第 0 顆不在頂部（改 `pixel_rotation`）；若兩側不對稱，表示繞行起點有偏移。
 4. `PUT /api/motor {"enabled":true}` 確認馬達緩啟動，`false` 緩停（約 10 秒）；結束 backend 時馬達收到 0。
+
+### M6 實作細節
+
+- `output.stream`：每個 DMX node 一個 client（universe、512 bytes），每影格送完轉燈後送 DMX。球燈／洗牆燈顏色：串接模式取該段 `ball`／`wash`（`render_sequence_fixtures`），單一效果模式取 `PresetStore` 的群組 preset（沒有 = 全暗）；天氣同轉燈（`rain`、色盤、`cloudy` 依 x 錯開）；`/api/test/fixtures` 的單色測試覆蓋指定燈具。
+- 結束：先停轉燈馬達（同 reference），再對每個 DMX universe 送 2 次全 0（dimmer 等固定通道也是 0）；DMX 送出失敗時馬達停止仍會先完成（有測試）。
+- 單一效果文件（`preset.json`、`PUT /api/preset`）：舊格式 = 只有轉燈；`{"spinner"?, "ball"?, "wash"?}` 只換給的群組，`null` 關閉。檔案沒有球燈／洗牆燈 preset 時仍寫成舊格式。
+- 沒有 `sequence.json` 時自動建立的預設段落也帶入 `preset.json` 的球燈／洗牆燈 preset（實測時發現：原本只帶轉燈，DMX 全暗）。
+- API：`GET /api/state` 新增 `fixtures {ball,wash: {count, preset}}`；`GET/PUT/DELETE /api/test/fixtures`；`GET /api/patch`；`GET /api/playback` 在測試中另附 `fixtureColors`。`--check` 與啟動訊息會列出 DMX 燈具數與 universe 數。
+- `[hardware].wash_max_level` 不做：洗牆燈上限用 profile `brightness`。
+- 測試：`test_output_dmx.py` 7 個 + `test_sequence_v2.py` 1 個，backend 共 135 個通過。
+- 本機實送（真的 stupidArtnet → 127.0.0.1）：轉燈 universe 77 共 80 包 × 470 bytes；球燈 universe 78、洗牆燈 79 各 82 包 × 512 bytes（80 影格 + 結束 2 包）；`height-sweep` 第 40 影格亮的是高度 264–500 cm 的球燈；洗牆燈 dimmer 255 + 綠；最後 2 包全 0。
+- 前端尚未使用這些 API（M7）。
+

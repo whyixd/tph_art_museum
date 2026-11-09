@@ -11,8 +11,11 @@ import tempfile
 from threading import Lock
 from typing import Any, Mapping
 
-from .effects import preset_to_json, validate_preset
+from .effects import preset_to_json
+from .fixture_effects import fixture_preset_to_json, parse_preset_document
 from .hardware import default_motor_channel
+
+FIXTURE_GROUPS = ("ball", "wash")
 
 
 
@@ -21,14 +24,23 @@ class PresetStore:
         self.path = Path(preset_path)
         self.pixels = pixels
         self.lock = Lock()
-        self.active = validate_preset(json.loads(self.path.read_text(encoding="utf-8")), pixels)
+        document = parse_preset_document(json.loads(self.path.read_text(encoding="utf-8")), pixels)
+        if "spinner" not in document:
+            raise ValueError("preset file must include a spinner preset")
+        self.active = document["spinner"]
         self.raw = preset_to_json(self.active)
+        # 單一效果模式下的球燈／洗牆燈 preset；None = 全暗。 / Single-effect ball / wash presets; None = dark.
+        self.fixtures: dict[str, Any] = {group: document.get(group) for group in FIXTURE_GROUPS}
         self.revision = 0
         self.motor_enabled = False  # Never resume a running motor after backend restart.
 
     def snapshot(self) -> Mapping[str, Any]:
         with self.lock:
             return self.active
+
+    def fixture_snapshot(self) -> Mapping[str, Any]:
+        with self.lock:
+            return dict(self.fixtures)
 
     def motor_value(self) -> int:
         with self.lock:
@@ -48,10 +60,19 @@ class PresetStore:
             return self._state_unlocked(config)
 
     def apply(self, raw: Any, config: Mapping[str, Any]) -> dict[str, Any]:
-        normalized = validate_preset(raw, self.pixels)
-        canonical = preset_to_json(normalized)
-        encoded = (json.dumps(canonical, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
+        """Replace the groups given (an EffectPreset alone is the spinner); ``"ball": null`` turns a group off."""
+        update = parse_preset_document(raw, self.pixels)
         with self.lock:
+            normalized = update.get("spinner", self.active)
+            fixtures = {group: update.get(group, self.fixtures[group]) if group in update else self.fixtures[group]
+                        for group in FIXTURE_GROUPS}
+            canonical = preset_to_json(normalized)
+            # 沒有球燈／洗牆燈時維持舊格式（只有轉燈）。 / Without fixture presets the file keeps the old spinner-only form.
+            document: dict[str, Any] = canonical
+            if any(preset is not None for preset in fixtures.values()):
+                document = {"spinner": canonical, **{
+                    group: fixture_preset_to_json(preset) for group, preset in fixtures.items() if preset is not None}}
+            encoded = (json.dumps(document, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
             temporary: str | None = None
             try:
                 with tempfile.NamedTemporaryFile(mode="wb", prefix=".preset-", suffix=".tmp", dir=self.path.parent, delete=False) as stream:
@@ -63,6 +84,7 @@ class PresetStore:
                 temporary = None
                 self.raw = canonical
                 self.active = normalized
+                self.fixtures = fixtures
                 self.revision += 1
             finally:
                 if temporary is not None:
@@ -83,7 +105,43 @@ class PresetStore:
                 "unitId": config["unit_id"], "unitCount": config["unit_count"],
                 "targets": config.get("targets", [{"unit_id": config["unit_id"], "ip": config["ip"], "universe": config["universe"]}]),
             },
+            # 球燈／洗牆燈：顆數（patch）與單一效果模式的 preset（null = 全暗）。
+            # Ball / wash: fixture count from the patch and the single-effect preset (null = dark).
+            "fixtures": {
+                group: {
+                    "count": len((config.get("dmx") or {}).get("fixtures", {}).get(group, [])),
+                    "preset": None if self.fixtures[group] is None else fixture_preset_to_json(self.fixtures[group]),
+                }
+                for group in FIXTURE_GROUPS
+            },
         }
+
+
+def patch_table(config: Mapping[str, Any]) -> dict[str, Any]:
+    """Every output's address for on-site wiring: spinner targets, DMX nodes and each fixture's channels."""
+    dmx = config.get("dmx")
+    targets = config.get("targets") or [{"unit_id": config["unit_id"], "ip": config["ip"], "universe": config["universe"]}]
+    result: dict[str, Any] = {
+        "spinners": [
+            {"unitId": target["unit_id"], "ip": target["ip"], "universes": target.get("universes", [target["universe"]])}
+            for target in targets
+        ],
+        "nodes": [dict(node) for node in dmx["nodes"]] if dmx else [],
+        "fixtures": {group: [] for group in FIXTURE_GROUPS},
+    }
+    if not dmx:
+        return result
+    for group in FIXTURE_GROUPS:
+        positions = dmx.get("positions", {}).get(group) or [None] * len(dmx["fixtures"][group])
+        for fixture, position in zip(dmx["fixtures"][group], positions, strict=True):
+            node = dmx["nodes"][fixture["node"]]
+            channels = dmx["profiles"][fixture["profile"]]["channels"]
+            result["fixtures"][group].append({
+                "id": fixture["id"], "node": node["name"], "ip": node["ip"], "universe": node["universe"],
+                "address": fixture["address"], "lastChannel": fixture["address"] + len(channels) - 1,
+                "profile": fixture["profile"], "channels": list(channels), "position": position,
+            })
+    return result
 
 
 def make_server(
@@ -97,6 +155,7 @@ def make_server(
     weather_store: Any = None,
     playback_monitor: Any = None,
     unit_color_store: Any = None,
+    fixture_color_store: Any = None,
 ) -> ThreadingHTTPServer:
     if not 0 <= port <= 65535:
         raise ValueError("api port must be 0..65535")
@@ -145,9 +204,16 @@ def make_server(
                 if result["active"] and test is not None and test["active"]:
                     # 讓 3D 鏡像也顯示單色測試。 / Lets the 3D mirror show the unit colour test.
                     result["unitColors"] = test["colors"]
+                fixture_test = fixture_color_store.snapshot() if fixture_color_store is not None else {}
+                if result["active"] and any(entry["active"] for entry in fixture_test.values()):
+                    result["fixtureColors"] = {group: entry["colors"] for group, entry in fixture_test.items() if entry["active"]}
                 self._respond(200, result)
             elif self.path == "/api/test/units" and unit_color_store is not None:
                 self._respond(200, unit_color_store.snapshot())
+            elif self.path == "/api/test/fixtures" and fixture_color_store is not None:
+                self._respond(200, fixture_color_store.snapshot())
+            elif self.path == "/api/patch":
+                self._respond(200, patch_table(config))
             elif self.path.startswith("/api/") or static_dir is None:
                 self._respond(404, {"error": "not found"})
             else:
@@ -166,20 +232,24 @@ def make_server(
                 self._respond(200, weather_store.end_visit())
             elif self.path == "/api/test/units" and unit_color_store is not None:
                 self._respond(200, unit_color_store.clear())
+            elif self.path == "/api/test/fixtures" and fixture_color_store is not None:
+                self._respond(200, fixture_color_store.clear())
             else:
                 self._respond(404, {"error": "not found"})
 
         def do_PUT(self) -> None:
             limits = {
-                "/api/preset": 16384, "/api/motor": 64, "/api/sequence": 262144,
+                "/api/preset": 32768, "/api/motor": 64, "/api/sequence": 262144,
                 "/api/weather/override": 256, "/api/weather/palette": 16384,
                 "/api/playback/restart": 64, "/api/weather/visit": 64, "/api/test/units": 4096,
+                "/api/test/fixtures": 8192,
             }
             if (self.path not in limits
                     or (self.path in ("/api/sequence", "/api/playback/restart") and sequence_store is None)
                     or (self.path in ("/api/weather/override", "/api/weather/visit") and weather_store is None)
                     or (self.path == "/api/weather/palette" and palette_store is None)
-                    or (self.path == "/api/test/units" and unit_color_store is None)):
+                    or (self.path == "/api/test/units" and unit_color_store is None)
+                    or (self.path == "/api/test/fixtures" and fixture_color_store is None)):
                 self._respond(404, {"error": "not found"})
                 return
             if self.headers.get_content_type() != "application/json":
@@ -213,6 +283,8 @@ def make_server(
                     result = palette_store.apply(raw)
                 elif self.path == "/api/test/units":
                     result = unit_color_store.apply(raw)
+                elif self.path == "/api/test/fixtures":
+                    result = fixture_color_store.apply(raw)
                 else:
                     result = store.apply_motor(raw, config)
             except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:

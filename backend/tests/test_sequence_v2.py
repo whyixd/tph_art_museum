@@ -127,6 +127,15 @@ class SequenceV2Tests(unittest.TestCase):
         self.assertEqual(2 * 10 * 37, compile_sequence(raw, 40, 9, fixture_counts={"ball": 37})[0]["duration"])
         self.assertEqual(2 * 10, compile_sequence(raw, 40, 9)[0]["duration"])  # unknown count -> 1
 
+    def test_fallback_step_includes_fixture_presets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sequence.json"
+            ball = fixture("height-sweep")
+            store = SequenceStore(path, 156, 40, 9, default_preset("full-on"), {"ball": 37}, {"ball": ball, "wash": None})
+            step = store.state()["sequence"]["steps"][0]
+            self.assertEqual(["id", "spinner", "ball", "playback", "transition"], list(step))
+            self.assertEqual(validate_sequence(json.loads(path.read_text(encoding="utf-8"))), store.state()["sequence"])
+
     def test_store_reads_v1_file_as_v2_without_rewriting(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sequence.json"

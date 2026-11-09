@@ -69,3 +69,43 @@ class UnitColorStore:
             self.colors = None
             self.expires = None
             return self._snapshot_unlocked()
+
+
+class FixtureColorStore:
+    """Manual solid colours for ball / wash fixtures, per group (on-site checks and finding a fixture).
+
+    ``PUT /api/test/fixtures`` body: {"group": "ball"|"wash", "colors": [{r,g,b}|null × count], "seconds": n|null};
+    null plays normally. Each group expires on its own; memory only.
+    球燈／洗牆燈單色測試（現場對燈）；各群組各自計時，只在記憶體。
+    """
+
+    def __init__(self, counts: dict[str, int], *, clock: Callable[[], float] = time.monotonic) -> None:
+        self.groups = {group: UnitColorStore(count, clock=clock) for group, count in counts.items() if count > 0}
+
+    def current(self) -> dict[str, tuple[Rgb | None, ...]]:
+        """Active tests by group (called by the output loop every frame)."""
+        result = {}
+        for group, store in self.groups.items():
+            colors = store.current()
+            if colors is not None:
+                result[group] = colors
+        return result
+
+    def snapshot(self) -> dict[str, Any]:
+        return {group: store.snapshot() for group, store in self.groups.items()}
+
+    def apply(self, raw: Any) -> dict[str, Any]:
+        if not isinstance(raw, dict) or set(raw) != {"group", "colors", "seconds"}:
+            raise ValueError("fixture test must contain group, colors and seconds")
+        if raw["group"] not in self.groups:
+            raise ValueError(f"group must be one of {', '.join(self.groups) or '(no fixtures configured)'}")
+        try:
+            self.groups[raw["group"]].apply({"colors": raw["colors"], "seconds": raw["seconds"]})
+        except ValueError as error:
+            raise ValueError(str(error).replace("units", "fixtures").replace("unit ", "fixture ")) from None
+        return self.snapshot()
+
+    def clear(self) -> dict[str, Any]:
+        for store in self.groups.values():
+            store.clear()
+        return self.snapshot()

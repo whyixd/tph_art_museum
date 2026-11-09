@@ -354,7 +354,9 @@ def render_sequence_fixtures(
 
 class SequenceStore:
     def __init__(self, path: str | Path, pixels: int, fps: int, unit_count: int, fallback_preset: Mapping[str, Any],
-                 fixture_counts: Mapping[str, int] | None = None) -> None:
+                 fixture_counts: Mapping[str, int] | None = None,
+                 fallback_fixtures: Mapping[str, Mapping[str, Any] | None] | None = None) -> None:
+        """Without a sequence file, one 8 s step of ``fallback_preset`` (plus ``fallback_fixtures``) is written."""
         self.path = Path(path)
         self.pixels = pixels
         self.fixture_counts = dict(fixture_counts or {})
@@ -373,6 +375,7 @@ class SequenceStore:
                 "ending": {"kind": "hold"},
                 "steps": [{
                     "id": 1, "spinner": fallback_preset,
+                    **{group: preset for group, preset in (fallback_fixtures or {}).items() if preset is not None},
                     "playback": {"kind": "time", "seconds": 8},
                     "transition": {"kind": "cut", "seconds": 0.5},
                 }],

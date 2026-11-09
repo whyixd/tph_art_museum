@@ -16,17 +16,24 @@ from stupidArtnet import StupidArtnet
 
 from .config import DEFAULT_HARDWARE, load_config
 from .control import PresetStore, make_server
-from .effects import Rgb, completion_frames
-from .dmx import patch_report
+from .effects import BLACK, Rgb, completion_frames
+from .dmx import DMX_CHANNELS, GROUPS, build_universes, patch_report
+from .fixture_effects import fixture_geometry, render_fixture_frame
 from .hardware import build_packets, default_motor_channel, packet_sizes
 from .renderer import render_frame
-from .sequence import SequenceStore, render_sequence_frame
+from .sequence import SequenceStore, render_sequence_fixtures, render_sequence_frame, validate_sequence
 from .palette import PaletteStore
 from .playback import PlaybackMonitor
-from .unit_colors import UnitColorStore
+from .unit_colors import FixtureColorStore, UnitColorStore
 from .weather import WeatherStore
 
 SINGLE_ROUND_SECONDS = 60  # A single effect "round" for weather visits: at least this long.
+DMX_EXIT_REPEATS = 2  # 結束時每個 DMX universe 送幾次全 0。 / All-zero frames per DMX universe on exit.
+
+
+def fixture_counts(config: Mapping[str, Any]) -> dict[str, int]:
+    dmx = config.get("dmx")
+    return {group: len(dmx["fixtures"][group]) if dmx else 0 for group in GROUPS}
 
 
 def round_length(sequence: Any, preset: Mapping[str, Any], fps: int, unit_count: int) -> tuple[int, bool]:
@@ -67,10 +74,18 @@ def stream(
     playback_reporter: Callable[[str, Any, int, int], None] | None = None,
     playback_advance: Callable[[int, int, bool, bool], None] | None = None,
     unit_colors_provider: Callable[[], Sequence[Rgb | None] | None] | None = None,
+    fixture_preset_provider: Callable[[], Mapping[str, Mapping[str, Any] | None]] | None = None,
+    fixture_colors_provider: Callable[[], Mapping[str, Sequence[Rgb | None]]] | None = None,
     clock: Callable[[], float] = time.perf_counter,
     sleep: Callable[[float], None] = time.sleep,
 ) -> int:
-    """Send frames continuously; returned count is send calls, not delivery ACKs."""
+    """Send frames continuously; returned count is send calls, not delivery ACKs.
+
+    Spinners: one client per unit universe. DMX (``config["dmx"]``): one client per node universe, a full
+    512-channel frame each frame; ball / wash colours come from the sequence step (or the single-effect
+    fixture presets), with the same weather, and a fixture colour test overrides them. On exit every DMX
+    universe gets all-zero frames.
+    """
     if seconds is not None and (not math.isfinite(seconds) or seconds <= 0):
         raise ValueError("seconds must be positive and finite")
     fps = config["fps"]
@@ -82,6 +97,13 @@ def stream(
     sizes = packet_sizes(config["pixels"], motor_channel, hardware["channels_per_universe"])
     # 每台每個 universe 一個 client，依 universe 順序排列。 / One client per unit universe, in universe order.
     clients: list[tuple[Mapping[str, Any], list[Any]]] = []
+    dmx = config.get("dmx")
+    groups = [group for group in GROUPS if dmx and dmx["fixtures"][group]]
+    geometry = {
+        group: (dmx.get("geometry") or {}).get(group) or fixture_geometry([None] * len(dmx["fixtures"][group]))
+        for group in groups
+    } if dmx else {}
+    dmx_clients: list[Any] = []
     last_pixels: dict[int, Sequence[Rgb]] = {}
     last_motor_value = 0
     last_sequence_generation: int | None = None
@@ -104,6 +126,15 @@ def stream(
                 client.set_simplified(False)
                 client.set_net(universe >> 8)
                 client.set_subnet((universe >> 4) & 0x0F)
+        for node in (dmx["nodes"] if dmx else []):
+            client = client_factory(
+                node["ip"], node["universe"] & 0x0F, DMX_CHANNELS, fps=fps,
+                source_address=(config["source_ip"], 0) if config["source_ip"] else None,
+            )
+            dmx_clients.append(client)
+            client.set_simplified(False)
+            client.set_net(node["universe"] >> 8)
+            client.set_subnet((node["universe"] >> 4) & 0x0F)
         start = clock()
         frame = 0
         sent = 0
@@ -185,19 +216,59 @@ def stream(
                     client.send(packet)
                     sent += 1
                 last_pixels[unit_id] = pixels
+            if dmx_clients:
+                category = weather.get("category") if weather is not None else None
+                color_override = weather.get("color") if category is not None else None
+                frame_step = weather["frameStep"] if category == "cloudy" else 0
+                fixture_presets = fixture_preset_provider() if fixture_preset_provider is not None else {}
+                fixture_tests = fixture_colors_provider() if fixture_colors_provider is not None else {}
+                colors: dict[str, list[Rgb]] = {}
+                for group in groups:
+                    if sequence_mode:
+                        group_colors = render_sequence_fixtures(
+                            sequence_state[1], group, geometry[group], playback_frame, fps=fps,
+                            rain=category == "rain", color_override=color_override, frame_step=frame_step,
+                        )
+                    elif fixture_presets.get(group) is not None:
+                        group_colors = render_fixture_frame(
+                            fixture_presets[group], geometry[group], playback_frame, fps=fps,
+                            raining=category == "rain", color_override=color_override, frame_step=frame_step,
+                        )
+                    else:
+                        group_colors = [BLACK] * len(geometry[group])
+                    # 單色測試：指定的燈具填色，其餘照常播放。 / Colour test: chosen fixtures filled, the rest play on.
+                    test = fixture_tests.get(group)
+                    if test is not None:
+                        group_colors = [own if override is None else override
+                                        for own, override in zip(group_colors, test, strict=True)]
+                    colors[group] = group_colors
+                for client, data in zip(dmx_clients, build_universes(colors, dmx), strict=True):
+                    client.send(data)
+                    sent += 1
             frame += 1
         return sent
     finally:
-        for target, unit_clients in clients:
+        try:
+            # 先停馬達（最重要），再讓 DMX 燈具全暗。 / Stop the motors first (most important), then darken DMX.
+            for target, unit_clients in clients:
+                try:
+                    if last_motor_value == 255 and target["unit_id"] in last_pixels:
+                        # 保留最後畫面，只把馬達改成緩停。 / Keep the last picture; only stop the motor.
+                        packets = build_packets(last_pixels[target["unit_id"]], hardware=hardware,
+                                                motor_channel=motor_channel, motor_value=0)
+                        for client, packet in zip(unit_clients, packets, strict=True):
+                            client.send(packet)
+                finally:
+                    for client in unit_clients:
+                        client.close()
+        finally:
             try:
-                if last_motor_value == 255 and target["unit_id"] in last_pixels:
-                    # 保留最後畫面，只把馬達改成緩停。 / Keep the last picture; only stop the motor.
-                    packets = build_packets(last_pixels[target["unit_id"]], hardware=hardware,
-                                            motor_channel=motor_channel, motor_value=0)
-                    for client, packet in zip(unit_clients, packets, strict=True):
-                        client.send(packet)
+                # DMX 燈具全暗（含 dimmer 等固定通道）。 / DMX fixtures dark, static channels (dimmer...) included.
+                for _ in range(DMX_EXIT_REPEATS):
+                    for client in dmx_clients:
+                        client.send(bytes(DMX_CHANNELS))
             finally:
-                for client in unit_clients:
+                for client in dmx_clients:
                     client.close()
 
 
@@ -223,17 +294,21 @@ def main(argv: list[str] | None = None) -> int:
         if not 0 <= args.api_port <= 65535:
             raise ValueError("api port must be 0..65535")
         sequence_path = Path(config["sequence_path"])
+        counts = fixture_counts(config)
         if sequence_path.exists():
-            from .sequence import validate_sequence
             validate_sequence(json.loads(sequence_path.read_text(encoding="utf-8")),
-                              config["pixels"], config["fps"], config["unit_count"])
+                              config["pixels"], config["fps"], config["unit_count"], counts)
         palette_store = PaletteStore(config["weather"]["palette_path"]) if config["weather"] is not None else None
+        dmx_summary = (f", {' + '.join(f'{count} {group}' for group, count in counts.items() if count)} fixture(s) "
+                       f"on {len(config['dmx']['nodes'])} DMX universe(s)") if config["dmx"] else ""
         if args.check:
-            print(f"OK: {preset['effectId']} -> {len(config['targets'])} Art-Net target(s)")
+            print(f"OK: {preset['effectId']} -> {len(config['targets'])} Art-Net target(s){dmx_summary}")
             return 0
         store = PresetStore(config["preset_path"], config["pixels"])
+        initial = store.state(config)
         sequence_store = SequenceStore(sequence_path, config["pixels"], config["fps"],
-                                       config["unit_count"], store.state(config)["preset"])
+                                       config["unit_count"], initial["preset"], counts,
+                                       {group: entry["preset"] for group, entry in initial["fixtures"].items()})
         weather_store = (WeatherStore(config["weather"], config["unit_count"], palette=palette_store)
                          if config["weather"] is not None else None)
         default_frontend = Path(__file__).resolve().parents[2] / "frontend" / "dist"
@@ -241,10 +316,11 @@ def main(argv: list[str] | None = None) -> int:
         service_label = "Page and API" if frontend_dir else "API"
         playback_monitor = PlaybackMonitor(config["fps"], config["unit_count"])
         unit_color_store = UnitColorStore(config["unit_count"])
+        fixture_color_store = FixtureColorStore(counts)
         with make_server(store, config, args.api_port, host=args.api_host,
                          sequence_store=sequence_store, frontend_dir=frontend_dir,
                          weather_store=weather_store, playback_monitor=playback_monitor,
-                         unit_color_store=unit_color_store) as server:
+                         unit_color_store=unit_color_store, fixture_color_store=fixture_color_store) as server:
             if weather_store is not None:
                 weather_store.start()
             try:
@@ -255,14 +331,16 @@ def main(argv: list[str] | None = None) -> int:
                 worker = Thread(target=server.serve_forever, daemon=True)
                 worker.start()
                 try:
-                    print(f"Sending {preset['effectId']} -> {len(config['targets'])} Art-Net target(s) at {config['fps']} FPS. {service_label} listening on {args.api_host}:{args.api_port}. Ctrl+C to stop.", flush=True)
+                    print(f"Sending {preset['effectId']} -> {len(config['targets'])} Art-Net target(s){dmx_summary} at {config['fps']} FPS. {service_label} listening on {args.api_host}:{args.api_port}. Ctrl+C to stop.", flush=True)
                     sent = stream(config, preset, seconds=args.seconds,
                                   preset_provider=store.snapshot, motor_provider=store.motor_value,
                                   sequence_provider=sequence_store.snapshot,
                                   weather_provider=weather_store.snapshot if weather_store is not None else None,
                                   playback_reporter=playback_monitor.report,
                                   playback_advance=weather_store.advance if weather_store is not None else None,
-                                  unit_colors_provider=unit_color_store.current)
+                                  unit_colors_provider=unit_color_store.current,
+                                  fixture_preset_provider=store.fixture_snapshot,
+                                  fixture_colors_provider=fixture_color_store.current)
                 finally:
                     playback_monitor.stop()
                     server.shutdown()

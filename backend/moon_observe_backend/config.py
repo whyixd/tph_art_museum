@@ -10,8 +10,7 @@ import tomllib
 from typing import Any
 
 from .dmx import COLOR_CHANNELS, DMX_CHANNELS, GROUPS, WHITE_MODES
-from .effects import validate_preset
-from .fixture_effects import fixture_geometry
+from .fixture_effects import fixture_geometry, parse_preset_document
 from .hardware import CHANNELS_PER_PIXEL, COLOR_ORDERS, default_motor_channel, packet_sizes
 
 MAX_PIXELS = 2048
@@ -338,7 +337,10 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         raise ValueError("render.sequence must name a JSON file")
     sequence_path = (config_path.parent / sequence_name).resolve()
     with preset_path.open("r", encoding="utf-8") as stream:
-        preset = validate_preset(json.load(stream), pixels)
+        document = parse_preset_document(json.load(stream), pixels)
+    if "spinner" not in document:
+        raise ValueError("render.preset must include a spinner preset")
+    preset = document["spinner"]
     config = {
         "ip": targets[0]["ip"],
         "source_ip": source_ip,
