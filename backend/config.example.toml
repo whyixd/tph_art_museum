@@ -327,6 +327,19 @@ profile = "ball-rgbw"
 node = "box-112"
 address = 133
 
+# 音樂：Pi 從 USB 音效卡播放，燈光跟著音訊時鐘。沒有 PortAudio（libportaudio2）時音訊停用、燈光照常。
+# Music: the Pi plays it on the USB sound card and the lights follow the audio clock. Without PortAudio
+# (libportaudio2) audio is disabled and the lights run as usual.
+[audio]
+# PortAudio 輸出裝置名稱的一部分（例如 "USB"），空字串 = 系統預設。
+# Part of the PortAudio output device name (e.g. "USB"); empty = system default.
+device = ""
+# WAV 檔所在目錄（音檔不進 git、release 另外附上；拍點檔在 backend/tracks/）。
+# Directory of the WAV files (not in git; shipped beside the release). Beat maps are in backend/tracks/.
+directory = "../audio"
+# 延遲補償（前端「後端」分頁可調整並儲存）。 / Latency offset, adjusted and saved on the page's backend tab.
+calibration = "audio-calibration.json"
+
 # Add the actual installation coordinates to enable Open-Meteo weather control.
 # [weather]
 # latitude = 25.0330

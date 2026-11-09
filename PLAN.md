@@ -243,6 +243,12 @@ M5 已實作（`sequence.py`）：
 | M7 ✅ | 前端：全場 3D、群組編輯、對燈模式 | `npm test`、`tsc` 通過；Playwright 截圖。2026-11-10：見下方「M7 實作細節」 | M5、Q5 |
 | M8 🔶 | 部署（Raspberry Pi 5、systemd、**PyPy**）與現場 checklist | 安裝 → 升級 → 回退 → 停止時燈全暗、馬達停；Pi 5 上重跑 `benchmark_render.py`。2026-11-10：程式、腳本與文件完成（見下方「M8 實作細節」），**待 Pi 5 實機安裝與 `doc/site-checklist.md`** | Q6 ✅、Q7 |
 | M9 | 更新 `doc/system-reference.md` 為本系統版本 | 文件與程式一致 | 全部 |
+| M10 🔶 | 音訊播放與同步校準（§9） | Pi 從 USB 音效卡播放 WAV；燈光時間跟著音訊時鐘；節拍器＋閃拍測試；前端延遲校準可儲存；拍點分析腳本 | – |
+| M11 | 拍點資料與拍點效果（§9） | 效果 context 加入拍點資訊；新增拍點效果；前後端一致性向量 | M10 |
+| M12 | 演出時間軸（Show）取代 Sequence 作為表演（§9） | 段落以秒／小節定位、轉場對拍；後端依音訊時鐘播放 | M11 |
+| M13 | 排程、待機效果、風力（§9） | 每日表演時段；日期 → 曲目／演出；其餘時段待機效果受風力影響；天氣分類、色盤、造訪移除 | M12 |
+| M14 | 前端時間軸編輯器與拍點修正工具（§9） | 波形、拍點標記可增刪移動、瀏覽器試聽同步預覽 | M11、M12 |
+| M15 | 清理：刪除不用的效果（含 `roulette-ring`）、舊串接與天氣程式；文件 | 測試與文件一致 | M12–M14 |
 
 ### M2 實作細節
 
@@ -316,3 +322,39 @@ M5 已實作（`sequence.py`）：
 - **文件**：`backend/deploy/README.md` 改為本案（Pi 5、PyPy、governor、網路兩種接法與 nmcli、輸出統計）；新增 `doc/site-checklist.md`（網路、每台轉燈、編號對位置、方向測試、球燈對燈、服務、停止／重開機／拔線、升級回退、待回填）。
 - 2026-11-10：服務、帳號、路徑、release 檔名改為 `tph-art-museum`（`/opt/tph-art-museum`、`/etc/tph-art-museum`、`tph-art-museum.service`、`tph-art-museum-<版本>.tar.gz`），環境變數前綴 `TPH_ART_MUSEUM_`；Python 套件名仍是 `moon_observe_backend`。
 
+
+## 9. 音樂演出（2026-11-10 方向調整）
+
+效果改為配合音樂：拍點效果，以及以音樂時間軸串接。原本的效果先保留（M15 再刪）；`roulette-ring`（輪盤收束）確定不採用，它在 Pi 5 上跳格的問題擱置。
+
+### 9.1 決策
+
+| # | 決策 |
+|---|---|
+| 1 | **Pi 自己播放音樂**，接 USB 音效卡。燈光的時間以音訊實際播放到的位置為準（PortAudio 回報的 DAC 時間），不是系統時鐘，長時間循環也不會漂移 |
+| 2 | 延遲補償 `offsetMs`：燈光用「音訊位置 + offset」的時間渲染（正值 = 燈提早）。前端「後端」分頁調整、可儲存（`preset/audio-calibration.json`）|
+| 3 | 音檔不進 git，release 另外附上，放 `/etc/tph-art-museum/audio/`；拍點檔（小 JSON）進 repo（`backend/tracks/`）|
+| 4 | 曲目依日期：聖誕曲在指定日期播放，其他日子播環境曲；之後會加入其他節慶曲目與表演 |
+| 5 | 整體改為**特定時段播放表演**，其餘時段為**待機效果** |
+| 6 | 天氣只取**風力**，在非表演時段影響待機效果；天氣分類（雨、陰天錯開）、色盤、每小時造訪移除 |
+| 7 | 拍點：離線自動分析（開發機，librosa）＋前端手動修正工具 |
+
+### 9.2 音檔
+
+| 檔案 | 長度 | 格式 | 自動分析 |
+|---|---|---|---|
+| `光林_聖誕5.wav` | 76.9 s | 48 kHz、24-bit、立體聲 | 136 BPM，全曲穩定，第一拍 0.14 s → 可用規則格線 |
+| `光林_環境_3mins.wav` | 181.5 s | 同上 | 估出 103 BPM，但各段 103–136 不一，16 s 才抓到第一拍 → 需要人工標記 |
+
+### 9.3 M10 實作細節
+
+- 相依：`sounddevice`（PortAudio 的 cffi 綁定；PyPy 可用）。Pi 需要 apt 的 `libportaudio2`（`bootstrap.sh` 已加入）。沒有 PortAudio 時音訊功能停用、燈光照常。
+- `[audio]`（選填）：`device`（PortAudio 裝置名稱的一部分，例如 `"USB"`；空字串 = 系統預設）、`directory`（WAV 目錄）、`calibration`（延遲校準檔）。
+- 服務帳號加入 `audio` 群組（unit 的 `SupplementaryGroups=audio`），直接使用 ALSA。
+- `audio.py`：`AudioPlayer` 在 PortAudio callback 裡記錄「第幾個取樣在何時被聽到」，輸出迴圈每格讀取目前的音樂時間；`click-120` 節拍器（內建，120 BPM、4/4、60 秒循環）可精確校準，不受拍點偵測誤差影響。
+- 拍點檔 `backend/tracks/<id>.json`：`{schemaVersion: 1, id, title, file, durationSeconds, tempo, beatsPerBar, firstDownbeat, beats: [秒…], source}`，由 `backend/scripts/analyze_audio.py` 產生（`--grid` 依穩定速度擬合成等距格線）。
+- 閃拍測試：播放時勾選「閃拍」，全部轉燈與燈具在每拍閃白（小節第一拍全亮、其他拍 40%），蓋過目前效果；馬達不受影響。
+- API：`GET /api/audio`、`PUT /api/audio/play {trackId, startSeconds?, loop?, flash?}`、`DELETE /api/audio/play`、`PUT /api/audio/calibration {offsetMs, save?}`。
+- 前端：「後端」分頁〈音樂播放 · 延遲校準〉（`AudioPanel.tsx`）：曲目、閃拍、循環、播放／停止與進度（第幾拍）；延遲補償滑桿 ±300 ms＋數字輸入（±1000），即時套用、「儲存」寫檔、「還原為已儲存」。
+- 拍點檔（2026-11-10 產生）：`christmas-5` 擬合 137.96 BPM（165 拍中 152 拍在 40 ms 內，殘差 RMS 8.3 ms；自動分析的 136 BPM 是 hop 量化造成的誤差）；`ambient-3min` 為原始偵測（387 拍，不可靠，待手動修正）。兩首的小節起點都暫定第 0 拍。
+- 驗證：backend 164 個測試（新增 `test_audio.py` 16 個：拍點檔、節拍器、DAC 時鐘換算、循環、曲終、校準存檔、API、輸出迴圈閃拍；`test_release.py` 加音訊 seed 規則與 `tracks/`），CPython 與 PyPy 都通過；frontend 126 個測試、`tsc`、build 通過；Playwright 截圖面板。開發機（macOS）在這個終端環境開不了 CoreAudio 串流（`Pa_OpenStream` 卡住），實際出聲與時鐘**待 Pi 上驗證**。

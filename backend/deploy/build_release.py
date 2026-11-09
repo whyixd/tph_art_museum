@@ -39,7 +39,7 @@ RUNTIME_FILES = (
     "deploy/install-release.sh",
     "deploy/tph-art-museum.service",
 )
-RUNTIME_DIRS = ("moon_observe_backend",)
+RUNTIME_DIRS = ("moon_observe_backend", "tracks")
 # 前端建置需要的路徑：frontend/ 會匯入 backend 的範例場景配置（src/site/layout.ts）。
 # Paths the frontend build reads: frontend/ imports the backend's example site layout (src/site/layout.ts).
 FRONTEND_INPUTS = ("frontend", "backend/layout.example.json")

@@ -352,3 +352,61 @@ export async function getBackendPlayback(): Promise<BackendPlayback | null> {
   if (response.status === 404) return null
   return readState<BackendPlayback>(response)
 }
+
+export type AudioTrack = {
+  id: string
+  title: string
+  /** WAV 檔名；內建節拍器為 null。 / WAV file name; null for the built-in metronome. */
+  file: string | null
+  durationSeconds: number
+  tempo: number | null
+  beatCount: number
+  beatsPerBar: number
+  /** 音檔是否在 Pi 上。 / Whether the WAV file is on the host. */
+  available: boolean
+}
+
+export type AudioState = {
+  available: boolean
+  error: string | null
+  device: { requested: string | null; name: string | null }
+  calibration: { offsetMs: number; savedOffsetMs: number; maxOffsetMs: number }
+  tracks: AudioTrack[]
+  playing: {
+    trackId: string
+    /** null：尚未開始出聲。 / null: not heard yet. */
+    positionSeconds: number | null
+    durationSeconds: number
+    loop: boolean
+    flash: boolean
+    beatIndex: number | null
+  } | null
+}
+
+// 舊版後端沒有音訊 API，回 null。 / Older backends lack the audio API; returns null.
+export async function getAudioState(): Promise<AudioState | null> {
+  const response = await fetch('/api/audio', { cache: 'no-store' })
+  if (response.status === 404) return null
+  return readState<AudioState>(response)
+}
+
+export async function playAudio(request: { trackId: string; startSeconds?: number; loop?: boolean; flash?: boolean }): Promise<AudioState> {
+  return readState<AudioState>(await fetch('/api/audio/play', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  }))
+}
+
+export async function stopAudio(): Promise<AudioState> {
+  return readState<AudioState>(await fetch('/api/audio/play', { method: 'DELETE' }))
+}
+
+/** save: false 只即時套用（給試調），true 也寫入檔案。 / save: false applies live only; true also writes the file. */
+export async function setAudioCalibration(offsetMs: number, save: boolean): Promise<AudioState> {
+  return readState<AudioState>(await fetch('/api/audio/calibration', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ offsetMs, save }),
+  }))
+}

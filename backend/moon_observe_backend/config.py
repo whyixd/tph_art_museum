@@ -273,9 +273,9 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
     with config_path.open("rb") as stream:
         raw = tomllib.load(stream)
     sections = set(raw)
-    if not {"artnet", "render"} <= sections or sections - {"artnet", "render", "hardware", "motor", "dmx", "weather"} \
+    if not {"artnet", "render"} <= sections or sections - {"artnet", "render", "hardware", "motor", "dmx", "weather", "audio"} \
             or not isinstance(raw["artnet"], dict) or not isinstance(raw["render"], dict):
-        raise ValueError("config requires [artnet] and [render] sections (optional: [hardware], [motor], [dmx], [weather])")
+        raise ValueError("config requires [artnet] and [render] sections (optional: [hardware], [motor], [dmx], [weather], [audio])")
     artnet = raw["artnet"]
     render = raw["render"]
     if set(artnet) - {"ip", "universe", "source_ip", "targets"} or set(render) - {"preset", "sequence", "fps", "rpm", "pixels", "unit_id", "unit_count", "layout"}:
@@ -364,6 +364,24 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
             "visits": visits,
         }
 
+    audio = None
+    if "audio" in raw:
+        entry = raw["audio"]
+        if not isinstance(entry, dict) or set(entry) - {"device", "directory", "calibration"}:
+            raise ValueError("unknown audio config field")
+        device = entry.get("device", "")
+        if not isinstance(device, str) or len(device) > 100:
+            raise ValueError("audio.device must be a device name (empty = system default)")
+        directory = entry.get("directory", "audio")
+        if not isinstance(directory, str) or not directory:
+            raise ValueError("audio.directory must name a directory")
+        audio = {
+            "device": device,
+            "directory": str((config_path.parent / directory).resolve()),
+            "calibration_path": str((config_path.parent / _file_name(
+                entry.get("calibration", "audio-calibration.json"), "audio.calibration")).resolve()),
+        }
+
     preset_name = render.get("preset")
     if not isinstance(preset_name, str) or not preset_name:
         raise ValueError("render.preset must name a JSON file")
@@ -383,6 +401,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         "universe": targets[0]["universe"],
         "targets": targets,
         "weather": weather,
+        "audio": audio,
         "fps": fps,
         "rpm": rpm,
         "pixels": pixels,

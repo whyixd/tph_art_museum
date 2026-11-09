@@ -23,7 +23,7 @@ command -v apt-get >/dev/null || die "apt-get is required"
 echo "==> Installing OS packages"
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-  ca-certificates coreutils curl python3 tar util-linux
+  ca-certificates coreutils curl libportaudio2 python3 tar util-linux
 
 if [[ ! -x /usr/local/bin/uv ]]; then
   echo "==> Installing uv to /usr/local/bin"

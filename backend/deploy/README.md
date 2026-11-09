@@ -26,15 +26,40 @@ Backend 與 build 好的前端以同一個「版本化、不可變 release」部
 /etc/tph-art-museum/                     root:tph-art-museum 0750
 ├── config.toml                        root:tph-art-museum 0640，只在缺少時 seed（現場 IP 已填好）
 ├── layout.json                        root:tph-art-museum 0640，只在缺少時 seed（轉燈、球燈、燈桿座標）
+├── audio/                             root:tph-art-museum 0750；音樂 WAV 檔（不在 release 內，另外複製）
 ├── github-token                       選填；root 0600
 └── preset/                            tph-art-museum 擁有；service 唯一可寫位置
     ├── preset.json
     ├── sequence.json                  UI「儲存串接」時建立
-    └── palette.json                   啟用 [weather] 且在色盤頁儲存時建立
+    ├── palette.json                   啟用 [weather] 且在色盤頁儲存時建立
+    └── audio-calibration.json         「後端」分頁儲存延遲補償時建立
 /etc/systemd/system/tph-art-museum.service
 ```
 
-`config.toml` 首次由 `config.example.toml` 產生：`render.preset`、`render.sequence` 改到 `preset/` 底下，並啟用 `render.layout = "layout.json"`；`layout.json` 由 `layout.example.json` 產生。升級不覆寫這些檔案；新版的範例 layout 若有更新，需手動比對合併。
+`config.toml` 首次由 `config.example.toml` 產生：`render.preset`、`render.sequence`、`audio.calibration` 改到 `preset/` 底下，`audio.directory` 改為 `audio`，並啟用 `render.layout = "layout.json"`；`layout.json` 由 `layout.example.json` 產生。升級不覆寫這些檔案；新版的範例 layout 若有更新，需手動比對合併。
+
+## 音訊
+
+音樂由 Pi 從 **USB 音效卡**播放，燈光的時間跟著音訊實際播放到的位置（PortAudio 回報的 DAC 時間）。
+
+- OS 套件 `libportaudio2`（`bootstrap.sh` 會安裝）；沒有時服務照常輸出燈光，只是音訊停用（log 有 `warning: audio disabled`）。已裝過的 Pi：`sudo apt-get install -y libportaudio2`。
+- 服務帳號經 unit 的 `SupplementaryGroups=audio` 直接使用 ALSA（`/dev/snd`）。
+- `config.toml` 的 `[audio] device` 填 USB 音效卡名稱的一部分（例如 `"USB"`），空字串用系統預設（Pi 5 預設可能是 HDMI）。查名稱：
+
+  ```bash
+  aplay -l                                   # ALSA 卡號與名稱
+  sudo -u tph-art-museum /opt/tph-art-museum/current/.venv/bin/python -c 'import sounddevice as sd; print(sd.query_devices())'
+  ```
+
+- 音檔不在 release 內，另外複製到 `/etc/tph-art-museum/audio/`，檔名須與拍點檔（`backend/tracks/*.json` 的 `file`）一致：
+
+  ```bash
+  scp audio/*.wav pi@<PI_HOST>:/tmp/
+  sudo install -m 0640 -o root -g tph-art-museum /tmp/*.wav /etc/tph-art-museum/audio/
+  ```
+
+- 音量用音效卡的混音器調（`alsamixer -c <卡號>`，`sudo alsactl store` 保存），程式不調音量。
+- 延遲補償在控制頁面「後端」分頁〈音樂播放 · 延遲校準〉調整並儲存（`preset/audio-calibration.json`）。
 
 ## 網路
 

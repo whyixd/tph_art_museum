@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Minimal continuous Art-Net effect output"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "sounddevice==0.5.2",
     "stupidartnet==1.6.0",
 ]
 

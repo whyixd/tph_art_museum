@@ -214,10 +214,13 @@ if [[ ! -e $CONFIG_ROOT/config.toml ]]; then
     -e 's|^sequence = .*|sequence = "preset/sequence.json"|' \
     -e 's|^# palette = "palette.json"|# palette = "preset/palette.json"|' \
     -e 's|^# layout = "layout.json"|layout = "layout.json"|' \
+    -e 's|^directory = "../audio"|directory = "audio"|' \
+    -e 's|^calibration = "audio-calibration.json"|calibration = "preset/audio-calibration.json"|' \
     "$RELEASE_DIR/config.example.toml" >"$workdir/config.toml"
   grep -qx 'preset = "preset/preset.json"' "$workdir/config.toml" || die "could not set render.preset in seeded config"
   grep -qx 'sequence = "preset/sequence.json"' "$workdir/config.toml" || die "could not set render.sequence in seeded config"
   grep -q '^layout = "layout.json"' "$workdir/config.toml" || die "could not enable render.layout in seeded config"
+  grep -qx 'directory = "audio"' "$workdir/config.toml" || die "could not set audio.directory in seeded config"
   install -m 0640 -o root -g "$SERVICE_USER" "$workdir/config.toml" "$CONFIG_ROOT/config.toml"
   new_config=1
   log "Seeded $CONFIG_ROOT/config.toml from config.example.toml"
@@ -228,6 +231,8 @@ if [[ ! -e $CONFIG_ROOT/layout.json ]]; then
   install -m 0640 -o root -g "$SERVICE_USER" "$RELEASE_DIR/layout.example.json" "$CONFIG_ROOT/layout.json"
   log "Seeded $CONFIG_ROOT/layout.json from layout.example.json"
 fi
+# 音檔不在 release 內（另外附上），放這裡：服務只讀。 / Audio files ship separately and go here; read-only to the service.
+install -d -m 0750 -o root -g "$SERVICE_USER" "$CONFIG_ROOT/audio"
 if [[ ! -e $CONFIG_ROOT/preset/preset.json ]]; then
   install -m 0660 -o "$SERVICE_USER" -g "$SERVICE_USER" "$RELEASE_DIR/preset.example.json" "$CONFIG_ROOT/preset/preset.json"
   log "Seeded $CONFIG_ROOT/preset/preset.json from preset.example.json"

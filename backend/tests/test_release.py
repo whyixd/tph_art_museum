@@ -57,7 +57,7 @@ class VersionTests(unittest.TestCase):
         """Run the installer's own sed expressions on config.example.toml, as a first install does."""
         installer = (DEPLOY / "install-release.sh").read_text(encoding="utf-8")
         expressions = re.findall(r"-e '(s\|\^[^']*)'", installer)
-        self.assertEqual(4, len(expressions))
+        self.assertEqual(6, len(expressions))
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "preset").mkdir()
@@ -72,6 +72,10 @@ class VersionTests(unittest.TestCase):
         self.assertEqual({"x": 961.0, "y": 118.0, "z": 565.0}, config["spinner_positions"][0])
         self.assertEqual(15, len(config["poles"]))
         self.assertEqual(24, len(config["targets"]))
+        # 音檔與延遲校準：音檔在設定目錄的 audio/，校準存在服務可寫的 preset/。
+        # Audio files live in audio/ beside the config; the calibration in the service-writable preset/.
+        self.assertEqual(str((root / "audio").resolve()), config["audio"]["directory"])
+        self.assertEqual(str((root / "preset" / "audio-calibration.json").resolve()), config["audio"]["calibration_path"])
 
     def test_installer_accepts_a_local_archive(self):
         installer = (DEPLOY / "install-release.sh").read_text(encoding="utf-8")
@@ -109,6 +113,7 @@ class BuildTests(unittest.TestCase):
             shutil.copyfile(BACKEND / relative, backend / relative)
         shutil.copytree(BACKEND / "moon_observe_backend", backend / "moon_observe_backend",
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        shutil.copytree(BACKEND / "tracks", backend / "tracks")
         (backend / "tests").mkdir()
         (backend / "tests" / "test_x.py").write_text("", encoding="utf-8")
         (backend / "config.toml").write_text("local = true\n", encoding="utf-8")
@@ -136,6 +141,7 @@ class BuildTests(unittest.TestCase):
         self.assertTrue(set(build_release.RUNTIME_FILES) <= files)
         self.assertIn("layout.example.json", files)
         self.assertIn("moon_observe_backend/output.py", files)
+        self.assertIn("tracks/christmas-5.json", files)
         self.assertTrue({"frontend/index.html", "frontend/palette.html", "frontend/assets/app.js"} <= files)
         self.assertFalse({"config.toml", "tests/test_x.py"} & files)
         digest = hashlib.sha256(archive.read_bytes()).hexdigest()

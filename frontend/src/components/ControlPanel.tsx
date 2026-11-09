@@ -23,6 +23,7 @@ import { SavedSequenceView } from './SavedSequenceView'
 import { SequenceEditor } from './SequenceEditor'
 import { UnitColorTestPanel } from './UnitColorTestPanel'
 import { OutputStatsLine } from './OutputStatsLine'
+import { AudioPanel } from './AudioPanel'
 import { FixtureEditor, GROUP_LABELS, type FixtureGroup } from './FixtureEditor'
 import { FixtureTestPanel, type FixtureSelection } from './FixtureTestPanel'
 import { CATEGORY_LABELS, WeatherPanel } from './WeatherPanel'
@@ -635,6 +636,7 @@ export function ControlPanel({
               </div>
               <p className="control-note">後端啟動預設為關閉。Channel {backendState?.motor.channel ?? 469} 位於 LED 通道之後；斷線時是否停機需由接收端保障。</p>
             </div>
+            {backendState && <AudioPanel />}
             {backendState && <UnitColorTestPanel unitCount={backendState.output.unitCount} onChange={onUnitColorTest} />}
             {backendState && (fixtureCounts.ball > 0 || fixtureCounts.wash > 0) && (
               <FixtureTestPanel counts={fixtureCounts} patch={patch} selected={fixtureSelection}

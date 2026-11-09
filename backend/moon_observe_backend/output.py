@@ -14,6 +14,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 from stupidArtnet import StupidArtnet
 
+from .audio import AudioPlayer
 from .config import DEFAULT_HARDWARE, load_config
 from .control import PresetStore, make_server
 from .effects import BLACK, Rgb, completion_frames
@@ -135,6 +136,7 @@ def stream(
     unit_colors_provider: Callable[[], Sequence[Rgb | None] | None] | None = None,
     fixture_preset_provider: Callable[[], Mapping[str, Mapping[str, Any] | None]] | None = None,
     fixture_colors_provider: Callable[[], Mapping[str, Sequence[Rgb | None]]] | None = None,
+    beat_flash_provider: Callable[[], float | None] | None = None,
     stats: OutputStats | None = None,
     clock: Callable[[], float] = time.perf_counter,
     sleep: Callable[[float], None] = time.sleep,
@@ -144,7 +146,8 @@ def stream(
     Spinners: one client per unit universe. DMX (``config["dmx"]``): one client per node universe, a full
     512-channel frame each frame; ball / wash colours come from the sequence step (or the single-effect
     fixture presets), with the same weather, and a fixture colour test overrides them. On exit every DMX
-    universe gets all-zero frames.
+    universe gets all-zero frames. While a beat-flash test plays (``beat_flash_provider`` returns a level),
+    every spinner and fixture shows that white level instead; motors are unaffected.
     """
     if seconds is not None and (not math.isfinite(seconds) or seconds <= 0):
         raise ValueError("seconds must be positive and finite")
@@ -248,6 +251,10 @@ def stream(
             # 測試單色時，被指定的燈台整條填色；底下的播放照常前進。
             # A unit colour test fills the chosen units; playback underneath keeps advancing.
             unit_colors = unit_colors_provider() if unit_colors_provider is not None else None
+            # 閃拍測試（延遲校準）：全部燈隨拍點閃白，蓋過效果與單色測試。
+            # Beat-flash test (latency calibration): every light flashes white on the beat, over effects and tests.
+            flash = beat_flash_provider() if beat_flash_provider is not None else None
+            flash_color: Rgb | None = None if flash is None else (flash, flash, flash)
             # 同一格內畫面相同的燈台共用一次渲染。 / Units showing the same picture share one render per frame.
             shared: dict[Any, list[Rgb]] = {}
             for target, unit_clients in clients:
@@ -260,7 +267,9 @@ def stream(
                     "frameOffset": (unit_id - 1) * weather["frameStep"] if category == "cloudy" else 0,
                 }
                 color_override = weather.get("color") if category is not None else None
-                if test_color is not None:
+                if flash_color is not None:
+                    pixels = [flash_color] * config["pixels"]
+                elif test_color is not None:
                     pixels = [test_color] * config["pixels"]
                 elif sequence_mode:
                     pixels = render_sequence_frame(
@@ -305,7 +314,7 @@ def stream(
                     if test is not None:
                         group_colors = [own if override is None else override
                                         for own, override in zip(group_colors, test, strict=True)]
-                    colors[group] = group_colors
+                    colors[group] = group_colors if flash_color is None else [flash_color] * len(group_colors)
                 for client, data in zip(dmx_clients, build_universes(colors, dmx), strict=True):
                     client.send(data)
                     sent += 1
@@ -387,11 +396,14 @@ def main(argv: list[str] | None = None) -> int:
         unit_color_store = UnitColorStore(config["unit_count"])
         fixture_color_store = FixtureColorStore(counts)
         output_stats = OutputStats(config["fps"])
+        audio_player = AudioPlayer(config["audio"], tracks_dir=Path(__file__).resolve().parents[1] / "tracks")
+        if config["audio"] is not None and not audio_player.available:
+            print(f"warning: audio disabled: {audio_player.error}", file=sys.stderr, flush=True)
         with make_server(store, config, args.api_port, host=args.api_host,
                          sequence_store=sequence_store, frontend_dir=frontend_dir,
                          weather_store=weather_store, playback_monitor=playback_monitor,
                          unit_color_store=unit_color_store, fixture_color_store=fixture_color_store,
-                         output_stats=output_stats) as server:
+                         output_stats=output_stats, audio_player=audio_player) as server:
             if weather_store is not None:
                 weather_store.start()
             try:
@@ -412,12 +424,14 @@ def main(argv: list[str] | None = None) -> int:
                                   unit_colors_provider=unit_color_store.current,
                                   fixture_preset_provider=store.fixture_snapshot,
                                   fixture_colors_provider=fixture_color_store.current,
+                                  beat_flash_provider=audio_player.flash,
                                   stats=output_stats)
                 finally:
                     playback_monitor.stop()
                     server.shutdown()
                     worker.join(timeout=2)
             finally:
+                audio_player.stop()
                 if weather_store is not None:
                     weather_store.stop()
         print(f"Stopped after {sent} send calls; delivery is not confirmed.")

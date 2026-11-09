@@ -161,6 +161,7 @@ def make_server(
     unit_color_store: Any = None,
     fixture_color_store: Any = None,
     output_stats: Any = None,
+    audio_player: Any = None,
 ) -> ThreadingHTTPServer:
     if not 0 <= port <= 65535:
         raise ValueError("api port must be 0..65535")
@@ -222,6 +223,8 @@ def make_server(
             elif self.path == "/api/output":
                 # 輸出迴圈的影格時間（--api-only 時沒有輸出）。 / Output loop frame timing (none with --api-only).
                 self._respond(200, output_stats.snapshot() if output_stats is not None else {"active": False})
+            elif self.path == "/api/audio" and audio_player is not None:
+                self._respond(200, audio_player.state())
             elif self.path.startswith("/api/") or static_dir is None:
                 self._respond(404, {"error": "not found"})
             else:
@@ -242,6 +245,8 @@ def make_server(
                 self._respond(200, unit_color_store.clear())
             elif self.path == "/api/test/fixtures" and fixture_color_store is not None:
                 self._respond(200, fixture_color_store.clear())
+            elif self.path == "/api/audio/play" and audio_player is not None:
+                self._respond(200, audio_player.stop())
             else:
                 self._respond(404, {"error": "not found"})
 
@@ -250,14 +255,15 @@ def make_server(
                 "/api/preset": 32768, "/api/motor": 64, "/api/sequence": 262144,
                 "/api/weather/override": 256, "/api/weather/palette": 16384,
                 "/api/playback/restart": 64, "/api/weather/visit": 64, "/api/test/units": 4096,
-                "/api/test/fixtures": 8192,
+                "/api/test/fixtures": 8192, "/api/audio/play": 512, "/api/audio/calibration": 128,
             }
             if (self.path not in limits
                     or (self.path in ("/api/sequence", "/api/playback/restart") and sequence_store is None)
                     or (self.path in ("/api/weather/override", "/api/weather/visit") and weather_store is None)
                     or (self.path == "/api/weather/palette" and palette_store is None)
                     or (self.path == "/api/test/units" and unit_color_store is None)
-                    or (self.path == "/api/test/fixtures" and fixture_color_store is None)):
+                    or (self.path == "/api/test/fixtures" and fixture_color_store is None)
+                    or (self.path.startswith("/api/audio/") and audio_player is None)):
                 self._respond(404, {"error": "not found"})
                 return
             if self.headers.get_content_type() != "application/json":
@@ -293,6 +299,10 @@ def make_server(
                     result = unit_color_store.apply(raw)
                 elif self.path == "/api/test/fixtures":
                     result = fixture_color_store.apply(raw)
+                elif self.path == "/api/audio/play":
+                    result = audio_player.play(raw)
+                elif self.path == "/api/audio/calibration":
+                    result = audio_player.set_calibration(raw)
                 else:
                     result = store.apply_motor(raw, config)
             except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:

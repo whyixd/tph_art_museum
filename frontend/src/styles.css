@@ -587,6 +587,12 @@ input[type="range"] {
 .color-controls .segmented-control + .segmented-control { margin-top: 0.7rem; }
 
 .unit-color-test { display: grid; gap: 0.6rem; margin-top: 1.2rem; }
+.audio-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid #242c37; }
+.audio-panel select { width: 100%; min-width: 0; }
+.audio-option { display: flex; align-items: flex-start; gap: 0.4rem; color: #d6e0ea; font-size: 0.85rem; }
+.audio-option input { margin-top: 0.2rem; }
+.audio-offset-row { flex-wrap: wrap; align-items: center; }
+.audio-offset-row input[type="number"] { width: 5.5rem; text-align: right; }
 .unit-color-list { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
 .unit-color-list li { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; min-height: 2.2rem; }
 .unit-color-list li .color-input { flex: 1; justify-content: flex-end; }
