@@ -79,6 +79,7 @@ class PresetStore:
             "output": {
                 "ip": config["ip"], "universe": config["universe"],
                 "fps": config["fps"], "rpm": config["rpm"], "pixels": config["pixels"],
+                "pixelRotation": config.get("hardware", {}).get("pixel_rotation", 0),
                 "unitId": config["unit_id"], "unitCount": config["unit_count"],
                 "targets": config.get("targets", [{"unit_id": config["unit_id"], "ip": config["ip"], "universe": config["universe"]}]),
             },

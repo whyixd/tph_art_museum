@@ -5,11 +5,14 @@ import unittest
 
 from moon_observe_backend.config import DEFAULT_HARDWARE, load_config
 from moon_observe_backend.effects import default_preset, validate_preset
-from moon_observe_backend.hardware import build_packets, led_bytes, packet_sizes, universe_count
+from moon_observe_backend.hardware import build_packets, led_bytes, packet_sizes, physical_order, universe_count
 from moon_observe_backend.output import stream
 from moon_observe_backend.renderer import render_frame, rgb_bytes
 
 from test_send import FakeClient
+
+BACKEND = Path(__file__).resolve().parents[1]
+MUSEUM_HARDWARE = {**DEFAULT_HARDWARE, "pixel_rotation": 64}
 
 
 def reference_payload(pixels, motor_value):
@@ -71,6 +74,60 @@ class PacketTests(unittest.TestCase):
             build_packets([(0.0, 0.0, 0.0)] * 10, hardware=DEFAULT_HARDWARE, motor_channel=31, motor_value=1)
 
 
+class MuseumSpinnerTests(unittest.TestCase):
+    """美術館轉燈：3 條並聯、每條 129 顆，由頂部起往下繞垂直圓周一圈；ch469 馬達。
+
+    Museum spinner: 3 strips in parallel, 129 LEDs each, starting at the top and running once around a
+    vertical circle; motor on ch469. ``pixel_rotation = 64`` puts the effect centre at the top.
+    """
+
+    def test_physical_order_rotates_effect_pixels(self):
+        self.assertEqual([2, 3, 4, 0, 1], physical_order([0, 1, 2, 3, 4], 2))
+        self.assertEqual([0, 1, 2], physical_order([0, 1, 2], 0))
+        for rotation in (-1, 3, 1.0):
+            with self.subTest(rotation=rotation), self.assertRaises(ValueError):
+                physical_order([0, 1, 2], rotation)
+
+    def test_golden_payload(self):
+        # Effect pixel v carries bytes (v, 128 - v, 255), so each physical slot shows which effect pixel it got.
+        pixels = [(v / 255, (128 - v) / 255, 1.0) for v in range(129)]
+        for motor in (0, 255):
+            packets = build_packets(pixels, hardware=MUSEUM_HARDWARE, motor_channel=469, motor_value=motor)
+            self.assertEqual([470], [len(packet) for packet in packets])
+            payload = packets[0]
+            self.assertEqual(bytes([64, 64, 255, 65, 63, 255]), payload[:6])        # LED 0 (top) = effect centre 64
+            self.assertEqual(bytes([128, 0, 255, 0, 128, 255]), payload[192:198])   # LEDs 64, 65 (bottom) = effect ends
+            self.assertEqual(bytes([63, 65, 255]), payload[384:387])                # LED 128, next to the top
+            expected = bytes(byte for i in range(129) for byte in ((i + 64) % 129, 128 - (i + 64) % 129, 255))
+            self.assertEqual(expected, payload[:387])
+            self.assertEqual(bytes(81), payload[387:468])                           # ch388-468 unused
+            self.assertEqual(bytes([motor, 0]), payload[468:])                      # ch469 motor, ch470 padding
+
+    def test_effect_centre_is_at_the_top_and_ends_at_the_bottom(self):
+        preset = validate_preset({
+            "schemaVersion": 2, "effectId": "full-on", "parameters": {},
+            "color": {"mode": "gradient", "axis": "radius",
+                      "colors": [{"r": 1, "g": 0, "b": 0}, {"r": 0, "g": 0, "b": 1}]},
+        }, 129)
+        pixels = render_frame(preset, {"unitId": 1, "logicalPixelCount": 129, "frameOffset": 0}, 0, unit_count=24)
+        payload = build_packets(pixels, hardware=MUSEUM_HARDWARE, motor_channel=469, motor_value=0)[0]
+        led = [tuple(payload[3 * i:3 * i + 3]) for i in range(129)]
+        self.assertEqual((255, 0, 0), led[0])                       # top: radius 0
+        self.assertEqual([(0, 0, 255)] * 2, [led[64], led[65]])     # bottom: radius 1 on both sides
+        for i in range(1, 129):                                      # the two sides of the circle mirror each other
+            self.assertEqual(led[i], led[129 - i])
+        reds = [pixel[0] for pixel in led[:65]]
+        self.assertEqual(sorted(reds, reverse=True), reds)          # top -> bottom fades red to blue
+
+    def test_example_config_is_the_museum_spinner(self):
+        config = load_config(BACKEND / "config.example.toml")[0]
+        self.assertEqual(129, config["pixels"])
+        self.assertEqual(24, config["unit_count"])
+        self.assertEqual(64, config["hardware"]["pixel_rotation"])
+        self.assertEqual({"channel": 469}, config["motor"])
+        self.assertEqual([470], config["packet_sizes"])
+
+
 class ConfigTests(unittest.TestCase):
     def load(self, body: str):
         with tempfile.TemporaryDirectory() as directory:
@@ -115,6 +172,8 @@ class ConfigTests(unittest.TestCase):
             '[artnet]\nip = "192.0.2.1"\n[hardware]\ncolor_order = "RGBW"\n': "color_order",
             '[artnet]\nip = "192.0.2.1"\n[hardware]\nbrightness = 2\n': "brightness",
             '[artnet]\nip = "192.0.2.1"\n[hardware]\ngamma = 2\n': "unknown hardware",
+            'pixels = 129\n[artnet]\nip = "192.0.2.1"\n[hardware]\npixel_rotation = 129\n': "pixel_rotation",
+            '[artnet]\nip = "192.0.2.1"\n[hardware]\npixel_rotation = -1\n': "pixel_rotation",
             '[artnet]\nip = "192.0.2.1"\n[motor]\nchannel = 468\n': "motor.channel",
             '[artnet]\nip = "192.0.2.1"\n[motor]\nspeed = 1\n': "unknown motor",
             'pixels = 2000\n[artnet]\nip = "192.0.2.1"\n': "more than 8 universes",

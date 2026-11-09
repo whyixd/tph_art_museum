@@ -33,15 +33,37 @@
 | 7 | 天氣色盤同時作用於三個群組（各群組可個別關閉 `weatherPalette`） | 沿用 reference 行為 |
 | 8 | 前後端雙實作、逐值一致的原則同樣適用於新的 fixture effect engine（同一份 fixture vectors 測試） | 維持 reference 的一致性保證 |
 
-## 2. 轉燈（spinner）—— 待使用者描述實體配置
+## 2. 轉燈（spinner）
 
-reference 是「每組一條半圓 156 顆，兩條手臂共用資料」；本案 `裝置specs.pdf` 的 top view 顯示 **6 條放射狀燈條**（可能是 3 個整圓或 6 條半圓弧）。以下全部 **待確認**：
+reference 是「每組一條半圓 156 顆，兩條手臂共用資料」。
 
-- 每台燈條數、每條 LED 數、兩端位置、各燈條是否共用同一份資料（決定 effect engine 一台要算幾顆）。
-- 控制器型號與每台需要幾個 universe（>170 顆 RGB 就要跨 universe）。reference 是 GL-C-616WL（WLED）、ch469 馬達。
-- 馬達控制方式：開／關（reference）、或速度＋方向（`moon_observe_re`）。
-- 色序、亮度上限、需不需要類似「月亮校正」的位置亮度補償。
-- RPM、旋轉方向。
+**已確認（2026-11-09）**：每台 **3 條燈條、每條 129 顆**，每條沿垂直圓周繞一整圈，所以 top view 看到 6 條半圓（= `裝置specs.pdf` 的 6 條放射狀燈條）。馬達控制沿用 moon_observe：Art-Net **ch469**，0 = 緩停、255 = 緩啟動（`firmware/wled/` usermod → IO13 → SAMD21 D8）。
+
+**3 條並聯、共用同一份資料**；每條**第 0 顆在最上方，往下繞一整圈**回到頂部，圓周上**沒有空缺**（2026-11-09 確認）。假設 129 顆沿整圈等距：第 i 顆與頂點夾角 θᵢ = i × 360°/129，最底部落在第 64、65 顆之間，第 128 顆與第 0 顆相鄰。
+
+repo 現有的 `firmware/wled/unit_settings.json` 正好是 WLED 一路輸出（IO16）、129 顆、GRB（`order 0`）、Art-Net universe 0、Multi RGB、起始位址 1，不用改。對應的 backend 設定：
+
+```toml
+[render]
+pixels = 129        # 1–387 = LED（WLED 自己處理 GRB，backend 照送 RGB）
+
+[motor]
+channel = 469       # 必須明寫：預設會是 129×3+1 = 388；usermod 只認第一個 universe、長度 ≥ 469 的 ch469
+```
+
+→ 一台一個 universe、一包 470 bytes（388–468 補 0），與 reference 的封包長度相同。M2 的程式已支援，不用改。
+
+**幾何（2026-11-09 決定 B：效果中心在頂部）**：現有效果都依索引計算（`normalizedStripPosition = v/128`、`normalizedRadius = |2·strip − 1|`，許多效果依 `2/(N−1)` 的像素步長量化）。為了不動任何效果與 fixtures，M4 改在**輸出時旋轉 LED 順序**：
+
+- `[hardware] pixel_rotation = 64`：實體第 i 顆顯示效果的第 v = (i + 64) mod 129 顆。
+- 效果第 64 顆（`radius` 0，reference 半圓的頂點）→ 實體第 0 顆（頂部）；效果兩端第 0、128 顆（`radius` 1，reference 的兩腳）→ 實體第 65、64 顆（底部兩側）。
+- 效果 v < 64 是圓的一側、v > 64 是另一側，與 reference 兩條手臂的拓撲相同（`world-upper-half` 依 `0.5 − strip` 分邊仍成立）。
+- 預設 0；不寫時封包與 reference 逐 byte 相同。`GET /api/state` 的 `output.pixelRotation` 提供給前端（M7 模擬器）。
+- 之後若要依球面高度編排，可再加 `normalizedHeight = (1 + cos θᵢ)/2`（θᵢ 為實體位置），目前未做。
+
+效能：每台只算 129 顆（比 reference 的 156 少），依 §2 基準約為 156 顆那欄的 83%；Pi 5 + PyPy 可行、CPython 仍不夠。
+
+**仍待確認**：亮度上限、需不需要類似「月亮校正」的位置亮度補償；RPM、旋轉方向（模擬器用）。
 
 先做的通用化（不依賴上述細節）：
 - `render.pixels` 改為可設定（沿用 `moon_observe_re` M2）；effect 參數上限改依 `ledCount`（`moon_observe_re` M4）。
@@ -193,7 +215,7 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 
 | # | 問題 | 影響 |
 |---|---|---|
-| Q1 | 轉燈實體配置（燈條數、LED 數、共用資料與否、控制器、universe 數、馬達協定）——使用者後續描述 | M4、M6 |
+| Q1 | ~~轉燈實體配置~~ 每台 3 條 × 129 顆、各繞垂直圓周一整圈（6 條半圓）；馬達沿用 moon_observe ch469（2026-11-09 確認）。3 條並聯共用資料、第 0 顆在頂部往下繞一圈、無空缺。效果中心在頂部（`pixel_rotation = 64`，見 §2） | M4、M6 |
 | Q2 | ~~球燈通道表~~ RGBW、37 顆、位址已燒錄（1–37）；通道順序 R G B W，沒有 dimmer／strobe（2026-11-09 確認，與目前範例設定相同）。**仍待確認**：「位址 1–37」是燈具編號（實際起始通道 1, 5, 9, …, 145，目前的預設），還是起始通道本身 | 現場接線前 |
 | Q3 | 洗牆燈數量、型號、通道表、安裝位置與照射面（設定格式已支援，確定後只改 config） | M6 |
 | Q4 | Art-Net → DMX node 型號、台數、port 數；球燈 DMX 鏈如何分段（`DMX＿線間距.pdf` 的線長是否就是串接順序 1→37） | M3、`--patch-report` |
@@ -211,7 +233,7 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 | M1 ✅ | 建 repo；複製 moon_observe backend/frontend；`uv sync --locked`、`npm ci` | 原有 backend、frontend 測試全部通過；fixture 重產逐 byte 相同（2026-11-03：來源 `moon_observe@b736485`（v0.1.12+1）以 `git archive` 匯出；backend 86、frontend 117 個測試通過；`tsc` + build 通過；`npx vite-node scripts/generateBackendVectors.ts` 的輸出與原檔逐 byte 相同（注意：不加 `--write` 只會印到 stdout，不會寫檔）） | – |
 | M2 ✅ | 通用化：`pixels`、`unit_count`、多 universe、`hardware.py`；效能基準測試 | 2026-11-03：見下方「M2 實作細節」；backend 96 個測試（新增 `test_hardware.py` 10 個）、frontend 117 個測試通過，`tsc` 通過；fixtures 加入 24 台的整台效果（`unit-chase`、`unit-random`、`roulette-ring`、`sequential-center-fill`、`random-fill`），前後端一致；24 台 × 312 顆實際送到本機 UDP listener 2 秒：48 個 universe、每個 79 包（≈ 40 FPS）、封包 510／428 bytes；效能結果見 §2 | – |
 | M3 ✅ | DMX：fixture profile、patch 解析與驗證、`dmx.py`（RGB → 通道、universe buffer）、`--patch-report` | 2026-11-03：見 §3.2；新增 `test_dmx.py` 7 個測試，backend 共 103 個測試通過；`config.example.toml` 加入球燈範例。**尚未接進輸出迴圈**（M6） | – |
-| M4 | 轉燈幾何與 payload 依實體配置實作 | payload golden test；現場一台實測 | Q1 |
+| M4 🔶 | 轉燈幾何與 payload 依實體配置實作 | payload golden test；現場一台實測。2026-11-09：程式與測試完成（見下方「M4 實作細節」），**待現場一台實測** | Q1 |
 | M5 | Fixture effect engine（TS + Python）、Sequence v2、天氣套用到 DMX 群組 | 前後端 fixture vectors 一致；v1 → v2 升級測試 | M3 |
 | M6 | `output.py` 整合三群組；結束流程；`/api/test/fixtures`、`/api/patch` | 本機 UDP listener 驗證每個 universe 封包、結束時全 0 | M3–M5 |
 | M7 | 前端：全場 3D、群組編輯、對燈模式 | `npm test`、`tsc` 通過；Playwright 截圖 | M5、Q5 |
@@ -229,3 +251,18 @@ sampleFixture(preset, context, elapsedFrame, raining) -> RGB（0–1）
 - `GET /api/state`：`motor.channel` 改讀設定；`output` 新增 `pixels`；`output.targets[]` 多了 `universes`。
 - 程式結束時，若馬達為 255，保留最後畫面、對每台每個 universe 再送一次馬達 0（同 reference）。
 - 前端尚未修改（仍是 1×9 排列、156 顆），留到 M7。
+
+### M4 實作細節
+
+- `hardware.physical_order()` 與 `build_packets` 依 `pixel_rotation` 重排；`config.py` 驗證 0 ≤ rotation < pixels；`/api/state` 新增 `output.pixelRotation`。
+- `config.example.toml` 改為美術館轉燈：`pixels = 129`、`unit_count = 24`、`[hardware] pixel_rotation = 64`、`[motor] channel = 469`（必須明寫，否則預設 388）。WLED 的 `firmware/wled/unit_settings.json`（129 顆、universe 0）不用改；色序 GRB 由 WLED 處理，backend 照送 RGB。
+- `test_hardware.py` 新增 4 個測試（backend 共 107 個通過）：golden payload（470 bytes、LED 0 = 效果第 64 顆、LED 64/65 = 效果兩端、ch388–468 為 0、ch469 馬達）；依 `radius` 紅→藍漸層渲染後，頂部全紅、底部兩顆全藍、圓的兩側左右對稱；範例設定可載入；`pixel_rotation` 越界報錯。
+- 本機實送：範例設定 → 127.0.0.1，2 秒 80 包（40 FPS）、ArtDmx 長度 470，LED 0 = (255,0,0)、LED 32 = (128,0,128)、LED 64/65 = (0,0,255)、ch469 = 0。
+- 效果參數上限（`litCount` 等）在 backend 已依 `pixels`（129）驗證；**前端 ControlPanel 仍以 156 顆計算上限**，可能允許 backend 會拒絕的值，留到 M7 改讀 `output.pixels`。
+
+**現場一台實測步驟**：
+1. 該台 WLED 依 `firmware/wled/` 刷機並套用 `unit_settings.json`（129 顆、universe 0）。
+2. backend 用範例設定（填入該台 IP），`PUT /api/preset` 送方向測試：
+   `{"schemaVersion":2,"effectId":"full-on","parameters":{},"color":{"mode":"gradient","axis":"radius","colors":[{"r":1,"g":0,"b":0},{"r":0,"g":0,"b":1}]}}`
+3. 馬達停止時確認：3 條燈條都由**頂部紅**漸變到**底部藍**、左右兩側對稱、整圈沒有錯位或斷點。若紅色在底部，表示第 0 顆不在頂部（改 `pixel_rotation`）；若兩側不對稱，表示繞行起點有偏移。
+4. `PUT /api/motor {"enabled":true}` 確認馬達緩啟動，`false` 緩停（約 10 秒）；結束 backend 時馬達收到 0。

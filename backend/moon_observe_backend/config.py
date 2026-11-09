@@ -18,7 +18,7 @@ MAX_UNITS = 64
 MAX_UNIVERSES_PER_TARGET = 8
 # [hardware]、[motor] 整段或個別欄位都可省略；預設值與參考系統逐 byte 相同。
 # Both sections and each of their fields are optional; the defaults reproduce the reference payload.
-DEFAULT_HARDWARE = {"color_order": "RGB", "brightness": 1.0, "channels_per_universe": 510}
+DEFAULT_HARDWARE = {"color_order": "RGB", "brightness": 1.0, "channels_per_universe": 510, "pixel_rotation": 0}
 
 
 def _ipv4(value: Any, name: str) -> str:
@@ -45,7 +45,7 @@ def _coordinate(value: Any, name: str, minimum: float, maximum: float) -> float:
     return float(value)
 
 
-def _hardware(raw: Any) -> dict[str, Any]:
+def _hardware(raw: Any, pixels: int) -> dict[str, Any]:
     if not isinstance(raw, dict) or set(raw) - set(DEFAULT_HARDWARE):
         raise ValueError("unknown hardware config field")
     color_order = raw.get("color_order", DEFAULT_HARDWARE["color_order"])
@@ -60,6 +60,9 @@ def _hardware(raw: Any) -> dict[str, Any]:
         "color_order": color_order,
         "brightness": _coordinate(raw.get("brightness", DEFAULT_HARDWARE["brightness"]), "hardware.brightness", 0, 1),
         "channels_per_universe": channels,
+        # 實體第 i 顆顯示效果的第 (i + rotation) mod pixels 顆。 / Physical LED i shows effect pixel (i + rotation) % pixels.
+        "pixel_rotation": _integer(raw.get("pixel_rotation", DEFAULT_HARDWARE["pixel_rotation"]),
+                                   "hardware.pixel_rotation", 0, pixels - 1),
     }
 
 
@@ -211,7 +214,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
     pixels = _integer(render.get("pixels", 156), "render.pixels", 1, MAX_PIXELS)
     unit_count = _integer(render.get("unit_count", 9), "render.unit_count", 1, MAX_UNITS)
     unit_id = _integer(render.get("unit_id", 1), "render.unit_id", 1, unit_count)
-    hardware = _hardware(raw.get("hardware", {}))
+    hardware = _hardware(raw.get("hardware", {}), pixels)
     if pixels * CHANNELS_PER_PIXEL >= MAX_UNIVERSES_PER_TARGET * hardware["channels_per_universe"]:
         raise ValueError(f"render.pixels needs more than {MAX_UNIVERSES_PER_TARGET} universes per unit")
     motor = _motor(raw.get("motor", {}), pixels, hardware["channels_per_universe"])

@@ -6,10 +6,17 @@ split into consecutive universes of ``channels_per_universe`` channels (WLED's m
 convention: 510 = 170 RGB pixels per universe). Each universe's packet is padded to an even length
 as ArtDmx requires.
 
-With the defaults (156 pixels, RGB, brightness 1, motor channel 469, 510 channels per universe)
-this is byte-for-byte the Moon Observe reference payload: one 470-byte packet.
+``pixel_rotation`` maps effect pixels onto the physical strip: physical LED ``i`` shows effect pixel
+``(i + pixel_rotation) % pixels``. The museum spinner strips start at the top and run once around a
+vertical circle (129 LEDs); a rotation of 64 puts the effect's middle pixel (the reference arc's
+apex) at the top and both effect ends (the reference arc's legs) at the bottom.
+
+With the defaults (156 pixels, RGB, brightness 1, rotation 0, motor channel 469, 510 channels per
+universe) this is byte-for-byte the Moon Observe reference payload: one 470-byte packet.
 
 轉燈硬體對應：每台一條邏輯通道串（LED 在前、馬達通道在後），依每個 universe 的通道數切成連續的 universe。
+``pixel_rotation``：實體第 i 顆顯示效果的第 (i + rotation) mod N 顆；美術館轉燈（頂部起繞一圈 129 顆）設 64，
+效果的中心在頂部、兩端在底部。
 """
 
 from __future__ import annotations
@@ -48,6 +55,13 @@ def packet_sizes(pixels: int, motor_channel: int, channels_per_universe: int) ->
     return sizes
 
 
+def physical_order(pixels: Sequence[Rgb], rotation: int = 0) -> list[Rgb]:
+    """Reorder effect pixels into wiring order: physical LED i shows effect pixel (i + rotation) % N."""
+    if type(rotation) is not int or not 0 <= rotation < max(1, len(pixels)):
+        raise ValueError("pixel rotation must be an integer in [0, pixels)")
+    return list(pixels[rotation:]) + list(pixels[:rotation])
+
+
 def _channel_byte(value: float, brightness: float) -> int:
     # 與參考系統相同的捨入：floor(x + 0.5)，不是 Python 的銀行家捨入。
     # Same rounding as the reference: floor(x + 0.5), not banker's rounding.
@@ -79,6 +93,9 @@ def build_packets(
     """
     if motor_value not in MOTOR_VALUES:
         raise ValueError("motor value must be 0 or 255")
+    rotation = hardware.get("pixel_rotation", 0)
+    if rotation:
+        pixels = physical_order(pixels, rotation)
     leds = led_bytes(pixels, hardware["color_order"], hardware["brightness"])
     if len(leds) >= motor_channel:
         raise ValueError("pixel channels overlap the motor channel")

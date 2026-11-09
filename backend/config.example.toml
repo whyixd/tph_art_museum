@@ -8,9 +8,9 @@ preset = "preset.example.json"
 sequence = "sequence.json"
 fps = 60
 rpm = 340
-pixels = 156
+pixels = 129               # 每台 3 條燈條並聯（共用資料），每條 129 顆繞垂直圓周一圈
 unit_id = 1
-unit_count = 9
+unit_count = 24
 
 # To output all units from one backend (up to 64; this installation has 24),
 # replace ip/universe above with one [[artnet.targets]] entry per unit:
@@ -19,15 +19,18 @@ unit_count = 9
 # ip = "192.0.2.51"
 # universe = 0   # first universe; a unit needing N universes uses universe..universe+N-1
 
-# 轉燈硬體（整段與各欄位皆可省略；省略時與參考系統的 470 bytes 相同）。
-# Spinner hardware; omit to keep the reference payload (156 px RGB + ch469 motor = 470 bytes).
-# [hardware]
-# color_order = "RGB"            # RGB / RBG / GRB / GBR / BRG / BGR
+# 轉燈硬體（整段與各欄位皆可省略；省略時與參考系統的 156 顆、470 bytes 相同）。
+# Spinner hardware; every field is optional (omitting both sections keeps the reference payload).
+[hardware]
+# color_order = "RGB"            # RGB / RBG / GRB / GBR / BRG / BGR (WLED already reorders to the strip's GRB)
 # brightness = 1.0               # 0..1, applied before quantization
 # channels_per_universe = 510    # multiple of 3, <= 510 (WLED: 170 RGB pixels per universe)
-#
-# [motor]
-# channel = 469                  # default: right after the pixels (pixels * 3 + 1); 0 = soft stop, 255 = soft start
+pixel_rotation = 64              # 實體第 i 顆顯示效果的第 (i+64) mod 129 顆：燈條由頂部起繞一圈，效果中心在頂部、兩端在底部
+                                 # physical LED i shows effect pixel (i + 64) % 129: effect centre at the top, ends at the bottom
+
+[motor]
+channel = 469                    # must be explicit (default would be pixels * 3 + 1 = 388); the WLED usermod reads ch469
+                                 # of the first universe; 0 = soft stop, 255 = soft start
 
 # DMX 燈具（球燈、洗牆燈）經 Art-Net -> DMX 轉換器；整段選填。`run.py --patch-report` 印出位址表。
 # DMX fixtures through Art-Net -> DMX nodes; optional. `run.py --patch-report` prints the address table.
