@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { applyBackendPreset, getBackendPlayback, getBackendSequence, getBackendState, getWeatherState, restartBackendPlayback, saveBackendSequence, setBackendMotor, type BackendPlayback, type BackendState, type WeatherState } from './backendApi'
-import { ControlPanel } from './components/ControlPanel'
+import { applyBackendPreset, getBackendPatch, getBackendPlayback, getBackendSequence, getBackendState, getWeatherState, restartBackendPlayback, saveBackendSequence, setBackendMotor, type BackendPatch, type BackendPlayback, type BackendState, type WeatherState } from './backendApi'
+import { ControlPanel, type EditGroup } from './components/ControlPanel'
+import type { FixtureGroup } from './components/FixtureEditor'
+import type { FixturePreset } from './fixtures'
+import { EXAMPLE_LAYOUT, siteLayout, type LayoutDocument, type LayoutPosition } from './site/layout'
+import { DEFAULT_PIXEL_ROTATION } from './site/spinnerGeometry'
 import {
   createDefaultEffectPreset,
   EFFECT_MANIFEST,
@@ -13,13 +17,27 @@ import {
 import {
   DEFAULT_SETTINGS,
   degreesPerControllerFrame,
-  type SceneMode,
   type SimulationSettings,
 } from './simulation/model'
 import { liveBackendFrame } from './playbackProgress'
 import { compileSequence, createSequenceStep, defaultPlaybackRule, resolveSequenceFrame, sequenceSeekFrame, type SequenceSeek, type PlaybackRule, type SequenceDocument, type SequenceEnding, type SequenceStep, type TransitionKind } from './simulation/sequence'
 import { SimulationCanvas } from './simulation/scene/SimulationCanvas'
-import type { Diagnostics } from './simulation/scene/LightTrail'
+import type { Diagnostics, FixturePresets, FixtureSelection, GroupVisibility, SceneView } from './simulation/scene/SiteScene'
+
+const VIEW_LABELS: [SceneView, string][] = [['single', '單台'], ['site', '全場'], ['top', '上視']]
+const NO_FIXTURES: FixturePresets = { ball: null, wash: null }
+
+/** Layout from the backend patch when it carries positions, else the example layout shipped with the frontend. */
+function layoutDocument(patch: BackendPatch | null): LayoutDocument {
+  if (!patch) return EXAMPLE_LAYOUT
+  const entries = (items: { id: number; position: LayoutPosition | null | undefined }[]) =>
+    Object.fromEntries(items.filter((item) => item.position).map((item) => [String(item.id), item.position!]))
+  const spinners = entries((patch.spinnerPositions ?? []).map((position, index) => ({ id: index + 1, position })))
+  const ball = entries(patch.fixtures.ball)
+  const wash = entries(patch.fixtures.wash)
+  if (Object.keys(spinners).length + Object.keys(ball).length + Object.keys(wash).length === 0) return EXAMPLE_LAYOUT
+  return { schemaVersion: 1, spinners, fixtures: { ball, wash }, poles: patch.poles ?? [] }
+}
 
 const INITIAL_DIAGNOSTICS: Diagnostics = {
   angleDegrees: 0,
@@ -56,9 +74,16 @@ export function App() {
   const [diagnostics, setDiagnostics] = useState(INITIAL_DIAGNOSTICS)
   const [paused, setPaused] = useState(false)
   const [resetToken, setResetToken] = useState(0)
-  const [sceneMode, setSceneMode] = useState<SceneMode>('nine')
+  const [view, setView] = useState<SceneView>('site')
   const [selectedUnit, setSelectedUnit] = useState(0)
   const [showStructure, setShowStructure] = useState(true)
+  const [visible, setVisible] = useState<GroupVisibility>({ spinner: true, ball: true, wash: true })
+  const [selectedFixture, setSelectedFixture] = useState<FixtureSelection>(null)
+  const [editGroup, setEditGroup] = useState<EditGroup>('spinner')
+  // 單一效果模式的球燈／洗牆燈 preset；null = 全暗。 / Single-effect ball / wash presets; null = dark.
+  const [fixturePresets, setFixturePresets] = useState<FixturePresets>(NO_FIXTURES)
+  // 後端的輸出設定與 patch（座標、燈具數）；沒有後端時用範例。 / Backend output and patch; the example without a backend.
+  const [siteInfo, setSiteInfo] = useState<{ state: BackendState | null; patch: BackendPatch | null }>({ state: null, patch: null })
   const [controlMode, setControlMode] = useState<'simulation' | 'backend'>('simulation')
   const [backendState, setBackendState] = useState<BackendState | null>(null)
   const [backendBusy, setBackendBusy] = useState(false)
@@ -71,6 +96,19 @@ export function App() {
   const [playbackError, setPlaybackError] = useState<string | null>(null)
   const [playbackPoll, setPlaybackPoll] = useState(0)
   const backendRequest = useRef(0)
+  const exampleCounts = {
+    ball: Object.keys(EXAMPLE_LAYOUT.fixtures?.ball ?? {}).length,
+    wash: Object.keys(EXAMPLE_LAYOUT.fixtures?.wash ?? {}).length,
+  }
+  const fixtureCounts: Record<FixtureGroup, number> = siteInfo.state?.fixtures
+    ? { ball: siteInfo.state.fixtures.ball.count, wash: siteInfo.state.fixtures.wash.count }
+    : exampleCounts
+  const unitCount = siteInfo.state?.output.unitCount ?? Object.keys(EXAMPLE_LAYOUT.spinners ?? {}).length
+  const layout = useMemo(
+    () => siteLayout(layoutDocument(siteInfo.patch), unitCount, fixtureCounts),
+    [siteInfo.patch, unitCount, fixtureCounts.ball, fixtureCounts.wash],
+  )
+  const pixelRotation = siteInfo.state?.output.pixelRotation ?? DEFAULT_PIXEL_ROTATION
   const sequenceDocument: SequenceDocument = { schemaVersion: 1, ending: sequenceEnding, steps: sequenceSteps }
   const sequenceDirty = savedSequence === null || JSON.stringify(sequenceDocument) !== savedSequence
   const markSequenceEdited = () => {
@@ -88,9 +126,12 @@ export function App() {
   const playingStepId = sequenceEnabled && !sequenceDirty ? backendPlayingStepId : null
   const selectedStep = sequenceSteps.find((step) => step.id === selectedStepId) ?? sequenceSteps[0]
   const effectPreset = inSequence ? selectedStep.preset : effectPresets[effectId]
+  const editedFixtures: FixturePresets = inSequence
+    ? { ball: selectedStep.fixtures?.ball ?? null, wash: selectedStep.fixtures?.wash ?? null }
+    : fixturePresets
   const sequenceSchedule = useMemo(
-    () => compileSequence(sequenceSteps, settings.controllerFps, sceneMode === 'nine' ? 9 : 1, sequenceEnding),
-    [sequenceSteps, settings.controllerFps, sceneMode, sequenceEnding],
+    () => compileSequence(sequenceSteps, settings.controllerFps, unitCount, sequenceEnding, fixtureCounts),
+    [sequenceSteps, settings.controllerFps, unitCount, sequenceEnding, fixtureCounts.ball, fixtureCounts.wash],
   )
   const currentSequenceFrame = resolveSequenceFrame(sequenceSchedule, diagnostics.globalFrame)!
 
@@ -100,14 +141,17 @@ export function App() {
   const liveMode = playback.state?.active ? playback.state.mode : sequencePlaybackMode
   const backendSchedule = useMemo(
     () => savedDocument === null ? null : compileSequence(
-      savedDocument.steps, settings.controllerFps, backendState?.output.unitCount ?? 9, savedDocument.ending ?? { kind: 'hold' },
+      savedDocument.steps, settings.controllerFps, unitCount, savedDocument.ending ?? { kind: 'hold' }, fixtureCounts,
     ),
-    [savedDocument, settings.controllerFps, backendState?.output.unitCount],
+    [savedDocument, settings.controllerFps, unitCount, fixtureCounts.ball, fixtureCounts.wash],
   )
   const viewSequence = inBackend
     ? liveMode === 'sequence' ? backendSchedule : null
     : inSequence ? sequenceSchedule : null
   const viewPreset = inBackend && backendState ? backendState.preset : effectPreset
+  const backendFixtures: FixturePresets | null = backendState?.fixtures
+    ? { ball: backendState.fixtures.ball.preset, wash: backendState.fixtures.wash.preset } : null
+  const viewFixtures = inBackend ? backendFixtures ?? NO_FIXTURES : fixturePresets
   const playbackRef = useRef(playback)
   playbackRef.current = playback
   const backendFrame = useCallback(() => (
@@ -115,6 +159,7 @@ export function App() {
   ), [])
   const following = inBackend && liveBackendFrame(playback.state, 0) !== null
   const unitTestColors = inBackend && playback.state?.active ? playback.state.unitColors ?? null : null
+  const fixtureTestColors = inBackend && playback.state?.active ? playback.state.fixtureColors ?? null : null
   const displayedPreset = viewSequence
     ? resolveSequenceFrame(viewSequence, diagnostics.globalFrame)!.layers.at(-1)!.preset
     : viewPreset
@@ -141,6 +186,19 @@ export function App() {
     seekTarget.current = seek
     setSequenceRevision((current) => current + 1)
     setDiagnostics(INITIAL_DIAGNOSTICS)
+  }, [])
+
+  // 場景配置：後端的 LED 數、旋轉、燈具數與座標（沒有後端時用範例）。
+  // Site setup: the backend's LED count, rotation, fixture counts and positions (the example without a backend).
+  useEffect(() => {
+    let active = true
+    void Promise.all([getBackendState(), getBackendPatch().catch(() => null)]).then(([state, patch]) => {
+      if (!active) return
+      setSiteInfo({ state, patch })
+      if (state.output.pixels) setSettings((current) => ({ ...current, ledCount: state.output.pixels! }))
+      if (state.fixtures) setFixturePresets({ ball: state.fixtures.ball.preset, wash: state.fixtures.wash.preset })
+    }).catch(() => {})
+    return () => { active = false }
   }, [])
 
   useEffect(() => {
@@ -204,9 +262,6 @@ export function App() {
       const loadedEnding = data.sequence.ending ?? { kind: 'hold' }
       setSavedSequence(JSON.stringify({ ...data.sequence, ending: loadedEnding }))
       setSettings((current) => ({ ...current, controllerFps: data.output.fps, rpm: data.output.rpm }))
-      if (data.output.unitCount === 1 || data.output.unitCount === 9) {
-        setSceneMode(data.output.unitCount === 1 ? 'single' : 'nine')
-      }
       if (!sequenceEdited.current || (savedSequence !== null && JSON.stringify(sequenceDocument) === savedSequence)) {
         setSequenceEnabled(true)
         setSequenceEnding(loadedEnding)
@@ -266,6 +321,7 @@ export function App() {
       setBackendState(state)
       setEffectPresets((current) => ({ ...current, [state.preset.effectId]: state.preset }))
       setEffectId(state.preset.effectId)
+      if (state.fixtures) setFixturePresets({ ball: state.fixtures.ball.preset, wash: state.fixtures.wash.preset })
       setSettings((current) => ({ ...current, controllerFps: state.output.fps, rpm: state.output.rpm }))
     }).catch((error: unknown) => {
       if (request === backendRequest.current) {
@@ -277,13 +333,14 @@ export function App() {
     return () => { backendRequest.current += 1 }
   }, [controlMode, backendRefresh])
 
-  const applyToBackend = useCallback(async (preset: EffectPreset) => {
+  const applyToBackend = useCallback(async (preset: EffectPreset, fixtures: FixturePresets) => {
     if (controlMode !== 'backend' || backendBusy || backendState === null) return
     const request = backendRequest.current
     setBackendBusy(true)
     setBackendError(null)
     try {
-      const state = await applyBackendPreset(preset)
+      // 舊版後端只收轉燈 preset。 / Older backends take the spinner preset only.
+      const state = await applyBackendPreset(backendState.fixtures ? { spinner: preset, ...fixtures } : preset)
       if (request === backendRequest.current) {
         setBackendState(state)
         setSequencePlaybackMode('single')
@@ -401,6 +458,19 @@ export function App() {
     }
   }, [effectId, inSequence, updateSelectedStep])
 
+  const updateFixturePreset = useCallback((group: FixtureGroup, preset: FixturePreset | null) => {
+    if (inSequence) {
+      updateSelectedStep((step) => {
+        const { [group]: _omit, ...others } = step.fixtures ?? {}
+        const fixtures = preset ? { ...others, [group]: preset } : others
+        const { fixtures: _old, ...base } = step
+        return Object.keys(fixtures).length ? { ...base, fixtures } : base
+      })
+    } else {
+      setFixturePresets((current) => ({ ...current, [group]: preset }))
+    }
+  }, [inSequence, updateSelectedStep])
+
   const addStep = () => {
     markSequenceEdited()
     const id = nextStepId.current++
@@ -465,17 +535,15 @@ export function App() {
     updateSelectedStep((step) => ({ ...step, transition: { kind, seconds } }), { kind: 'transition', id: selectedStepId })
   }
 
-  const changeSceneMode = (mode: SceneMode) => {
-    setSceneMode(mode)
-    setSelectedUnit(0)
-    setDiagnostics(INITIAL_DIAGNOSTICS)
-    if (sequenceEnabled) resetSequencePreview()
-  }
+  const backendDirty = backendState !== null && (
+    JSON.stringify(effectPreset) !== JSON.stringify(backendState.preset)
+    || (backendFixtures !== null && JSON.stringify(fixturePresets) !== JSON.stringify(backendFixtures))
+  )
 
   return (
     <main className="app-shell simulator-shell">
       <header className="app-header">
-        <h1>Moon Observe Simulator</h1>
+        <h1>美術館燈光模擬器</h1>
         <div className="segmented-control mode-switch" aria-label="控制模式">
           <button type="button" className={controlMode === 'simulation' ? 'active' : 'secondary'}
             aria-pressed={controlMode === 'simulation'} onClick={() => setControlMode('simulation')}>模擬</button>
@@ -497,22 +565,25 @@ export function App() {
                 setDiagnostics(INITIAL_DIAGNOSTICS)
               }}>重設時間</button>
             </div>
-            <div className="segmented-control" aria-label="Scene layout">
-              <button type="button" className={sceneMode === 'single' ? 'active' : 'secondary'}
-                aria-pressed={sceneMode === 'single'} onClick={() => changeSceneMode('single')}>單組</button>
-              <button type="button" className={sceneMode === 'nine' ? 'active' : 'secondary'}
-                aria-pressed={sceneMode === 'nine'} onClick={() => changeSceneMode('nine')}>1×9</button>
+            <div className="segmented-control view-switch" aria-label="視角">
+              {VIEW_LABELS.map(([value, label]) => (
+                <button key={value} type="button" className={view === value ? 'active' : 'secondary'}
+                  aria-pressed={view === value} onClick={() => setView(value)}>{label}</button>
+              ))}
             </div>
-            {sceneMode === 'nine' && (
-              <div className="unit-picker" aria-label="Selected unit">
-                {Array.from({ length: 9 }, (_, index) => (
-                  <button type="button" key={index}
-                    className={selectedUnit === index ? 'active' : 'secondary'}
-                    aria-pressed={selectedUnit === index}
-                    onClick={() => setSelectedUnit(index)}>{index + 1}</button>
-                ))}
-              </div>
-            )}
+            <label className="unit-select">
+              <span>轉燈</span>
+              <select aria-label="選取的轉燈" value={selectedUnit} onChange={(event) => setSelectedUnit(Number(event.target.value))}>
+                {Array.from({ length: unitCount }, (_, index) => <option key={index} value={index}>{index + 1}</option>)}
+              </select>
+            </label>
+            {(['spinner', 'ball', 'wash'] as const).map((group) => (
+              <label className="scene-toggle" key={group}>
+                <input type="checkbox" checked={visible[group]}
+                  onChange={(event) => setVisible((current) => ({ ...current, [group]: event.target.checked }))} />
+                <span>{{ spinner: '轉燈', ball: '球燈', wash: '洗牆燈' }[group]}</span>
+              </label>
+            ))}
             <label className="scene-toggle">
               <input type="checkbox" checked={showStructure}
                 onChange={(event) => setShowStructure(event.target.checked)} />
@@ -524,18 +595,25 @@ export function App() {
               settings={settings}
               weather={weather}
               effectPreset={viewPreset}
+              fixturePresets={viewSequence ? NO_FIXTURES : viewFixtures}
               sequence={viewSequence}
               sequenceRevision={sequenceRevision}
               syncFrame={inBackend ? backendFrame : null}
               startFrame={inSequence ? sequenceSeekFrame(sequenceSchedule, seekTarget.current, settings.controllerFps) : 0}
               paused={paused}
               resetToken={resetToken}
-              sceneMode={sceneMode}
+              view={view}
+              layout={layout}
+              pixelRotation={pixelRotation}
+              visible={visible}
               selectedUnit={selectedUnit}
+              selectedFixture={selectedFixture}
               showStructure={showStructure}
               onSelectUnit={setSelectedUnit}
+              onSelectFixture={setSelectedFixture}
               onDiagnostics={setDiagnostics}
               unitColors={unitTestColors}
+              fixtureColors={fixtureTestColors}
             />
             <p className="viewport-caption">
               <strong>{activeEffect.label}</strong>
@@ -545,7 +623,10 @@ export function App() {
                   ? `後端輸出 · ${liveMode === 'sequence' ? '串接' : '單一效果'}`
                   : '後端未播放 · 本地模擬'}</span>
               )}
-              {unitTestColors && <span className="viewport-test">單色測試中</span>}
+              {(unitTestColors || fixtureTestColors) && <span className="viewport-test">單色測試中</span>}
+              {selectedFixture && (
+                <span>選取：{selectedFixture.group === 'ball' ? '球燈' : '洗牆燈'} {selectedFixture.id}</span>
+              )}
             </p>
             <div className="diagnostics" aria-live="polite">
               <div><span>Rotor</span><strong>{diagnostics.angleDegrees.toFixed(1)}°</strong></div>
@@ -563,12 +644,20 @@ export function App() {
           weather={weather}
           onWeather={setWeather}
           effectPreset={effectPreset}
-          sceneMode={sceneMode}
+          unitCount={unitCount}
+          editGroup={editGroup}
+          onEditGroup={setEditGroup}
+          fixturePresets={editedFixtures}
+          onFixturePreset={updateFixturePreset}
+          fixtureCounts={fixtureCounts}
+          fixtureSelection={selectedFixture}
+          onFixtureSelection={setSelectedFixture}
+          patch={siteInfo.patch}
           controlMode={controlMode}
           backendState={backendState}
           backendBusy={backendBusy}
           backendError={backendError}
-          backendDirty={backendState !== null && JSON.stringify(effectPreset) !== JSON.stringify(backendState.preset)}
+          backendDirty={backendDirty}
           playback={playback.unsupported ? null : playback.state}
           playbackSupported={!playback.unsupported}
           playbackReceivedAt={playback.receivedAt}
@@ -602,7 +691,7 @@ export function App() {
           onSequenceEnding={updateEnding}
           onSequenceTransition={updateTransition}
           onRefreshBackend={() => setBackendRefresh((current) => current + 1)}
-          onApplyBackend={() => { void applyToBackend(effectPreset) }}
+          onApplyBackend={() => { void applyToBackend(effectPreset, fixturePresets) }}
           onMotor={(enabled) => { void setMotor(enabled) }}
           onRestartBackend={(source) => { void restartBackend(source) }}
           onUnitColorTest={() => setPlaybackPoll((current) => current + 1)}

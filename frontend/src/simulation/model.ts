@@ -1,4 +1,5 @@
-import { LEDS_PER_ARC, type Point3 } from '../preview3d/geometry'
+import type { Point3 } from '../preview3d/geometry'
+import { DEFAULT_LED_COUNT } from '../site/spinnerGeometry'
 
 export const TAU = Math.PI * 2
 
@@ -13,23 +14,6 @@ export type SimulationSettings = {
   unitFrameOffsetStep: number
 }
 
-export type SceneMode = 'single' | 'nine'
-
-export const NINE_UNIT_SPACING = 2.912
-// Unit 5 sits this high above Units 1/9; the row follows a circular arc.
-export const NINE_UNIT_ARCH_HEIGHT = 4.8
-
-export type UnitLayout = {
-  index: number
-  x: number
-  y: number
-  scale: number
-  phaseOffsetRadians: number
-  tiltXRadians: number
-  yawRadians: number
-  frameOffset: number
-}
-
 export type TemporalSample = {
   timeSeconds: number
   weight: number
@@ -40,48 +24,12 @@ export const DEFAULT_SETTINGS: SimulationSettings = {
   controllerFps: 40,
   exposureMs: 25,
   persistenceMs: 45,
-  temporalSamples: 64,
-  ledCount: LEDS_PER_ARC,
+  temporalSamples: 32,
+  // 每條燈條的顆數；連上後端時改用 /api/state 的 output.pixels。 / LEDs per strip; replaced by the backend's output.pixels.
+  ledCount: DEFAULT_LED_COUNT,
   unitPhaseStepDegrees: 40,
-  unitFrameOffsetStep: 2,
-}
-
-export function buildUnitLayouts(
-  sceneMode: SceneMode,
-  phaseStepDegrees: number,
-  frameOffsetStep: number,
-): UnitLayout[] {
-  if (sceneMode === 'single') {
-    return [{
-      index: 0,
-      x: 0,
-      y: 0,
-      scale: 1,
-      phaseOffsetRadians: 0,
-      tiltXRadians: Math.PI / 2,
-      yawRadians: 0,
-      frameOffset: 0,
-    }]
-  }
-
-  const unitScale = 0.18
-  const halfWidth = 4 * NINE_UNIT_SPACING
-  const archRadius = (halfWidth ** 2 + NINE_UNIT_ARCH_HEIGHT ** 2) / (2 * NINE_UNIT_ARCH_HEIGHT)
-
-  return Array.from({ length: 9 }, (_, index) => ({
-    index,
-    x: (index - 4) * NINE_UNIT_SPACING,
-    y: nineUnitArchY((index - 4) * NINE_UNIT_SPACING, archRadius),
-    scale: unitScale,
-    phaseOffsetRadians: (index * phaseStepDegrees * Math.PI) / 180,
-    tiltXRadians: Math.PI / 2,
-    yawRadians: (4 - index) * Math.PI / 4,
-    frameOffset: index * frameOffsetStep,
-  }))
-}
-
-function nineUnitArchY(x: number, archRadius: number): number {
-  return Math.sqrt(archRadius ** 2 - x ** 2) - (archRadius - NINE_UNIT_ARCH_HEIGHT)
+  // 與後端相同：沒有天氣時各台不錯開。 / As the backend: no per-unit offset without weather.
+  unitFrameOffsetStep: 0,
 }
 
 export function rotationsPerSecond(rpm: number): number {
@@ -141,15 +89,6 @@ export function unitRelativeHeightAtPhase(
 ): number {
   const rotatedZ = -phaseSine * position[0] + phaseCosine * position[2]
   return scale * (tiltCosine * position[1] - tiltSine * rotatedZ)
-}
-
-export function stripCoordinate(
-  ledIndex: number,
-  ledCount: number,
-  halfLength: number,
-): number {
-  if (ledCount <= 1) return 0
-  return -halfLength + (ledIndex / (ledCount - 1)) * halfLength * 2
 }
 
 export function buildTemporalSamples(

@@ -240,7 +240,7 @@ M5 已實作（`sequence.py`）：
 | M4 🔶 | 轉燈幾何與 payload 依實體配置實作 | payload golden test；現場一台實測。2026-11-09：程式與測試完成（見下方「M4 實作細節」），**待現場一台實測** | Q1 |
 | M5 ✅ | Fixture effect engine（TS + Python）、Sequence v2、天氣套用到 DMX 群組 | 前後端 fixture vectors 一致；v1 → v2 升級測試。2026-11-09：見 §3.3、§3.4；backend 127 個測試（新增 `test_fixture_effects.py` 9、`test_sequence_v2.py` 8、`test_dmx.py` layout 3）、frontend 122 個測試（新增 `fixtures.test.ts` 4、`backendApi.test.ts` 1）通過，`tsc`、build 通過；轉燈 `effects_v2.json` 重產逐 byte 相同。**尚未接進輸出迴圈與 API**（M6） | M3 |
 | M6 ✅ | `output.py` 整合三群組；結束流程；`/api/test/fixtures`、`/api/patch` | 本機 UDP listener 驗證每個 universe 封包、結束時全 0。2026-11-09：見下方「M6 實作細節」 | M3–M5 |
-| M7 | 前端：全場 3D、群組編輯、對燈模式 | `npm test`、`tsc` 通過；Playwright 截圖 | M5、Q5 |
+| M7 ✅ | 前端：全場 3D、群組編輯、對燈模式 | `npm test`、`tsc` 通過；Playwright 截圖。2026-11-10：見下方「M7 實作細節」 | M5、Q5 |
 | M8 | 部署（Pi systemd 或 Windows WinSW）與現場 checklist | 安裝 → 升級 → 回退 → 停止時燈全暗、馬達停 | Q6、Q7 |
 | M9 | 更新 `doc/system-reference.md` 為本系統版本 | 文件與程式一致 | 全部 |
 
@@ -282,4 +282,17 @@ M5 已實作（`sequence.py`）：
 - 測試：`test_output_dmx.py` 7 個 + `test_sequence_v2.py` 1 個，backend 共 135 個通過。
 - 本機實送（真的 stupidArtnet → 127.0.0.1）：轉燈 universe 77 共 80 包 × 470 bytes；球燈 universe 78、洗牆燈 79 各 82 包 × 512 bytes（80 影格 + 結束 2 包）；`height-sweep` 第 40 影格亮的是高度 264–500 cm 的球燈；洗牆燈 dimmer 255 + 綠；最後 2 包全 0。
 - 前端尚未使用這些 API（M7）。
+
+### M7 實作細節
+
+- **3D**（`SiteScene.tsx` 取代 `LightTrail`／半圓燈）：視角〔單台｜全場｜上視〕取代〔單組｜1×9〕；轉燈為 3 條整圈燈條（相隔 60°、頂部起繞、`pixelRotation` 對應效果像素），含旋轉殘影；球燈為發光球（暗時仍顯示外殼）、洗牆燈為錐體；地板只鋪在房間內（前牆 y=0、後牆 953 cm）。轉燈／球燈／洗牆燈可分別隱藏。效果顏色以「台 × 控制器影格」快取；轉燈與燈具共用一個場景時鐘（暫停、重設、跟隨後端影格）。預設 32 個時間取樣、各台不錯開（與後端相同，模擬用的 Effect frame step 仍可調）。
+- **座標**：`src/site/layout.ts` 讀 `backend/layout.example.json`（Vite `server.fs.allow`）；連上後端時改用 `/api/patch` 的 `spinnerPositions` 與燈具座標，後端沒有座標時用範例。LED 數、`pixelRotation`、燈具數讀 `/api/state`。
+- **編輯**：「效果」「色彩」分頁加〔轉燈｜球燈｜洗牆燈〕；球燈／洗牆燈效果、參數（方向為正向／反向）、亮度上限、純色／漸層（依高度／x／y／編號）、天氣色盤開關；「關閉」= 沒有 preset。單一效果模式「套用到後端」送 `{spinner, ball, wash}`（舊後端只送轉燈）。串接每段可編輯球燈／洗牆燈，段落清單顯示其效果；「播放方式」可依時間或依轉燈／球燈／洗牆燈次數（`playback.clock`，前端 `compileSequence` 與後端相同規則，fixture-chase 依燈具數）。
+- **後端鏡像**：後端模式 3D 顯示後端的球燈／洗牆燈 preset 與 `/api/playback` 的 `fixtureColors`。
+- **對燈模式**（`FixtureTestPanel`，「後端」分頁）：3D 點選或清單（←／→）選一顆；「只亮這顆」→ 實機只有那顆亮白、其他全暗，之後換選會跟著換亮；「全部亮白」、「結束測試」；最多 30 分鐘自動恢復。顯示該顆的 node／IP／universe／通道／座標（`/api/patch`）。
+- 後端：`/api/patch` 新增 `spinnerPositions`（全部 unit，含沒有 target 的）。
+- 參數上限、`各燈台不同數值` 改依實際 LED 數（129）與台數（24）。
+- 驗證：frontend 124 個測試（新增 `site.test.ts` 8，移除 1×9 排列相關測試）、`tsc`、build 通過；backend 136 個測試通過。Playwright（`--api-only` + 37 球燈／2 洗牆燈 + layout）擷取全場、上視、單台、球燈編輯、串接、對燈面板，無頁面錯誤；對燈「只亮這顆」後 `/api/test/fixtures` 為只有 5 號亮白。
+- **燈桿**（2026-11-10 追加）：由 `doc/spaces05.png` 量出 15 根有掛燈的燈桿。x 取側視圖的燈桿線，y 取上視圖的燈桿符號（中心白色的小圓或方框），頂端高度取側視圖燈桿線的頂端（允許被前方燈具遮住的空隙）。量得 504、603、652、807、1008、1310、1512 cm，正好是 5、6、6.5、8、10、13、15 m 乘 1.008（和長牆 960 vs 953 是同一個 0.8% 比例誤差），所以取標準長度。風力感測器桿（x 約 3166）和 x 約 4219 的桿子沒有燈，未列入。layout 新增 `poles: [{x, y, z(頂端)}]`，後端驗證並由 `/api/patch` 回傳，只供前端繪製。3D 在「骨架」開啟時畫燈桿（直徑 20 cm）和懸臂：每台轉燈（接在頂端）、每顆球燈或洗牆燈（接在中心）連到平面 1.2 m 內最近的燈桿；範例 layout 的 24 台轉燈和 37 顆球燈都找得到燈桿。上視改用 12° 窄視角並拉遠（接近正投影，燈桿不會被透視拉成放射線），近平面加大避免地板格線閃爍。
+- 未做：`/3d.html` 仍是 moon_observe 的半圓燈測試頁；說明牌未繪製；`follow-spinner` 效果（Q9）。
 

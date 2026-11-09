@@ -234,6 +234,9 @@ class FixtureApiTests(unittest.TestCase):
                     patch = call("GET", "/api/patch")
                     self.assertEqual([{"unitId": 1, "ip": "192.0.2.20", "universes": [0],
                                        "position": {"x": 961.0, "y": 118.0, "z": 565.0}}], patch["spinners"])
+                    self.assertEqual(24, len(patch["spinnerPositions"]))
+                    self.assertEqual(15, len(patch["poles"]))
+                    self.assertEqual({"x": 3370.0, "y": 349.0, "z": 885.0}, patch["spinnerPositions"][23])
                     self.assertEqual(["ball-node", "wash-node"], [node["name"] for node in patch["nodes"]])
                     first, last = patch["fixtures"]["ball"][0], patch["fixtures"]["ball"][-1]
                     self.assertEqual((1, 1, 4, {"x": 961.0, "y": 202.0, "z": 340.0}), (first["id"], first["address"], first["lastChannel"], first["position"]))

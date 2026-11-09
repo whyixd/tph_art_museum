@@ -49,8 +49,11 @@ function withInternalSequence(state: BackendSequenceState): BackendSequenceState
   return { ...state, sequence: fromBackendSequence(state.sequence as SequenceDocument | BackendSequenceDocument) }
 }
 
+export type BackendFixtureGroup = 'ball' | 'wash'
+
 export type BackendState = {
   revision: number
+  /** The spinner's single-effect preset. */
   preset: EffectPreset
   motor: { channel: number; enabled: boolean; value: number }
   output: {
@@ -60,8 +63,16 @@ export type BackendState = {
     rpm: number
     unitId: number
     unitCount: number
+    // 舊版後端沒有以下欄位。 / Older backends omit the fields below.
+    pixels?: number
+    pixelRotation?: number
   }
+  /** Ball / wash: fixture count and single-effect preset (null = dark). Missing on older backends. */
+  fixtures?: Record<BackendFixtureGroup, { count: number; preset: FixturePreset | null }>
 }
+
+/** Single-effect document: only the groups given change; null turns a fixture group off. */
+export type PresetDocument = { spinner?: EffectPreset; ball?: FixturePreset | null; wash?: FixturePreset | null }
 
 export type BackendSequenceState = {
   revision: number
@@ -85,12 +96,56 @@ export async function getBackendState(): Promise<BackendState> {
   return readState<BackendState>(await fetch('/api/state', { cache: 'no-store' }))
 }
 
-export async function applyBackendPreset(preset: EffectPreset): Promise<BackendState> {
+export async function applyBackendPreset(preset: EffectPreset | PresetDocument): Promise<BackendState> {
   return readState<BackendState>(await fetch('/api/preset', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(preset),
   }))
+}
+
+export type PatchPosition = { x?: number; y?: number; z?: number }
+
+export type BackendPatch = {
+  spinners: { unitId: number; ip: string; universes: number[]; position?: PatchPosition | null }[]
+  /** Every unit's layout position (index = unit - 1). */
+  spinnerPositions?: (PatchPosition | null)[]
+  /** 燈桿（x、y、頂端 z）。 / Poles (x, y, top z). */
+  poles?: PatchPosition[]
+  nodes: { name: string; ip: string; universe: number }[]
+  fixtures: Record<BackendFixtureGroup, {
+    id: number; node: string; ip: string; universe: number; address: number; lastChannel: number
+    profile: string; channels: string[]; position: PatchPosition | null
+  }[]>
+}
+
+// 舊版後端沒有這個 API，回 null。 / Older backends lack this API; returns null.
+export async function getBackendPatch(): Promise<BackendPatch | null> {
+  const response = await fetch('/api/patch', { cache: 'no-store' })
+  if (response.status === 404) return null
+  return readState<BackendPatch>(response)
+}
+
+export type FixtureColorTest = Partial<Record<BackendFixtureGroup, UnitColorTest>>
+
+export async function getFixtureColorTest(): Promise<FixtureColorTest | null> {
+  const response = await fetch('/api/test/fixtures', { cache: 'no-store' })
+  if (response.status === 404) return null
+  return readState<FixtureColorTest>(response)
+}
+
+export async function setFixtureColorTest(
+  group: BackendFixtureGroup, colors: (RgbColor | null)[], seconds: number | null,
+): Promise<FixtureColorTest> {
+  return readState<FixtureColorTest>(await fetch('/api/test/fixtures', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ group, colors, seconds }),
+  }))
+}
+
+export async function clearFixtureColorTest(): Promise<FixtureColorTest> {
+  return readState<FixtureColorTest>(await fetch('/api/test/fixtures', { method: 'DELETE' }))
 }
 
 export async function setBackendMotor(enabled: boolean): Promise<BackendState> {
@@ -241,6 +296,8 @@ type ActivePlaybackBase = {
   frame: number
   /** 單色測試進行中才有：每台一色或 null。 / Only during a unit colour test: one color or null per unit. */
   unitColors?: (RgbColor | null)[]
+  /** 球燈／洗牆燈單色測試進行中才有。 / Only during a fixture colour test. */
+  fixtureColors?: Partial<Record<BackendFixtureGroup, (RgbColor | null)[]>>
 }
 
 export type SequencePlayback = ActivePlaybackBase & {

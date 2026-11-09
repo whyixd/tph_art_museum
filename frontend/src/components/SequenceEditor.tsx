@@ -1,6 +1,16 @@
 import { useState } from 'react'
 import { getEffectCompletion, getEffectManifest } from '../effects'
-import type { CompiledSequence, PlaybackRule, SequenceEnding, SequenceStep, TransitionKind } from '../simulation/sequence'
+import { getFixtureCompletion, getFixtureManifest } from '../fixtures'
+import type { CompiledSequence, FixtureCounts, PlaybackRule, SequenceClock, SequenceEnding, SequenceStep, TransitionKind } from '../simulation/sequence'
+import { GROUP_LABELS } from './FixtureEditor'
+
+/** One cycle of the step's `clock` group, or null when it has no boundary (or no preset). */
+function clockCompletion(step: SequenceStep, clock: SequenceClock, fps: number, unitCount: number, counts: FixtureCounts) {
+  if (clock === 'spinner') return getEffectCompletion(step.preset, fps, unitCount)
+  const preset = step.fixtures?.[clock]
+  const frames = preset ? getFixtureCompletion(preset, fps, Math.max(1, counts[clock])) : null
+  return frames === null || !preset ? null : { label: getFixtureManifest(preset.effectId).label + '一個週期', frames }
+}
 
 type SequenceEditorProps = {
   enabled: boolean
@@ -20,6 +30,7 @@ type SequenceEditorProps = {
   complete: boolean
   fps: number
   unitCount: number
+  fixtureCounts: FixtureCounts
   onEnabled: (enabled: boolean) => void
   onSelect: (id: number) => void
   onPlayFrom: (id: number) => void
@@ -83,12 +94,22 @@ export function EditableNumberInput({
 
 export function SequenceEditor({
   enabled, connected, playbackMode, busy, error, dirty, playingStepId, onSave, onReload,
-  steps, ending, selectedId, schedule, currentStepIndex, complete, fps, unitCount,
+  steps, ending, selectedId, schedule, currentStepIndex, complete, fps, unitCount, fixtureCounts,
   onEnabled, onSelect, onPlayFrom, onPreviewTransition, onAdd, onDuplicate, onRemove, onMove, onPlayback, onEnding, onTransition,
 }: SequenceEditorProps) {
   const selectedIndex = Math.max(0, steps.findIndex((step) => step.id === selectedId))
   const selected = steps[selectedIndex]
-  const completion = getEffectCompletion(selected.preset, fps, unitCount)
+  const clock: SequenceClock = selected.playback.kind === 'count' ? selected.playback.clock ?? 'spinner' : 'spinner'
+  const completion = clockCompletion(selected, clock, fps, unitCount, fixtureCounts)
+  const playbackChoice = selected.playback.kind === 'time' ? 'time' : clock
+  const choose = (choice: 'time' | SequenceClock) => {
+    if (choice === 'time') {
+      onPlayback({ kind: 'time', seconds: Math.max(1 / fps, Number((durationFrames / fps).toFixed(2)) || 8) })
+    } else {
+      const count = selected.playback.kind === 'count' ? selected.playback.count : 1
+      onPlayback(choice === 'spinner' ? { kind: 'count', count } : { kind: 'count', count, clock: choice })
+    }
+  }
   const durationFrames = schedule.steps[selectedIndex]?.durationFrames ?? 0
   return (
     <div className="sequence-controls">
@@ -152,8 +173,16 @@ export function SequenceEditor({
                   onClick={() => onSelect(step.id)}>
                   <span>{index + 1}. {getEffectManifest(step.preset.effectId).label}
                     {step.id === playingStepId && <em className="playing-badge">後端播放中</em>}</span>
+                  {(step.fixtures?.ball || step.fixtures?.wash) && (
+                    <small className="step-fixtures">
+                      {(['ball', 'wash'] as const).filter((group) => step.fixtures?.[group]).map((group) => (
+                        GROUP_LABELS[group] + '：' + getFixtureManifest(step.fixtures![group]!.effectId).label
+                      )).join(' · ')}
+                    </small>
+                  )}
                   <small>{step.playback.kind === 'count'
-                    ? '播放 ' + step.playback.count + ' 次'
+                    ? '播放 ' + step.playback.count + ' 次' + (step.playback.clock && step.playback.clock !== 'spinner'
+                      ? '（依' + GROUP_LABELS[step.playback.clock] + '）' : '')
                     : '播放 ' + step.playback.seconds + ' 秒'}</small>
                 </button>
               </li>
@@ -177,17 +206,31 @@ export function SequenceEditor({
                 {selectedIndex < steps.length - 1 || ending.kind === 'loop' ? '預覽銜接' : '預覽結尾'}
               </button>
             </div>
+            <label className="sequence-field">
+              播放方式
+              <select value={playbackChoice} onChange={(event) => choose(event.target.value as 'time' | SequenceClock)}>
+                <option value="time">依時間</option>
+                {(['spinner', 'ball', 'wash'] as const).map((group) => (
+                  <option key={group} value={group} disabled={!clockCompletion(selected, group, fps, unitCount, fixtureCounts)}>
+                    依{GROUP_LABELS[group]}次數
+                  </option>
+                ))}
+              </select>
+            </label>
             <p className="control-note">
-              {completion
-                ? '完成邊界：' + completion.label + '。目前每次約 ' + (completion.frames / fps).toFixed(2) + ' 秒。'
-                : '此效果沒有明確完成邊界，依播放時間切換。'}
+              {selected.playback.kind === 'time'
+                ? '依時間切換；有週期的群組（轉燈、球燈或洗牆燈）也可改依次數。'
+                : completion
+                  ? '完成邊界（' + GROUP_LABELS[clock] + '）：' + completion.label + '。目前每次約 ' + (completion.frames / fps).toFixed(2)
+                    + ' 秒；只有這個群組每次重播，其他群組在這段內連續播放。'
+                  : '這個群組沒有週期邊界，請改依時間。'}
             </p>
             {selected.playback.kind === 'count' ? (
               <label className="sequence-field">
                 播放次數
                 <EditableNumberInput key={selected.id + '-playback-count'}
                   value={selected.playback.count} min={1} max={100} step={1} integer
-                  onValue={(count) => onPlayback({ kind: 'count', count })} />
+                  onValue={(count) => onPlayback(clock === 'spinner' ? { kind: 'count', count } : { kind: 'count', count, clock })} />
               </label>
             ) : (
               <label className="sequence-field">

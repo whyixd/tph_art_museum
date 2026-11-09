@@ -594,3 +594,24 @@ input[type="range"] {
 .unit-color-off .unit-color-toggle { color: #7d8a98; }
 .unit-color-presets button { flex: 1 1 auto; }
 .unit-color-idle { color: #7d8a98; font-size: 0.8rem; }
+
+/* 美術館全場：視角三段、轉燈選單、群組切換。 / Site view: three-way view switch, spinner select, group switch. */
+.viewport-toolbar .segmented-control.view-switch { width: 12rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.unit-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #aab6c3;
+  font-size: 0.85rem;
+}
+.unit-select select { padding: 0.3rem 0.4rem; }
+.group-switch { margin-bottom: 0.9rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sequence-list .step-fixtures {
+  display: block;
+  color: #ffd166;
+  font-size: 0.75rem;
+}
+.fixture-test { margin-top: 1rem; }
+.fixture-test .button-row select { min-width: 6.5rem; }
+.fixture-address { font-variant-numeric: tabular-nums; }
+.sequence-list button.active .step-fixtures { color: #5a3d00; }

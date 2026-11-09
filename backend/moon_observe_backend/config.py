@@ -200,24 +200,37 @@ def _position(value: Any, name: str) -> dict[str, float]:
     return {axis: _coordinate(entry, f"{name}.{axis}", -LAYOUT_LIMIT_CM, LAYOUT_LIMIT_CM) for axis, entry in value.items()}
 
 
+MAX_POLES = 200
+
+
 def _layout(path: Path, unit_count: int, fixtures: dict[str, list[dict[str, Any]]] | None,
-            ) -> tuple[list[dict[str, float] | None], dict[str, list[dict[str, float] | None]]]:
+            ) -> tuple[list[dict[str, float] | None], dict[str, list[dict[str, float] | None]], list[dict[str, float]]]:
     """Scene positions (cm) from the layout JSON: spinners by unit id, DMX fixtures by group and id.
 
     {"schemaVersion": 1,
      "spinners": {"1": {"x": 961, "y": 118, "z": 565}, ...},      # z = spinner centre
-     "fixtures": {"ball": {"1": {"x": 961, "y": 202, "z": 340}, ...}, "wash": {...}}}
+     "fixtures": {"ball": {"1": {"x": 961, "y": 202, "z": 340}, ...}, "wash": {...}},
+     "poles": [{"x": 961, "y": 169, "z": 1000}, ...]}                 # z = pole top (scene only)
     Origin: inner corner of the left wall and the front wall; x along the long wall, y towards the back
     wall, z above the floor. Any of x / y / z may be left out; for fixture effects an axis missing on any
     fixture of a group falls back to fixture order. Returns positions in unit order and in each group's
-    fixture order (None where missing).
-    場景座標（cm）：轉燈依 unit 編號、DMX 燈具依群組與編號；x/y/z 可缺。
+    fixture order (None where missing), and the poles (x, y, top z all required; only drawn by the frontend).
+    場景座標（cm）：轉燈依 unit 編號、DMX 燈具依群組與編號；x/y/z 可缺。燈桿 x/y/z（頂端）皆必填，只供前端繪製。
     """
     with path.open("r", encoding="utf-8") as stream:
         raw = json.load(stream)
     if not isinstance(raw, dict) or raw.get("schemaVersion") != LAYOUT_SCHEMA_VERSION \
-            or set(raw) - {"schemaVersion", "spinners", "fixtures"}:
-        raise ValueError("layout must contain schemaVersion 1 (optional: spinners, fixtures)")
+            or set(raw) - {"schemaVersion", "spinners", "fixtures", "poles"}:
+        raise ValueError("layout must contain schemaVersion 1 (optional: spinners, fixtures, poles)")
+    pole_entries = raw.get("poles", [])
+    if not isinstance(pole_entries, list) or len(pole_entries) > MAX_POLES:
+        raise ValueError(f"layout poles must list at most {MAX_POLES} positions")
+    poles = []
+    for index, entry in enumerate(pole_entries):
+        position = _position(entry, f"layout pole {index + 1}")
+        if set(position) != set(LAYOUT_AXES):
+            raise ValueError(f"layout pole {index + 1} needs x, y and z (top)")
+        poles.append(position)
     spinner_entries = raw.get("spinners", {})
     if not isinstance(spinner_entries, dict):
         raise ValueError("layout spinners must map unit ids to positions")
@@ -233,7 +246,7 @@ def _layout(path: Path, unit_count: int, fixtures: dict[str, list[dict[str, Any]
     if not isinstance(entries, dict) or set(entries) - set(GROUPS):
         raise ValueError(f"layout fixtures must be keyed by group ({', '.join(GROUPS)})")
     if fixtures is None:
-        return spinners, {}  # 沒有 [dmx]：只用轉燈座標。 / No [dmx]: only the spinner positions are used.
+        return spinners, {}, poles  # 沒有 [dmx]：不用燈具座標。 / No [dmx]: fixture positions are unused.
     positions: dict[str, list[dict[str, float] | None]] = {}
     for group in GROUPS:
         by_id = entries.get(group, {})
@@ -245,7 +258,7 @@ def _layout(path: Path, unit_count: int, fixtures: dict[str, list[dict[str, Any]
             raise ValueError(f"layout {group} ids {', '.join(unknown)} are not in the patch")
         parsed = {key: _position(position, f"layout {group} {key}") for key, position in by_id.items()}
         positions[group] = [parsed.get(str(fixture["id"])) for fixture in fixtures[group]]
-    return spinners, positions
+    return spinners, positions, poles
 
 
 def _file_name(value: Any, name: str) -> str:
@@ -310,11 +323,12 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
                          f"{len(sizes)} consecutive universe(s))")
     dmx = _dmx(raw["dmx"], set(pairs)) if "dmx" in raw else None
     if "layout" in render:
-        spinner_positions, fixture_positions = _layout(
+        spinner_positions, fixture_positions, poles = _layout(
             (config_path.parent / _file_name(render["layout"], "render.layout")).resolve(),
             unit_count, dmx["fixtures"] if dmx is not None else None)
     else:
         spinner_positions = [None] * unit_count
+        poles = []
         fixture_positions = {group: [None] * len(fixtures) for group, fixtures in dmx["fixtures"].items()} if dmx else {}
     if dmx is not None:
         dmx["positions"] = fixture_positions
@@ -377,6 +391,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         "packet_sizes": sizes,
         "dmx": dmx,
         "spinner_positions": spinner_positions,
+        "poles": poles,
         "unit_id": targets[0]["unit_id"],
         "unit_count": unit_count,
         "preset_path": str(preset_path),

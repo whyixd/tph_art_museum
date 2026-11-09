@@ -13,15 +13,21 @@ import {
   type UnitVariation,
   type UnitVariationDistribution,
 } from '../effects'
-import type { BackendPlayback, BackendState, WeatherState } from '../backendApi'
+import type { BackendPatch, BackendPlayback, BackendState, WeatherState } from '../backendApi'
+import type { FixturePreset } from '../fixtures'
 import type { CompiledSequence, PlaybackRule, SequenceDocument, SequenceEnding, SequenceFrame, SequenceStep, TransitionKind } from '../simulation/sequence'
 import { ColorInput, GradientEditor } from './GradientEditor'
+import { Slider } from './Slider'
 import { PlaybackProgress } from './PlaybackProgress'
 import { SavedSequenceView } from './SavedSequenceView'
 import { SequenceEditor } from './SequenceEditor'
 import { UnitColorTestPanel } from './UnitColorTestPanel'
+import { FixtureEditor, GROUP_LABELS, type FixtureGroup } from './FixtureEditor'
+import { FixtureTestPanel, type FixtureSelection } from './FixtureTestPanel'
 import { CATEGORY_LABELS, WeatherPanel } from './WeatherPanel'
-import type { SceneMode, SimulationSettings } from '../simulation/model'
+import type { SimulationSettings } from '../simulation/model'
+
+export type EditGroup = 'spinner' | FixtureGroup
 
 type NumericSetting = Exclude<keyof SimulationSettings, 'ledCount'>
 type ControlTab = 'effect' | 'color' | 'sequence' | 'backend' | 'weather' | 'physics'
@@ -31,7 +37,16 @@ type ControlPanelProps = {
   weather: WeatherState | null
   onWeather: (weather: WeatherState) => void
   effectPreset: EffectPreset
-  sceneMode: SceneMode
+  unitCount: number
+  /** Which group the effect / colour tabs edit. */
+  editGroup: EditGroup
+  onEditGroup: (group: EditGroup) => void
+  fixturePresets: Record<FixtureGroup, FixturePreset | null>
+  onFixturePreset: (group: FixtureGroup, preset: FixturePreset | null) => void
+  fixtureCounts: Record<FixtureGroup, number>
+  fixtureSelection: FixtureSelection
+  onFixtureSelection: (selection: FixtureSelection) => void
+  patch: BackendPatch | null
   controlMode: 'simulation' | 'backend'
   backendState: BackendState | null
   backendBusy: boolean
@@ -81,59 +96,19 @@ type ControlPanelProps = {
   onUnitVariation: (variation: UnitVariation | null) => void
 }
 
-type SliderProps = {
-  label: string
-  value: number
-  min: number
-  max: number
-  step: number
-  unit: string
-  onChange: (value: number) => void
-  disabled?: boolean
-}
-
-function Slider({
-  label,
-  value,
-  min,
-  max,
-  step,
-  unit,
-  onChange,
-  disabled = false,
-}: SliderProps) {
-  return (
-    <label className="control-field">
-      <span>
-        {label}
-        <output>{value.toLocaleString()} {unit}</output>
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(Number(event.target.value))}
-      />
-    </label>
-  )
-}
-
 
 const DISTRIBUTIONS: ReadonlyArray<[UnitVariationDistribution, string]> = [
   ['linear', '依序'],
   ['skip', '跳著排'],
   ['random', '隨機'],
 ]
-const VARIATION_UNIT_COUNT = 9
-
 function UnitVariationEditor({
   effectPreset,
+  unitCount,
   onChange,
 }: {
   effectPreset: EffectPreset
+  unitCount: number
   onChange: (variation: UnitVariation | null) => void
 }) {
   const parameters = getVariableParameters(effectPreset.effectId)
@@ -151,8 +126,8 @@ function UnitVariationEditor({
     return { parameter: parameter.key, from: current, to: Number(to.toFixed(6)), distribution: variation?.distribution ?? 'linear' }
   }
   const values = variation
-    ? Array.from({ length: VARIATION_UNIT_COUNT }, (_, index) => (
-      presetForUnit(effectPreset, index, VARIATION_UNIT_COUNT).parameters[definition.key]
+    ? Array.from({ length: unitCount }, (_, index) => (
+      presetForUnit(effectPreset, index, unitCount).parameters[definition.key]
     ))
     : []
 
@@ -188,7 +163,7 @@ function UnitVariationEditor({
           <Slider label="結束值" value={variation.to} min={definition.min} max={definition.max}
             step={definition.step} unit={definition.unit}
             onChange={(to) => onChange({ ...variation, to })} />
-          <p className="control-note">第 1–9 台：{values.map((value) => value.toLocaleString()).join('、')}</p>
+          <p className="control-note">第 1–{unitCount} 台：{values.map((value) => value.toLocaleString()).join('、')}</p>
         </>
       )}
     </div>
@@ -196,8 +171,8 @@ function UnitVariationEditor({
 }
 
 const AXIS_LABELS: ReadonlyArray<[GradientAxis, string]> = [
-  ['radius', '中心 → 兩端'],
-  ['strip', '半圓一端 → 另一端'],
+  ['radius', '頂部 → 底部'],
+  ['strip', '底部一側 → 頂部 → 另一側'],
   ['unit', '依燈台（每台一個純色）'],
 ]
 
@@ -281,7 +256,15 @@ export function ControlPanel({
   weather,
   onWeather,
   effectPreset,
-  sceneMode,
+  unitCount,
+  editGroup,
+  onEditGroup,
+  fixturePresets,
+  onFixturePreset,
+  fixtureCounts,
+  fixtureSelection,
+  onFixtureSelection,
+  patch,
   controlMode,
   backendState,
   backendBusy,
@@ -421,6 +404,20 @@ export function ControlPanel({
     { id: 'physics', label: '物理' },
   ]
   const shownTab = tab === 'weather' && !weather ? 'effect' : tab
+  const groupSwitch = (
+    <div className="segmented-control group-switch" aria-label="編輯群組">
+      {(['spinner', 'ball', 'wash'] as const).map((group) => (
+        <button key={group} type="button" className={editGroup === group ? 'active' : 'secondary'}
+          aria-pressed={editGroup === group} onClick={() => onEditGroup(group)}>
+          {GROUP_LABELS[group]}{group !== 'spinner' && fixtureCounts[group] > 0 ? ` ${fixtureCounts[group]}` : ''}
+        </button>
+      ))}
+    </div>
+  )
+  const fixtureEditor = (which: 'effect' | 'color') => editGroup !== 'spinner' && (
+    <FixtureEditor group={editGroup} tab={which} preset={fixturePresets[editGroup]} count={fixtureCounts[editGroup]}
+      weatherEnabled={weather?.enabled ?? false} onChange={(preset) => onFixturePreset(editGroup, preset)} />
+  )
 
   return (
     <section className="controls" aria-label="控制面板">
@@ -433,7 +430,10 @@ export function ControlPanel({
       </div>
 
       <div className="control-tabpanel" id="control-tabpanel" role="tabpanel" aria-labelledby={`control-tab-${shownTab}`}>
-        {shownTab === 'effect' && (
+        {(shownTab === 'effect' || shownTab === 'color') && groupSwitch}
+        {shownTab === 'effect' && editGroup !== 'spinner' && fixtureEditor('effect')}
+        {shownTab === 'color' && editGroup !== 'spinner' && fixtureEditor('color')}
+        {shownTab === 'effect' && editGroup === 'spinner' && (
           <>
             <label className="control-field effect-picker">
               <span>{sequenceEnabled && controlMode === 'simulation' ? '編輯段落效果' : 'Effect'}</span>
@@ -489,13 +489,13 @@ export function ControlPanel({
               </p>
             )}
 
-            <UnitVariationEditor effectPreset={effectPreset} onChange={onUnitVariation} />
+            <UnitVariationEditor effectPreset={effectPreset} unitCount={unitCount} onChange={onUnitVariation} />
 
             <p className="effect-description">{activeEffect.description}</p>
           </>
         )}
 
-        {shownTab === 'color' && (
+        {shownTab === 'color' && editGroup === 'spinner' && (
           <div className="color-controls">
             {weather?.enabled && (
               <>
@@ -558,7 +558,8 @@ export function ControlPanel({
             currentStepIndex={currentSequenceFrame.stepIndex}
             complete={currentSequenceFrame.complete}
             fps={settings.controllerFps}
-            unitCount={sceneMode === 'nine' ? 9 : 1}
+            unitCount={unitCount}
+            fixtureCounts={fixtureCounts}
             onEnabled={onSequenceEnabled}
             onSelect={onSequenceSelect}
             onPlayFrom={onSequencePlayFrom}
@@ -575,7 +576,7 @@ export function ControlPanel({
           <SavedSequenceView
             document={savedSequence}
             fps={settings.controllerFps}
-            unitCount={sceneMode === 'nine' ? 9 : 1}
+            unitCount={unitCount}
             playingStepId={backendPlayingStepId}
             playbackMode={sequencePlaybackMode}
             busy={sequenceBusy}
@@ -607,7 +608,7 @@ export function ControlPanel({
             <p className="control-note">
               {backendState === null ? '連線後才能套用效果。' : backendDirty
                 ? '目前畫面有尚未套用的效果變更。' : '目前效果已套用。'}
-              只有效果、顏色與參數會送出；FPS／RPM 由後端 TOML 控制。
+              轉燈、球燈、洗牆燈的效果、顏色與參數會一起送出；FPS／RPM 由後端 TOML 控制。
             </p>
             <div className="restart-controls">
               <span className="control-label">重新播放</span>
@@ -622,7 +623,7 @@ export function ControlPanel({
               </p>
             </div>
             <div className="motor-controls">
-              <span className="control-label">馬達控制 · Art-Net Channel 469</span>
+              <span className="control-label">馬達控制 · Art-Net Channel {backendState?.motor.channel ?? 469}</span>
               <p role="status">{backendState?.motor.enabled ? '開啟命令：255（緩啟動）' : '關閉命令：0（緩停）'}</p>
               <div className="button-row">
                 <button type="button" className="secondary" onClick={() => onMotor(false)}
@@ -630,9 +631,13 @@ export function ControlPanel({
                 <button type="button" onClick={() => onMotor(true)}
                   disabled={backendBusy || backendState === null || backendState.motor.enabled}>開啟緩啟動</button>
               </div>
-              <p className="control-note">後端啟動預設為關閉。Channel 469 位於 156 顆 RGB 燈之後；斷線時是否停機需由接收端保障。</p>
+              <p className="control-note">後端啟動預設為關閉。Channel {backendState?.motor.channel ?? 469} 位於 LED 通道之後；斷線時是否停機需由接收端保障。</p>
             </div>
             {backendState && <UnitColorTestPanel unitCount={backendState.output.unitCount} onChange={onUnitColorTest} />}
+            {backendState && (fixtureCounts.ball > 0 || fixtureCounts.wash > 0) && (
+              <FixtureTestPanel counts={fixtureCounts} patch={patch} selected={fixtureSelection}
+                onSelect={onFixtureSelection} onChange={onUnitColorTest} />
+            )}
           </div>
         ) : (
           <p className="control-note">切換到上方的「後端控制」後，才能連線、套用效果與控制馬達。</p>
@@ -690,7 +695,7 @@ export function ControlPanel({
               onChange={(value) => onSetting('temporalSamples', value)}
             />
 
-            {sceneMode === 'nine' && (
+            {unitCount > 1 && (
               <>
                 <Slider
                   label="Unit phase step"

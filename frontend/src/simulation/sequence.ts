@@ -1,5 +1,5 @@
 import { getEffectCompletion, type EffectPreset } from '../effects'
-import type { FixturePreset } from '../fixtures'
+import { getFixtureCompletion, type FixturePreset } from '../fixtures'
 
 /** unit-fade-black: units fade out one after another (1→9), then the next step fades in on all units. */
 export type TransitionKind = 'cut' | 'fade-black' | 'crossfade' | 'unit-fade-black'
@@ -28,13 +28,21 @@ export type SequenceDocument = {
   steps: SequenceStep[]
 }
 
+/** Frames each group wraps per repeat; only the clock group of a count step wraps (as the backend). */
+export type GroupCycles = { spinner: number | null; ball: number | null; wash: number | null }
+
 export type CompiledStep = SequenceStep & {
   index: number
   startFrame: number
   durationFrames: number
+  /** The clock group's cycle (count steps), for repeat counting. */
   cycleFrames: number | null
+  groupCycles: GroupCycles
   transitionFrames: number
 }
+
+/** Fixture counts for count steps clocked by fixture-chase (its cycle depends on the count). */
+export type FixtureCounts = { ball: number; wash: number }
 
 export type CompiledSequence = {
   steps: CompiledStep[]
@@ -46,6 +54,9 @@ export type CompiledSequence = {
 
 export type SequenceLayer = {
   preset: EffectPreset
+  /** The step's ball / wash presets (absent = dark). */
+  fixtures?: StepFixtures
+  groupCycles: GroupCycles
   stepIndex: number
   localFrame: number
   // Frames since the step started (unwrapped) and the step repeat length, for count-based wrapping.
@@ -83,15 +94,26 @@ export function compileSequence(
   fps: number,
   unitCount: number,
   ending: SequenceEnding = { kind: 'hold' },
+  fixtureCounts: FixtureCounts = { ball: 1, wash: 1 },
 ): CompiledSequence {
   if (!Number.isFinite(fps) || fps <= 0) throw new Error('controller FPS must be positive')
   let startFrame = 0
   const compiled = steps.map((step, index): CompiledStep => {
-    const completion = getEffectCompletion(step.preset, fps, unitCount)
+    // 以 clock 群組的週期計次（預設轉燈），與後端相同。 / Count by the clock group's cycle (spinner by default), as the backend.
+    const clock = step.playback.kind === 'count' ? step.playback.clock ?? 'spinner' : null
+    const clockPreset = clock === 'ball' || clock === 'wash' ? step.fixtures?.[clock] : undefined
+    const completion = clock === 'ball' || clock === 'wash'
+      ? clockPreset ? getFixtureCompletion(clockPreset, fps, Math.max(1, fixtureCounts[clock])) : null
+      : getEffectCompletion(step.preset, fps, unitCount)?.frames ?? null
     if (step.playback.kind === 'count' && !completion) {
       throw new Error('播放次數需要完成邊界')
     }
-    const cycleFrames = step.playback.kind === 'count' ? completion!.frames : null
+    const cycleFrames = step.playback.kind === 'count' ? completion! : null
+    const groupCycles: GroupCycles = {
+      spinner: clock === 'spinner' ? cycleFrames : null,
+      ball: clock === 'ball' ? cycleFrames : null,
+      wash: clock === 'wash' ? cycleFrames : null,
+    }
     const durationFrames = step.playback.kind === 'count'
       ? cycleFrames! * Math.max(1, Math.floor(step.playback.count))
       : Math.max(1, Math.round(step.playback.seconds * fps))
@@ -105,6 +127,7 @@ export function compileSequence(
       startFrame,
       durationFrames,
       cycleFrames,
+      groupCycles,
       transitionFrames,
     }
     startFrame += durationFrames
@@ -121,7 +144,18 @@ export function compileSequence(
 }
 
 function localFrame(step: CompiledStep, frame: number): number {
-  return step.cycleFrames === null ? frame : frame % step.cycleFrames
+  const cycle = step.groupCycles.spinner
+  return cycle === null ? frame : frame % cycle
+}
+
+function stepLayer(step: CompiledStep): Pick<SequenceLayer, 'preset' | 'fixtures' | 'groupCycles' | 'stepIndex' | 'cycleFrames'> {
+  return {
+    preset: step.preset,
+    ...(step.fixtures ? { fixtures: step.fixtures } : {}),
+    groupCycles: step.groupCycles,
+    stepIndex: step.index,
+    cycleFrames: step.groupCycles.spinner,
+  }
 }
 
 export function resolveSequenceFrame(
@@ -143,11 +177,9 @@ export function resolveSequenceFrame(
       stepIndex: last.index,
       complete: true,
       layers: [{
-        preset: last.preset,
-        stepIndex: last.index,
+        ...stepLayer(last),
         localFrame: localFrame(last, last.durationFrames - 1),
         elapsedFrame: last.durationFrames - 1,
-        cycleFrames: last.cycleFrames,
         sourceFrame: sequence.totalFrames - 1,
         weight,
       }],
@@ -158,11 +190,9 @@ export function resolveSequenceFrame(
   const step = sequence.steps[stepIndex]
   const elapsed = cycleFrame - step.startFrame
   const current: SequenceLayer = {
-    preset: step.preset,
-    stepIndex,
+    ...stepLayer(step),
     localFrame: localFrame(step, elapsed),
     elapsedFrame: elapsed,
-    cycleFrames: step.cycleFrames,
     sourceFrame: cycleStart + step.startFrame + elapsed,
     weight: 1,
   }
@@ -192,11 +222,9 @@ export function resolveSequenceFrame(
         ? 1 - (elapsed + 1) / (midpoint + 1)
         : 0
   const outgoing: SequenceLayer = {
-    preset: previous.preset,
-    stepIndex: previous.index,
+    ...stepLayer(previous),
     localFrame: localFrame(previous, previous.durationFrames - 1),
     elapsedFrame: previous.durationFrames - 1,
-    cycleFrames: previous.cycleFrames,
     sourceFrame: cycleStart + previous.startFrame + previous.durationFrames - 1
       - (stepIndex === 0 ? sequence.totalFrames : 0),
     weight: outgoingWeight,

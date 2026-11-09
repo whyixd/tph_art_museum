@@ -127,6 +127,9 @@ def patch_table(config: Mapping[str, Any]) -> dict[str, Any]:
              "position": (config.get("spinner_positions") or [None] * target["unit_id"])[target["unit_id"] - 1]}
             for target in targets
         ],
+        # 全部 unit 的座標（含沒有 target 的），給前端全場模擬。 / Every unit's position (targets or not) for the site view.
+        "spinnerPositions": list(config.get("spinner_positions") or [None] * config["unit_count"]),
+        "poles": list(config.get("poles") or []),
         "nodes": [dict(node) for node in dmx["nodes"]] if dmx else [],
         "fixtures": {group: [] for group in FIXTURE_GROUPS},
     }

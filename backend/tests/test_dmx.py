@@ -78,6 +78,8 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(24, len(config["spinner_positions"]))
         self.assertEqual({"x": 961.0, "y": 118.0, "z": 565.0}, config["spinner_positions"][0])
         self.assertEqual({"x": 3370.0, "y": 349.0, "z": 885.0}, config["spinner_positions"][23])
+        self.assertEqual(15, len(config["poles"]))
+        self.assertEqual({"x": 961.0, "y": 169.0, "z": 1000.0}, config["poles"][0])
 
     def test_without_layout_every_axis_follows_order(self):
         dmx = load_dmx(BALLS)
@@ -89,6 +91,8 @@ class LayoutTests(unittest.TestCase):
             "schemaVersion 1": {"schemaVersion": 2, "fixtures": {}},
             "not units 1..64": {"schemaVersion": 1, "spinners": {"0": {"x": 1}}},
             "spinner 2 must have": {"schemaVersion": 1, "spinners": {"2": {}}},
+            "pole 1 needs x, y and z": {"schemaVersion": 1, "poles": [{"x": 1, "y": 2}]},
+            "at most 200": {"schemaVersion": 1, "poles": [{"x": 1, "y": 1, "z": 1}] * 201},
             "keyed by group": {"schemaVersion": 1, "fixtures": {"spinner": {}}},
             "ids 38 are not in the patch": {"schemaVersion": 1, "fixtures": {"ball": {"38": {"z": 1}}}},
             "some of x, y, z": {"schemaVersion": 1, "fixtures": {"ball": {"1": {"h": 1}}}},
