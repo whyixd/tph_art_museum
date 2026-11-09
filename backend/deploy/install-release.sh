@@ -7,6 +7,9 @@
 #   sudo TPH_ART_MUSEUM_ARCHIVE=/tmp/tph-art-museum-v0.1.0.tar.gz bash install-release.sh v0.1.0
 #     (offline: the archive and its SHA256SUMS copied next to each other, e.g. with scp; no GitHub access)
 set -euo pipefail
+# SSH 會帶入連線端的語系（例如 zh_TW.UTF-8），Pi 上沒產生時 PyPy 無法啟動；C.UTF-8 一定存在。
+# SSH forwards the client's locale (e.g. zh_TW.UTF-8); PyPy fails to start when the Pi lacks it. C.UTF-8 always exists.
+export LANG=C.UTF-8 LC_ALL=C.UTF-8
 
 # Keep identical to VERSION_PATTERN in build_release.py and bootstrap.sh.
 VERSION_PATTERN='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z][0-9A-Za-z.]*)?$'

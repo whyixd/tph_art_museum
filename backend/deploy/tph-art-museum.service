@@ -21,6 +21,8 @@ RestartSec=3
 # SIGINT raises KeyboardInterrupt, so a running motor gets one best-effort 0 command on stop.
 KillSignal=SIGINT
 TimeoutStopSec=10
+# PyPy 遇到系統沒有的語系會無法啟動；固定用一定存在的 C.UTF-8。 / PyPy refuses unknown locales; C.UTF-8 always exists.
+Environment=LANG=C.UTF-8 LC_ALL=C.UTF-8
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONDONTWRITEBYTECODE=1
 NoNewPrivileges=true

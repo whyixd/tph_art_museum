@@ -80,6 +80,11 @@ class VersionTests(unittest.TestCase):
         local = installer[installer.index('if [[ -n $LOCAL_ARCHIVE ]]; then'):installer.index('  fi', installer.index('if [[ -n $LOCAL_ARCHIVE ]]; then'))]
         self.assertIn("verify_release", local)
 
+    def test_locale_is_pinned_for_pypy(self):
+        # PyPy aborts with "unsupported locale setting" on a locale the Pi has not generated (seen over SSH).
+        self.assertIn("export LANG=C.UTF-8 LC_ALL=C.UTF-8", (DEPLOY / "install-release.sh").read_text(encoding="utf-8"))
+        self.assertIn("Environment=LANG=C.UTF-8 LC_ALL=C.UTF-8", (DEPLOY / "tph-art-museum.service").read_text(encoding="utf-8"))
+
     def test_service_pins_the_cpu_governor(self):
         unit = (DEPLOY / "tph-art-museum.service").read_text(encoding="utf-8")
         self.assertIn("ExecStartPre=+/bin/sh -c", unit)
