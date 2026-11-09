@@ -123,7 +123,8 @@ def patch_table(config: Mapping[str, Any]) -> dict[str, Any]:
     targets = config.get("targets") or [{"unit_id": config["unit_id"], "ip": config["ip"], "universe": config["universe"]}]
     result: dict[str, Any] = {
         "spinners": [
-            {"unitId": target["unit_id"], "ip": target["ip"], "universes": target.get("universes", [target["universe"]])}
+            {"unitId": target["unit_id"], "ip": target["ip"], "universes": target.get("universes", [target["universe"]]),
+             "position": (config.get("spinner_positions") or [None] * target["unit_id"])[target["unit_id"] - 1]}
             for target in targets
         ],
         "nodes": [dict(node) for node in dmx["nodes"]] if dmx else [],

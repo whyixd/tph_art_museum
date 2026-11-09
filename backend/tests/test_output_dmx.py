@@ -19,9 +19,6 @@ from test_send import FakeClient
 
 BACKEND = Path(__file__).resolve().parents[1]
 DMX = '''
-[dmx]
-layout = "layout.json"
-
 [[dmx.profiles]]
 name = "ball-rgbw"
 channels = ["r", "g", "b", "w"]
@@ -66,6 +63,7 @@ def load(root: Path):
     (root / "layout.json").write_text((BACKEND / "layout.example.json").read_text(encoding="utf-8"), encoding="utf-8")
     path = root / "config.toml"
     path.write_text('[artnet]\nip = "192.0.2.20"\nuniverse = 0\n[render]\npreset = "preset.json"\npixels = 129\n'
+                    'unit_count = 24\nlayout = "layout.json"\n'
                     '[hardware]\npixel_rotation = 64\n[motor]\nchannel = 469\n' + DMX, encoding="utf-8")
     return load_config(path)
 
@@ -234,10 +232,11 @@ class FixtureApiTests(unittest.TestCase):
                     self.assertFalse(call("DELETE", "/api/test/fixtures")["wash"]["active"])
 
                     patch = call("GET", "/api/patch")
-                    self.assertEqual([{"unitId": 1, "ip": "192.0.2.20", "universes": [0]}], patch["spinners"])
+                    self.assertEqual([{"unitId": 1, "ip": "192.0.2.20", "universes": [0],
+                                       "position": {"x": 961.0, "y": 118.0, "z": 565.0}}], patch["spinners"])
                     self.assertEqual(["ball-node", "wash-node"], [node["name"] for node in patch["nodes"]])
                     first, last = patch["fixtures"]["ball"][0], patch["fixtures"]["ball"][-1]
-                    self.assertEqual((1, 1, 4, {"z": 340.0}), (first["id"], first["address"], first["lastChannel"], first["position"]))
+                    self.assertEqual((1, 1, 4, {"x": 961.0, "y": 202.0, "z": 340.0}), (first["id"], first["address"], first["lastChannel"], first["position"]))
                     self.assertEqual((37, 145, 148, 100), (last["id"], last["address"], last["lastChannel"], last["universe"]))
                     self.assertEqual(["dimmer", "r", "g", "b"], patch["fixtures"]["wash"][0]["channels"])
                     self.assertIsNone(patch["fixtures"]["wash"][0]["position"])

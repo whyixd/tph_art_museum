@@ -119,7 +119,7 @@ def _dmx_profile(entry: dict[str, Any], name: str) -> dict[str, Any]:
 
 def _dmx(raw: Any, spinner_pairs: set[tuple[str, int]]) -> dict[str, Any]:
     """[dmx]: fixture profiles, Art-Net -> DMX node universes, and the patch (where each fixture sits)."""
-    if not isinstance(raw, dict) or set(raw) - {"profiles", "nodes", "patch", "layout"}:
+    if not isinstance(raw, dict) or set(raw) - {"profiles", "nodes", "patch"}:
         raise ValueError("unknown dmx config field")
     profiles: dict[str, dict[str, Any]] = {}
     for index, entry in enumerate(_table_list(raw.get("profiles", []), "dmx.profiles", 16)):
@@ -194,39 +194,58 @@ LAYOUT_AXES = ("x", "y", "z")
 LAYOUT_LIMIT_CM = 100_000
 
 
-def _layout(path: Path, fixtures: dict[str, list[dict[str, Any]]]) -> dict[str, list[dict[str, float] | None]]:
-    """Fixture positions (cm) from the layout JSON, in each group's fixture order; missing ones are None.
+def _position(value: Any, name: str) -> dict[str, float]:
+    if not isinstance(value, dict) or not value or set(value) - set(LAYOUT_AXES):
+        raise ValueError(f"{name} must have some of x, y, z")
+    return {axis: _coordinate(entry, f"{name}.{axis}", -LAYOUT_LIMIT_CM, LAYOUT_LIMIT_CM) for axis, entry in value.items()}
 
-    {"schemaVersion": 1, "fixtures": {"ball": {"1": {"x": 120, "y": 40, "z": 340}, ...}, "wash": {...}}}
-    Any of x / y / z may be left out; an axis missing on any fixture of a group falls back to fixture order.
-    燈具座標（cm）；x/y/z 可缺，群組內任一顆缺某軸時，該軸改依編號排列。
+
+def _layout(path: Path, unit_count: int, fixtures: dict[str, list[dict[str, Any]]] | None,
+            ) -> tuple[list[dict[str, float] | None], dict[str, list[dict[str, float] | None]]]:
+    """Scene positions (cm) from the layout JSON: spinners by unit id, DMX fixtures by group and id.
+
+    {"schemaVersion": 1,
+     "spinners": {"1": {"x": 961, "y": 118, "z": 565}, ...},      # z = spinner centre
+     "fixtures": {"ball": {"1": {"x": 961, "y": 202, "z": 340}, ...}, "wash": {...}}}
+    Origin: inner corner of the left wall and the front wall; x along the long wall, y towards the back
+    wall, z above the floor. Any of x / y / z may be left out; for fixture effects an axis missing on any
+    fixture of a group falls back to fixture order. Returns positions in unit order and in each group's
+    fixture order (None where missing).
+    場景座標（cm）：轉燈依 unit 編號、DMX 燈具依群組與編號；x/y/z 可缺。
     """
     with path.open("r", encoding="utf-8") as stream:
         raw = json.load(stream)
-    if not isinstance(raw, dict) or set(raw) != {"schemaVersion", "fixtures"} or raw["schemaVersion"] != LAYOUT_SCHEMA_VERSION:
-        raise ValueError("dmx layout must contain schemaVersion 1 and fixtures")
-    entries = raw["fixtures"]
+    if not isinstance(raw, dict) or raw.get("schemaVersion") != LAYOUT_SCHEMA_VERSION \
+            or set(raw) - {"schemaVersion", "spinners", "fixtures"}:
+        raise ValueError("layout must contain schemaVersion 1 (optional: spinners, fixtures)")
+    spinner_entries = raw.get("spinners", {})
+    if not isinstance(spinner_entries, dict):
+        raise ValueError("layout spinners must map unit ids to positions")
+    # 超過 unit_count 的轉燈忽略（例如只接一台測試時）。 / Units beyond unit_count are ignored (e.g. a one-unit bench test).
+    unknown = sorted(set(spinner_entries) - {str(unit) for unit in range(1, MAX_UNITS + 1)}, key=lambda key: (len(key), key))
+    if unknown:
+        raise ValueError(f"layout spinner ids {', '.join(unknown)} are not units 1..{MAX_UNITS}")
+    spinners = [
+        _position(spinner_entries[str(unit)], f"layout spinner {unit}") if str(unit) in spinner_entries else None
+        for unit in range(1, unit_count + 1)
+    ]
+    entries = raw.get("fixtures", {})
     if not isinstance(entries, dict) or set(entries) - set(GROUPS):
-        raise ValueError(f"dmx layout fixtures must be keyed by group ({', '.join(GROUPS)})")
+        raise ValueError(f"layout fixtures must be keyed by group ({', '.join(GROUPS)})")
+    if fixtures is None:
+        return spinners, {}  # 沒有 [dmx]：只用轉燈座標。 / No [dmx]: only the spinner positions are used.
     positions: dict[str, list[dict[str, float] | None]] = {}
     for group in GROUPS:
         by_id = entries.get(group, {})
         if not isinstance(by_id, dict):
-            raise ValueError(f"dmx layout {group} must map fixture ids to positions")
+            raise ValueError(f"layout {group} must map fixture ids to positions")
         known = {str(fixture["id"]) for fixture in fixtures[group]}
         unknown = sorted(set(by_id) - known, key=lambda key: (len(key), key))
         if unknown:
-            raise ValueError(f"dmx layout {group} ids {', '.join(unknown)} are not in the patch")
-        for key, position in by_id.items():
-            if not isinstance(position, dict) or not position or set(position) - set(LAYOUT_AXES):
-                raise ValueError(f"dmx layout {group} {key} must have some of x, y, z")
-            for axis, value in position.items():
-                _coordinate(value, f"dmx layout {group} {key}.{axis}", -LAYOUT_LIMIT_CM, LAYOUT_LIMIT_CM)
-        positions[group] = [
-            {axis: float(value) for axis, value in by_id[str(fixture["id"])].items()} if str(fixture["id"]) in by_id else None
-            for fixture in fixtures[group]
-        ]
-    return positions
+            raise ValueError(f"layout {group} ids {', '.join(unknown)} are not in the patch")
+        parsed = {key: _position(position, f"layout {group} {key}") for key, position in by_id.items()}
+        positions[group] = [parsed.get(str(fixture["id"])) for fixture in fixtures[group]]
+    return spinners, positions
 
 
 def _file_name(value: Any, name: str) -> str:
@@ -246,7 +265,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         raise ValueError("config requires [artnet] and [render] sections (optional: [hardware], [motor], [dmx], [weather])")
     artnet = raw["artnet"]
     render = raw["render"]
-    if set(artnet) - {"ip", "universe", "source_ip", "targets"} or set(render) - {"preset", "sequence", "fps", "rpm", "pixels", "unit_id", "unit_count"}:
+    if set(artnet) - {"ip", "universe", "source_ip", "targets"} or set(render) - {"preset", "sequence", "fps", "rpm", "pixels", "unit_id", "unit_count", "layout"}:
         raise ValueError("unknown config field")
     source_ip = _ipv4(artnet["source_ip"], "artnet.source_ip") if "source_ip" in artnet else None
     fps = _integer(render.get("fps", 40), "render.fps", 1, 120)
@@ -290,12 +309,15 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         raise ValueError("artnet target IP/universe pairs must be unique (each unit uses "
                          f"{len(sizes)} consecutive universe(s))")
     dmx = _dmx(raw["dmx"], set(pairs)) if "dmx" in raw else None
+    if "layout" in render:
+        spinner_positions, fixture_positions = _layout(
+            (config_path.parent / _file_name(render["layout"], "render.layout")).resolve(),
+            unit_count, dmx["fixtures"] if dmx is not None else None)
+    else:
+        spinner_positions = [None] * unit_count
+        fixture_positions = {group: [None] * len(fixtures) for group, fixtures in dmx["fixtures"].items()} if dmx else {}
     if dmx is not None:
-        layout_name = raw["dmx"].get("layout")
-        dmx["positions"] = (
-            _layout((config_path.parent / _file_name(layout_name, "dmx.layout")).resolve(), dmx["fixtures"])
-            if layout_name is not None else {group: [None] * len(fixtures) for group, fixtures in dmx["fixtures"].items()}
-        )
+        dmx["positions"] = fixture_positions
         # 每顆的 (高度, x, y)，群組內 0..1；給球燈／洗牆燈效果。 / Per-fixture (height, x, y) within the group, 0..1.
         dmx["geometry"] = {group: fixture_geometry(positions) for group, positions in dmx["positions"].items()}
 
@@ -354,6 +376,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         "motor": motor,
         "packet_sizes": sizes,
         "dmx": dmx,
+        "spinner_positions": spinner_positions,
         "unit_id": targets[0]["unit_id"],
         "unit_count": unit_count,
         "preset_path": str(preset_path),

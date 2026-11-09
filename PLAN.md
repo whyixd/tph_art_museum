@@ -151,8 +151,8 @@ renderFixtureFrame(preset, geometry, frame, {fps, raining, palette, frameStep, c
 | `fixture-chase` | 依編號逐顆巡行，拖 `tailCount` 顆漸暗 | `stepSeconds` 0.3、`tailCount` 2、`direction` 0 | 每步影格 × 顆數 |
 
 - `follow-spinner`（跟隨最近的轉燈）**未做**：要等 Q9（是否需要連動）與 Q5（座標），且需要輸出迴圈先算好轉燈顏色（M6）。
-- **幾何／layout**：`[dmx] layout = "layout.json"`（選填）。格式 `{"schemaVersion": 1, "fixtures": {"ball": {"1": {"x":…, "y":…, "z":…}}, "wash": {…}}}`，單位 cm，x／y／z 都可缺；群組內每顆都有某軸時才依該軸正規化到 0–1，否則該軸改依編號排列。設定載入後放在 `config["dmx"]["geometry"][group]`。
-- `backend/layout.example.json`：37 顆球燈的高度 z，取自 `DMX＿線間距.pdf`（依圖面比例換算後與 H 標籤配對、再以紅字線長交叉檢查）；x／y 待 Q5。**請確認高度**。
+- **幾何／layout**：`[render] layout = "layout.json"`（選填；2026-11-10 由 `[dmx]` 移到 `[render]`，因為也放轉燈）。格式 `{"schemaVersion": 1, "spinners": {"1": {"x","y","z"}…}, "fixtures": {"ball": {"1": {…}}, "wash": {…}}}`，單位 cm，x／y／z 都可缺。原點 = 左牆內側線 × 前牆（上視圖下方、說明牌 A 那側）內側線，x 沿長牆往右、y 往後牆、z 離地；轉燈 z 為中心高度。轉燈編號 1–64，超過 `unit_count` 的忽略；沒有 `[dmx]` 時忽略 `fixtures`。球燈群組內每顆都有某軸時才依該軸正規化到 0–1，否則該軸改依編號排列（`config["dmx"]["geometry"]`）；轉燈座標在 `config["spinner_positions"]`，`GET /api/patch` 一併回傳。
+- `backend/layout.example.json`：24 台轉燈與 37 顆球燈的 x／y／z（見 Q5）。
 - **天氣**：色盤只換顏色，漸層效果保留自己的 axis，純色效果改依 `height` 分佈；`cloudy` 每顆依 x 錯開 `round(x × 8 × cloud_step)` 影格；`rain` 每顆在自己的隨機相位閃亮後衰減（0.7 Hz、閃亮佔 25%、其餘保留 20% 亮度），`off` 除外。常數在兩邊同名（`FIXTURE_RAIN`／`RAIN_*`、`CLOUD_SPREAD_STEPS`）。
 - 洗牆燈的亮度安全上限：用 DMX profile 既有的 `brightness`（送出前套用，M3 已實作），不另設 `wash_max_level`。
 
@@ -222,10 +222,10 @@ M5 已實作（`sequence.py`）：
 | Q1 | ~~轉燈實體配置~~ 每台 3 條 × 129 顆、各繞垂直圓周一整圈（6 條半圓）；馬達沿用 moon_observe ch469（2026-11-09 確認）。3 條並聯共用資料、第 0 顆在頂部往下繞一圈、無空缺。效果中心在頂部（`pixel_rotation = 64`，見 §2） | M4、M6 |
 | Q2 | ~~球燈通道表~~ RGBW、37 顆、位址已燒錄（1–37）；通道順序 R G B W，沒有 dimmer／strobe（2026-11-09 確認，與目前範例設定相同）。**仍待確認**：「位址 1–37」是燈具編號（實際起始通道 1, 5, 9, …, 145，目前的預設），還是起始通道本身 | 現場接線前 |
 | Q3 | 洗牆燈數量、型號、通道表、安裝位置與照射面（設定格式已支援，確定後只改 config） | M6 |
-| Q4 | Art-Net → DMX node 型號、台數、port 數；球燈 DMX 鏈如何分段（`DMX＿線間距.pdf` 的線長是否就是串接順序 1→37） | M3、`--patch-report` |
-| Q5 | 所有燈桿與燈具的平面座標（x, y）：能否提供 CAD/DXF 匯出，或由 `image (6).png` 量。球燈高度 z 已由 `DMX＿線間距.pdf` 讀出（`backend/layout.example.json`），**待確認** | M6 模擬器、`space-wave` |
+| Q4 | Art-Net → DMX node 型號、台數、port 數；球燈 DMX 鏈如何分段。`新北美_ip控箱.pdf`：12 個控箱各一個 node（2.0.0.101–112），各自帶一組球燈（例：105 → 1–4、101 → 5–7、109 → 24、27–29）——**config 範例仍是單一 node，待改** | M3、`--patch-report` |
+| Q5 | ~~平面座標~~ 2026-11-10 由 `doc/spaces05.png` 紅框內的上視圖＋側視圖交叉比對建立（`backend/layout.example.json`，標註圖 `doc/spaces05_annotated_top.png`／`_side.png`）。比例 1.836 cm/px（37 顆球燈高度擬合，RMS 6 cm；長牆間距量得 960 vs 標示 953）；兩圖 x 對齊誤差 < 1 px；燈桿間距與 `新北美_ip控箱.pdf` 尺寸相差 ≤ 12 cm。球燈高度已確認（14 號 360、26 號 750）；同桿前後兩顆球燈依側視圖遮擋判斷；同桿前後兩台轉燈由使用者確認（較低的在前側）。B22 y = 6 cm（高於圍牆，可）。轉燈 3、10、11、13、14、18、21 號沒有 H 標籤，中心高度 = 頂端 − 35 cm 估計 | M7 模擬器、`space-wave` |
 | Q6 | 主機平台：Raspberry Pi 5（reference）或 Windows（`moon_observe_re`）？ | M8 部署、效能 |
-| Q7 | Art-Net 網段與 IP 規劃（轉燈、DMX node、主機） | config 範本 |
+| Q7 | Art-Net 網段與 IP 規劃。`新北美_ip控箱.pdf`：轉燈 2.0.0.201–224、DMX node 2.0.0.101–112。**暫定**轉燈 unit = IP − 200；每個控箱兩台中 IP 靠前的是較低那台，控箱 104 = 單獨燈桿那台 + 球燈 17–20 燈桿上最高那台（2026-11-10 使用者暫定）。主機 IP 未定；config 範例尚未改成這些 IP | config 範本 |
 | Q8 | 是否仍要天氣功能、造訪地點清單 | M5 |
 | Q9 | 球燈／洗牆燈是否需要與轉燈「跟隨」連動，或主要獨立編排 | 效果優先順序 |
 | Q10 | ~~建立 git repo、`doc/` 圖檔是否公開~~ 已決定：repo `git@github.com:whyixd/tph_art_museum.git`（public），`doc/` 圖檔一併公開 | – |

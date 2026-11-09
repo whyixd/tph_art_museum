@@ -50,21 +50,34 @@ def load_with_layout(layout) -> dict:
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         (root / "layout.json").write_text(json.dumps(layout), encoding="utf-8")
-        return load_config(write_config(root, '[dmx]\nlayout = "layout.json"\n' + BALLS))[0]["dmx"]
+        return load_config(write_config(root, 'layout = "layout.json"\n' + BALLS))[0]["dmx"]
 
 
 class LayoutTests(unittest.TestCase):
     def test_example_layout_gives_ball_heights(self):
         layout = json.loads((BACKEND / "layout.example.json").read_text(encoding="utf-8"))
         dmx = load_with_layout(layout)
-        self.assertEqual({"z": 340.0}, dmx["positions"]["ball"][0])
+        self.assertEqual({"x": 961.0, "y": 202.0, "z": 340.0}, dmx["positions"]["ball"][0])
         heights = [row[0] for row in dmx["geometry"]["ball"]]
         self.assertEqual(0.0, heights[10])        # ball 11, H245 (lowest; ball 17 too)
         self.assertEqual(1.0, heights[35])        # ball 36, H1030
         self.assertAlmostEqual((340 - 245) / (1030 - 245), heights[0])
         xs = [row[1] for row in dmx["geometry"]["ball"]]
-        self.assertEqual([index / 36 for index in range(37)], xs)  # no x yet: fixture order
+        self.assertEqual((0.0, 1.0), (xs[3], xs[36]))  # ball 4 is leftmost (x 926), ball 37 rightmost (x 3551)
+        ys = [row[2] for row in dmx["geometry"]["ball"]]
+        self.assertEqual((0.0, 1.0), (ys[21], ys[6]))  # ball 22 nearest the front wall, ball 7 deepest
         self.assertEqual([], dmx["geometry"]["wash"])
+
+    def test_spinner_positions_by_unit(self):
+        layout = json.loads((BACKEND / "layout.example.json").read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "layout.json").write_text(json.dumps(layout), encoding="utf-8")
+            config = load_config(write_config(root, 'unit_count = 24\nlayout = "layout.json"\n'))[0]  # no [dmx]
+        self.assertIsNone(config["dmx"])
+        self.assertEqual(24, len(config["spinner_positions"]))
+        self.assertEqual({"x": 961.0, "y": 118.0, "z": 565.0}, config["spinner_positions"][0])
+        self.assertEqual({"x": 3370.0, "y": 349.0, "z": 885.0}, config["spinner_positions"][23])
 
     def test_without_layout_every_axis_follows_order(self):
         dmx = load_dmx(BALLS)
@@ -74,6 +87,8 @@ class LayoutTests(unittest.TestCase):
     def test_layout_errors(self):
         cases = {
             "schemaVersion 1": {"schemaVersion": 2, "fixtures": {}},
+            "not units 1..64": {"schemaVersion": 1, "spinners": {"0": {"x": 1}}},
+            "spinner 2 must have": {"schemaVersion": 1, "spinners": {"2": {}}},
             "keyed by group": {"schemaVersion": 1, "fixtures": {"spinner": {}}},
             "ids 38 are not in the patch": {"schemaVersion": 1, "fixtures": {"ball": {"38": {"z": 1}}}},
             "some of x, y, z": {"schemaVersion": 1, "fixtures": {"ball": {"1": {"h": 1}}}},
