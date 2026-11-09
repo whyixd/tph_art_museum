@@ -1,8 +1,12 @@
 # 美術館現場（doc/新北美_ip控箱.pdf）：Art-Net 網段 2.0.0.0/8，主機 Raspberry Pi 5。
 # Museum site (doc/新北美_ip控箱.pdf): Art-Net on 2.0.0.0/8, host Raspberry Pi 5.
 [artnet]
-# source_ip = "2.0.0.10"   # 主機在 Art-Net 網段的 IP（未定）；多張網卡時用來指定送出介面
-#                          # host IP on the Art-Net network (not decided yet); binds the sending interface
+# 主機在 Art-Net 網段的 IP，Art-Net 從這個位址送出。也是安全閥：2.0.0.0/8 是公用網段，主機沒有這個 IP
+# （不在現場網路）時無法綁定、服務不啟動，封包不會經預設閘道送上網際網路。
+# The host's Art-Net address; Art-Net is sent from it. It is also a safety catch: 2.0.0.0/8 is public address
+# space, so without this address (not on the site network) the bind fails and the service does not start,
+# instead of sending Art-Net through the default gateway to the internet.
+source_ip = "2.0.0.10"
 
 [render]
 preset = "preset.example.json"

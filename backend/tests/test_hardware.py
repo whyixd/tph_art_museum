@@ -126,6 +126,7 @@ class MuseumSpinnerTests(unittest.TestCase):
         self.assertEqual(64, config["hardware"]["pixel_rotation"])
         self.assertEqual({"channel": 469}, config["motor"])
         self.assertEqual([470], config["packet_sizes"])
+        self.assertEqual("2.0.0.10", config["source_ip"])  # bind to the Art-Net address (safety catch)
         # 現場 IP（doc/新北美_ip控箱.pdf）：unit n = 2.0.0.(200 + n)。 / Site IPs: unit n = 2.0.0.(200 + n).
         self.assertEqual([(unit, f"2.0.0.{200 + unit}", [0]) for unit in range(1, 25)],
                          [(t["unit_id"], t["ip"], t["universes"]) for t in config["targets"]])

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from bisect import bisect_right
 from dataclasses import dataclass
 from functools import lru_cache
 import math
@@ -821,9 +822,11 @@ def hash01(round_index: int, unit: int, salt: int) -> float:
     return state / 0x100000000
 
 
+_ROULETTE_KEYS = tuple(PARAMETERS["roulette-ring"])
+
+
 def _roulette_timing(parameters: Mapping[str, Any], fps: float, unit_count: int) -> dict[str, Any]:
-    key = (fps, unit_count, *(parameters[name] for name in PARAMETERS["roulette-ring"]))
-    return _roulette_timing_cached(key)
+    return _roulette_timing_cached((fps, unit_count, *map(parameters.__getitem__, _ROULETTE_KEYS)))
 
 
 @lru_cache(maxsize=32)
@@ -876,10 +879,9 @@ def _roulette_ring(parameters: Mapping[str, Any], ctx: EffectContext) -> float:
     round_index, frame = divmod(max(0, ctx.controller_frame), t["cycle"])
     unit = min(max(0, ctx.unit_index), units - 1)
     if frame < t["dim_start"]:
-        # 輪盤：目前停在哪一台。 / Roulette: which position is lit now.
-        position = len(t["path"]) - 1
-        while position > 0 and t["starts"][position] > frame:
-            position -= 1
+        # 輪盤：目前停在哪一台（起點嚴格遞增，取最後一個不晚於 frame 的）。
+        # Roulette: which position is lit now (starts strictly increase; the last one not after frame).
+        position = bisect_right(t["starts"], frame) - 1
         return 1.0 if t["path"][position] == unit else 0.0
     pixel_step = 1.0 if ctx.led_count <= 1 else 2 / (ctx.led_count - 1)
     outermost = ctx.radius > 1 - pixel_step / 2

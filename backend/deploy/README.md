@@ -38,18 +38,23 @@ Backend 與 build 好的前端以同一個「版本化、不可變 release」部
 
 ## 網路
 
-Art-Net 網段是 `2.0.0.0/8`：轉燈 2.0.0.201–224、DMX 轉換器 2.0.0.101–112（見 `config.example.toml`）。Pi 的 Ethernet 要有這個網段的固定 IP（例：2.0.0.10），**不要**設預設閘道：
+Art-Net 網段是 `2.0.0.0/8`：轉燈 2.0.0.201–224、DMX 轉換器 2.0.0.101–112（見 `config.example.toml`）。Pi 的 Ethernet 要設成 **2.0.0.10**（與 `artnet.source_ip` 相同），**不要**設預設閘道。
+
+`source_ip` 同時是安全閥：2.0.0.0/8 是公用網段，Pi 沒有 2.0.0.10 時（例如不在現場網路）Art-Net 綁定失敗、服務起不來，封包不會經 Wi-Fi 的預設閘道送上網際網路。不在現場測試時可以加一張虛擬網卡，封包送進去就丟掉：`sudo ip link add dummy0 type dummy && sudo ip addr add 2.0.0.10/8 dev dummy0 && sudo ip link set dummy0 up`（重開機後消失）。
 
 ```bash
-nmcli con show                                         # 找出有線連線名稱，例如 "Wired connection 1"
-sudo nmcli con mod "Wired connection 1" ipv4.method manual ipv4.addresses 2.0.0.10/8 \
-  ipv4.gateway "" ipv4.never-default yes ipv6.method disabled
-sudo nmcli con up "Wired connection 1"
+nmcli con show            # 有線連線名稱：Pi OS（Debian 13）為 "netplan-eth0"，舊版可能是 "Wired connection 1"
+sudo nmcli con mod netplan-eth0 connection.autoconnect yes ipv4.method manual ipv4.addresses 2.0.0.10/8 \
+  ipv4.gateway "" ipv4.dns "" ipv4.never-default yes ipv6.method disabled
+sudo nmcli con up netplan-eth0
+ip route                  # default 仍走 wlan0；2.0.0.0/8 走 eth0（沒接線時顯示 linkdown，封包在 eth0 丟棄）
 ```
+
+設定會寫進 `/etc/netplan/90-NM-*.yaml`，重開機後保留。沒接線時 eth0 仍有 2.0.0.10，所以 `source_ip` 綁得到、服務會啟動，但封包只會走 eth0（被丟棄），不會經 Wi-Fi 送出。
 
 控制頁面（`http://<Pi>:8765/`）的連法二選一：
 
-- **A. 兩個網路**：Ethernet 接 Art-Net，控制用 Wi-Fi（`wlan0`）或 USB 網卡接館方網路。Pi 有多個介面時，在 `config.toml` 設 `[artnet] source_ip = "2.0.0.10"`，讓 Art-Net 從 Ethernet 送出。
+- **A. 兩個網路**：Ethernet 接 Art-Net，控制用 Wi-Fi（`wlan0`）或 USB 網卡接館方網路。`source_ip = "2.0.0.10"` 讓 Art-Net 從 Ethernet 送出。
 - **B. 同一個網路**：控制用的筆電也接到 Art-Net 交換器，設 2.0.0.x 的固定 IP（避開 101–112、201–224）。
 
 API 沒有驗證，只接在受信任的網路。
