@@ -64,9 +64,12 @@ class OutputStats:
     輸出迴圈的影格時間：每個區間的已送影格、落後而跳過的影格、每格渲染加送出的平均／最長時間。
     """
 
-    def __init__(self, fps: int, window: float = 60.0) -> None:
+    def __init__(self, fps: int, window: float = 60.0, audio_underflows: Callable[[], int] | None = None) -> None:
         self.fps = fps
         self.window = window
+        # 音訊斷音累計次數（AudioPlayer.underflows）；每個區間記錄增加多少。 / Audio drop-outs, counted per window.
+        self.audio_underflows = audio_underflows
+        self._underflows_at_start = audio_underflows() if audio_underflows is not None else 0
         self.lock = Lock()
         self._start: float | None = None
         self._current = self._empty()
@@ -103,12 +106,17 @@ class OutputStats:
             if now - self._start < self.window:
                 return None
             self._last = self._summary(current, now - self._start)
+            if self.audio_underflows is not None:
+                total = self.audio_underflows()
+                self._last["audioUnderflows"] = total - self._underflows_at_start
+                self._underflows_at_start = total
             self._current = self._empty()
             self._start = now
             last = self._last
+        audio = f", audio underflows {last['audioUnderflows']}" if "audioUnderflows" in last else ""
         return (f"output: {last['frames']} frames in {last['windowSeconds']:.0f} s, {last['skippedFrames']} skipped, "
                 f"render {last['renderMs']['avg']:.1f} ms avg / {last['renderMs']['max']:.1f} ms max "
-                f"(budget {last['budgetMs']:.1f} ms)")
+                f"(budget {last['budgetMs']:.1f} ms){audio}")
 
     def _summary(self, current: Mapping[str, Any], seconds: float) -> dict[str, Any]:
         frames = max(1, current["frames"])
@@ -491,6 +499,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--api-host", default="0.0.0.0", help="Page and API bind IPv4 address")
     parser.add_argument("--frontend-dir", type=Path, help="Built frontend directory containing index.html")
     args = parser.parse_args(argv)
+    # GIL 每 1 ms 讓出一次（預設 5 ms）。Pi 的 PyPy 實測：預設時忙碌的輸出迴圈讓其他執行緒（音訊 callback）約 34 ms
+    # 才輪到一次，比音效卡緩衝還久而斷音；1 ms 時最長 9 ms。
+    # Release the GIL every 1 ms (default 5 ms). Measured with PyPy on the Pi: by default a busy output loop lets
+    # other threads (the audio callback) in only every ~34 ms, longer than the sound card buffer; 1 ms: at most 9 ms.
+    sys.setswitchinterval(0.001)
     try:
         config, preset = load_config(args.config)
         if args.patch_report:
@@ -525,12 +538,13 @@ def main(argv: list[str] | None = None) -> int:
         playback_monitor = PlaybackMonitor(config["fps"], config["unit_count"])
         unit_color_store = UnitColorStore(config["unit_count"])
         fixture_color_store = FixtureColorStore(counts)
-        output_stats = OutputStats(config["fps"])
         # 前端修正過的拍點檔存在串接檔旁的 beat-edits/（Pi：preset/beat-edits/）。 / Corrected beat maps live beside the sequence.
         audio_player = AudioPlayer(config["audio"], tracks_dir=Path(__file__).resolve().parents[1] / "tracks",
                                    edits_dir=sequence_path.parent / "beat-edits")
         if config["audio"] is not None and not audio_player.available:
             print(f"warning: audio disabled: {audio_player.error}", file=sys.stderr, flush=True)
+        output_stats = OutputStats(config["fps"],
+                                   audio_underflows=(lambda: audio_player.underflows) if audio_player.available else None)
         # 演出存在串接檔旁邊（Pi：preset/shows.json）。 / Shows are saved beside the sequence (preset/shows.json on the Pi).
         show_store = ShowStore(sequence_path.parent / "shows.json", beat_maps=audio_player.beat_maps,
                                fps=config["fps"], pixels=config["pixels"])

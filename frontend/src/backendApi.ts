@@ -389,6 +389,9 @@ export type AudioState = {
   error: string | null
   device: { requested: string | null; name: string | null }
   calibration: { offsetMs: number; savedOffsetMs: number; maxOffsetMs: number }
+  /** 音效卡緩衝（ms）、啟動後斷音次數；舊後端沒有。 / Sound card buffer (ms), drop-outs since start; absent on old backends. */
+  bufferMs?: number | null
+  underflows?: number
   tracks: AudioTrack[]
   playing: {
     trackId: string

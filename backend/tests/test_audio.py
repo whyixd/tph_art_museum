@@ -15,7 +15,7 @@ from moon_observe_backend.audio import (
 from moon_observe_backend.config import load_config
 from moon_observe_backend.control import PresetStore, make_server
 from moon_observe_backend.effects import default_preset, validate_preset
-from moon_observe_backend.output import stream
+from moon_observe_backend.output import OutputStats, stream
 
 BACKEND = Path(__file__).resolve().parents[1]
 
@@ -49,12 +49,13 @@ class FakeStream:
     def close(self):
         self.closed = True
 
-    def pull(self, frames, dac_delay=0.02):
+    def pull(self, frames, dac_delay=0.02, underflow=False):
         width = {"int16": 2, "int24": 3, "int32": 4}[self.kwargs["dtype"]] * self.kwargs["channels"]
         buffer = bytearray(frames * width)
         view = memoryview(buffer)
         try:
-            self.kwargs["callback"](view, frames, SimpleNamespace(outputBufferDacTime=10 + dac_delay, currentTime=10.0), None)
+            status = SimpleNamespace(output_underflow=True) if underflow else None
+            self.kwargs["callback"](view, frames, SimpleNamespace(outputBufferDacTime=10 + dac_delay, currentTime=10.0), status)
         except CallbackStop:
             self.kwargs["finished_callback"]()
             return bytes(buffer), True
@@ -172,7 +173,7 @@ class AudioPlayerTests(unittest.TestCase):
     def test_music_time_follows_the_dac_clock(self):
         self.player.play({"trackId": "song", "startSeconds": 1.0, "flash": True})
         stream = self.sd.streams[0]
-        self.assertEqual({"samplerate": 1000, "channels": 2, "dtype": "int24", "device": "USB", "latency": "low"},
+        self.assertEqual({"samplerate": 1000, "channels": 2, "dtype": "int24", "device": "USB", "latency": 0.1},
                          {key: stream.kwargs[key] for key in ("samplerate", "channels", "dtype", "device", "latency")})
         self.assertTrue(stream.started)
         self.assertIsNone(self.player.music_time())  # nothing heard before the first callback
@@ -193,6 +194,38 @@ class AudioPlayerTests(unittest.TestCase):
         self.assertEqual("song", state["trackId"])
         self.assertAlmostEqual(1.51, state["positionSeconds"])
         self.assertEqual(1, state["beatIndex"])
+
+    def test_counts_underflows_and_uses_the_configured_buffer(self):
+        player = AudioPlayer({**self.config, "buffer_seconds": 0.25}, tracks_dir=self.root / "tracks",
+                             sounddevice=self.sd, clock=self.clock)
+        player.play({"trackId": "song"})
+        stream = self.sd.streams[-1]
+        self.assertEqual(0.25, stream.kwargs["latency"])
+        stream.pull(100)
+        stream.pull(100, underflow=True)
+        stream.pull(100, underflow=True)
+        state = player.state()
+        self.assertEqual((250, 2), (state["bufferMs"], state["underflows"]))
+        stats = OutputStats(40, window=1.0, audio_underflows=lambda: player.underflows)
+        stream.pull(100, underflow=True)
+        stats.record(0.0, 0, 0.001)
+        line = stats.record(1.0, 0, 0.001)
+        self.assertTrue(line.endswith(", audio underflows 1"), line)
+        self.assertEqual(1, stats.snapshot()["audioUnderflows"])
+
+    def test_buffer_config(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "preset.json").write_text(json.dumps(default_preset("full-on")), encoding="utf-8")
+            base = '[artnet]\nip = "192.0.2.20"\nuniverse = 0\n[render]\npreset = "preset.json"\n[audio]\n'
+            (root / "config.toml").write_text(base, encoding="utf-8")
+            self.assertEqual(0.1, load_config(root / "config.toml")[0]["audio"]["buffer_seconds"])
+            (root / "config.toml").write_text(base + "buffer_ms = 40\n", encoding="utf-8")
+            self.assertEqual(0.04, load_config(root / "config.toml")[0]["audio"]["buffer_seconds"])
+            for bad in ("5", "0.1", "2000"):
+                (root / "config.toml").write_text(base + f"buffer_ms = {bad}\n", encoding="utf-8")
+                with self.subTest(bad=bad), self.assertRaisesRegex(ValueError, "buffer_ms"):
+                    load_config(root / "config.toml")
 
     def test_track_end_stops_playback(self):
         self.player.play({"trackId": "song", "startSeconds": 3.9})

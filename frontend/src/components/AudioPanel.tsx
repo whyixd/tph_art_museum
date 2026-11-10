@@ -95,8 +95,14 @@ export function AudioPanel() {
         <p className="control-note" role="status">
           輸出裝置：{audio?.device.name ?? '找不到'}
           {audio?.device.requested ? `（設定：「${audio.device.requested}」）` : '（系統預設）'}
+          {audio?.bufferMs ? ` · 緩衝 ${audio.bufferMs} ms` : ''}
         </p>
       )}
+      {audio?.underflows ? (
+        <p className="backend-error" role="status">
+          啟動後斷音 {audio.underflows} 次（音效卡緩衝用完）。持續增加時可加大設定的 [audio] buffer_ms。
+        </p>
+      ) : null}
       <label className="sequence-field">
         曲目
         <select value={trackId} onChange={(event) => setTrackId(event.target.value)}>

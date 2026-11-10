@@ -429,3 +429,13 @@ M5 已實作（`sequence.py`）：
 - `GET /api/output` 多了 `artnet: {state: "sending" | "waiting", sourceIp}`（`--api-only` 時沒有）；進入等待時清掉影格統計。前端「後端」分頁在等待時以紅字顯示「Art-Net 暫停：本機沒有來源位址 …」。
 - 驗證：backend 214 個測試（新增 `test_source_wait.py` 6 個：探測、等待後開始送、送到一半消失再恢復、等待清統計、建 client 時綁定失敗、沒有 source_ip 時直接送）；frontend 163 個測試、`tsc`、build 通過。開發機以 `source_ip = 2.0.0.10`（本機沒有）實際啟動：`/api/output` 為 waiting、`/api/state` 200、SIGINT 0.5 秒內正常結束（exit 0）。
 
+### 2026-11-11：演出時音訊斷音（GIL）
+
+- 現象：Pi 上播演出時，音樂在某些時間點延遲或出現雜音；在「後端」分頁單獨播音樂沒問題。日誌顯示演出期間每格最長 48–209 ms、有跳格（待機最長 28 ms）。
+- 原因：音訊 callback 是 Python，要拿到 GIL 才能補資料；音效卡緩衝是 `latency="low"`（約 11 ms）。Pi 的 PyPy 實測（一條執行緒忙著算、另一條每 5 ms 醒來）：預設 `sys.setswitchinterval` 5 ms 時，等待的執行緒約 **34 ms** 才輪到一次（每次都超過 11 ms）；改成 1 ms 時最長 8.8 ms。演出的運算比待機重，callback 等不到 GIL，緩衝就用完了。
+- 修正：
+  - `main` 啟動時 `sys.setswitchinterval(0.001)`。
+  - 音效卡緩衝改為 `[audio] buffer_ms`（預設 100，10–1000）。燈光的時間是音效卡實際播出的時間（`outputBufferDacTime`），緩衝加大不影響同步，只讓開始播放晚約 0.1 秒。
+  - callback 統計 `output_underflow`：`GET /api/audio` 的 `underflows`、`bufferMs`；每分鐘的 `output:` 日誌行加上 `audio underflows N`；前端音樂區顯示緩衝大小與斷音次數。
+- 驗證：backend 216 個測試、frontend 163 個測試、`tsc`、build 通過。
+

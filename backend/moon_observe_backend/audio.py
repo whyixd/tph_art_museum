@@ -29,6 +29,8 @@ TRACK_ID_CHARS = set("abcdefghijklmnopqrstuvwxyz0123456789-")
 SAMPLE_FORMATS = {2: "int16", 3: "int24", 4: "int32"}
 
 # 內建節拍器：120 BPM、4/4、60 秒循環；拍點精確，用來校準延遲。
+# 預設音效卡緩衝（秒）；設定 [audio] buffer_ms。 / Default sound card buffer (s); [audio] buffer_ms.
+DEFAULT_BUFFER_SECONDS = 0.1
 # Built-in metronome: 120 BPM, 4/4, a 60 s loop with exact beats, for latency calibration.
 CLICK_TRACK_ID = "click-120"
 CLICK_BPM = 120
@@ -230,6 +232,8 @@ class AudioPlayer:
         self.error: str | None = None
         self._sd = sounddevice
         self._playback: _Playback | None = None
+        # 音效卡要資料時緩衝已空（斷音）的次數，啟動後累計。 / Output underflows (drop-outs) since start.
+        self.underflows = 0
         # 已載入的音檔（全部常駐記憶體）。 / Loaded tracks, all kept in memory.
         self._cache: dict[str, tuple[int, int, int, bytes]] = {}
         self._cache_lock = Lock()
@@ -372,6 +376,8 @@ class AudioPlayer:
             "available": self.available, "error": self.error,
             "device": {"requested": self.config["device"] if self.config else None, "name": self._device_name()},
             "calibration": {"offsetMs": offset, "savedOffsetMs": saved, "maxOffsetMs": MAX_OFFSET_MS},
+            "bufferMs": round(1000 * self.config.get("buffer_seconds", DEFAULT_BUFFER_SECONDS)) if self.config else None,
+            "underflows": self.underflows,
             "tracks": [self._track_info(entry) for entry in self.beat_maps.values()],
             "playing": playing,
         }
@@ -429,8 +435,10 @@ class AudioPlayer:
         self.stop()
         sd = self._sd
 
-        def callback(outdata: Any, frames: int, time_info: Any, _status: Any) -> None:
+        def callback(outdata: Any, frames: int, time_info: Any, status: Any) -> None:
             now = self.clock()
+            if status is not None and getattr(status, "output_underflow", False):
+                self.underflows += 1  # 只有這個 callback 寫入。 / Only this callback writes it.
             dac, current = time_info.outputBufferDacTime, time_info.currentTime
             # 有些 host API 不提供時間（0）：改用串流延遲估計。 / Some host APIs report 0: use the stream latency instead.
             delay = dac - current if dac and current else playback.stream.latency
@@ -463,7 +471,8 @@ class AudioPlayer:
         try:
             stream = sd.RawOutputStream(
                 samplerate=rate, channels=channels, dtype=SAMPLE_FORMATS[width],
-                device=self.config["device"] or None, latency="low", callback=callback, finished_callback=finished,
+                device=self.config["device"] or None, latency=self.config.get("buffer_seconds", DEFAULT_BUFFER_SECONDS),
+                callback=callback, finished_callback=finished,
             )
         except Exception as failure:  # noqa: BLE001 - PortAudioError, ValueError for unknown devices, ...
             raise ValueError(f"無法開啟音訊裝置：{failure}") from None

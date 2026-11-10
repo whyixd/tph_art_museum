@@ -420,7 +420,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
     audio = None
     if "audio" in raw:
         entry = raw["audio"]
-        if not isinstance(entry, dict) or set(entry) - {"device", "directory", "calibration"}:
+        if not isinstance(entry, dict) or set(entry) - {"device", "directory", "calibration", "buffer_ms"}:
             raise ValueError("unknown audio config field")
         device = entry.get("device", "")
         if not isinstance(device, str) or len(device) > 100:
@@ -428,8 +428,15 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         directory = entry.get("directory", "audio")
         if not isinstance(directory, str) or not directory:
             raise ValueError("audio.directory must name a directory")
+        # 音效卡緩衝：演出計算忙時音訊 callback 可能要等 GIL，緩衝太小會斷音。燈光跟音效卡實際播出時間，加大不影響同步。
+        # Sound card buffer: a busy output loop can keep the audio callback waiting for the GIL; too small a
+        # buffer then drops out. The lights follow the DAC time, so a larger buffer keeps them in sync.
+        buffer_ms = entry.get("buffer_ms", 100)
+        if type(buffer_ms) is not int or not 10 <= buffer_ms <= 1000:
+            raise ValueError("audio.buffer_ms must be an integer 10..1000")
         audio = {
             "device": device,
+            "buffer_seconds": buffer_ms / 1000,
             "directory": str((config_path.parent / directory).resolve()),
             "calibration_path": str((config_path.parent / _file_name(
                 entry.get("calibration", "audio-calibration.json"), "audio.calibration")).resolve()),

@@ -363,6 +363,11 @@ device = ""
 directory = "../audio"
 # 延遲補償（前端「後端」分頁可調整並儲存）。 / Latency offset, adjusted and saved on the page's backend tab.
 calibration = "audio-calibration.json"
+# 音效卡緩衝（ms，預設 100）。演出計算忙時音訊要等運算空檔才能補資料，太小會斷音；燈光跟音效卡實際播出時間，
+# 加大不影響同步。「後端」分頁的音樂區會顯示斷音次數。
+# Sound card buffer (ms, default 100). Too small drops out while the show is busy rendering; the lights follow
+# the DAC time, so a larger buffer stays in sync. The backend tab's music panel shows the drop-out count.
+# buffer_ms = 100
 
 # Add the actual installation coordinates to enable Open-Meteo weather control.
 # [weather]
