@@ -93,6 +93,42 @@ const GLOW_RADIUS = 0.024
 /** 殘影每條燈條取幾分之一的燈點。 / Trail uses every n-th LED of each strip. */
 const TRAIL_STRIDE = 3
 const DARK_BALL = new THREE.Color(0.05, 0.055, 0.065)
+const BLACK_COLOR = new THREE.Color(0, 0, 0)
+/** 洗牆燈在牆面的受光區（m）：寬、高。 / Wall-washer light on the wall (m): width and height. */
+const WASH_WIDTH = 1.6
+const WASH_HEIGHT = 4
+/** 受光區離牆面的距離，避免與牆重疊閃爍（m）。 / Offset from the wall plane, against z-fighting (m). */
+const WASH_WALL_OFFSET = 0.02
+
+let washAlphaMap: THREE.Texture | null = null
+/**
+ * 受光區的透明度：底部最亮、往上漸淡，左右兩側淡出（alphaMap 讀綠色通道）。
+ * Wash alpha: brightest at the bottom, fading upwards and to both sides (alphaMap reads green).
+ */
+function washAlpha(): THREE.Texture {
+  if (washAlphaMap) return washAlphaMap
+  const width = 64
+  const height = 128
+  const data = new Uint8Array(width * height * 4)
+  for (let row = 0; row < height; row += 1) {
+    const up = (row + 0.5) / height  // DataTexture row 0 = bottom (v = 0)
+    for (let column = 0; column < width; column += 1) {
+      const across = Math.sin(Math.PI * (column + 0.5) / width)
+      const value = Math.round(255 * across * across * (1 - up) ** 1.6)
+      data.set([value, value, value, 255], (row * width + column) * 4)
+    }
+  }
+  washAlphaMap = new THREE.DataTexture(data, width, height)
+  washAlphaMap.needsUpdate = true
+  return washAlphaMap
+}
+
+/** 受光區打在最近的長牆（前牆 y = 0 或後牆 y = ROOM_DEPTH_CM）。 / The wash lands on the nearer long wall. */
+export function washWallPoint(point: ScenePoint): ScenePoint {
+  const depth = ROOM_DEPTH_CM / 100
+  const wallZ = -point[2] > depth / 2 ? -depth + WASH_WALL_OFFSET : -WASH_WALL_OFFSET
+  return [point[0], point[1] + WASH_HEIGHT / 2, wallZ]
+}
 
 function playbackAt(sequence: CompiledSequence | null, preset: EffectPreset, globalFrame: number): SequenceFrame {
   if (sequence) return resolveSequenceFrame(sequence, globalFrame)!
@@ -459,6 +495,7 @@ function Fixtures(props: SiteSceneProps & { group: FixtureGroup; points: ScenePo
   const { group, points, layout, settings, sequence, weather, fixturePresets, fixtureColors, selectedFixture, clock } = props
   const meshRef = useRef<THREE.InstancedMesh | null>(null)
   const glowRef = useRef<THREE.InstancedMesh | null>(null)
+  const wallRef = useRef<THREE.InstancedMesh | null>(null)
   const color = useMemo(() => new THREE.Color(), [])
   const geometry = useMemo(() => fixtureGeometry(layout[group].map((fixture) => fixture.position)), [layout, group])
   const poles = useMemo(() => fixturePoles(layout[group].map((fixture) => fixture.position), layout.poles), [layout, group])
@@ -473,6 +510,15 @@ function Fixtures(props: SiteSceneProps & { group: FixtureGroup; points: ScenePo
       })
       mesh.instanceMatrix.needsUpdate = true
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+    }
+    const wall = wallRef.current
+    if (wall) {
+      points.forEach((point, index) => {
+        wall.setMatrixAt(index, matrix.makeTranslation(...washWallPoint(point)))
+        wall.setColorAt(index, BLACK_COLOR)
+      })
+      wall.instanceMatrix.needsUpdate = true
+      if (wall.instanceColor) wall.instanceColor.needsUpdate = true
     }
   }, [points])
   const lastFrame = useRef(-1)
@@ -490,6 +536,7 @@ function Fixtures(props: SiteSceneProps & { group: FixtureGroup; points: ScenePo
       const value = test?.[index] ?? own
       color.setRGB(value.r, value.g, value.b, THREE.SRGBColorSpace)
       glow.setColorAt(index, color)
+      wallRef.current?.setColorAt(index, color)
       // 暗的球仍看得到外殼。 / A dark ball still shows its shell.
       color.r = Math.max(color.r, DARK_BALL.r)
       color.g = Math.max(color.g, DARK_BALL.g)
@@ -498,6 +545,7 @@ function Fixtures(props: SiteSceneProps & { group: FixtureGroup; points: ScenePo
     })
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
     if (glow.instanceColor) glow.instanceColor.needsUpdate = true
+    if (wallRef.current?.instanceColor) wallRef.current.instanceColor.needsUpdate = true
   })
   useEffect(() => { lastFrame.current = -1 }, [fixturePresets, sequence, weather, fixtureColors, geometry])
   const selectedIndex = selectedFixture?.group === group
@@ -517,6 +565,14 @@ function Fixtures(props: SiteSceneProps & { group: FixtureGroup; points: ScenePo
         <sphereGeometry args={[radius * 1.8, 16, 12]} />
         <meshBasicMaterial transparent opacity={0.22} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
       </instancedMesh>
+      {/* 洗牆燈打在牆上的光。 / The wall washers' light on the wall. */}
+      {group === 'wash' && (
+        <instancedMesh ref={wallRef} args={[undefined, undefined, points.length]} raycast={() => null}>
+          <planeGeometry args={[WASH_WIDTH, WASH_HEIGHT]} />
+          <meshBasicMaterial alphaMap={washAlpha()} transparent opacity={0.85} depthWrite={false}
+            blending={THREE.AdditiveBlending} side={THREE.DoubleSide} toneMapped={false} />
+        </instancedMesh>
+      )}
       {selectedIndex >= 0 && (
         <mesh position={[points[selectedIndex][0], points[selectedIndex][1] + radius + 0.25, points[selectedIndex][2]]}
           rotation-z={Math.PI}>

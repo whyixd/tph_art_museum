@@ -3,7 +3,7 @@
 > 2026-11-02。以 `doc/system-reference.md`（Moon Observe 系統）為基礎，在美術館現場執行：
 > - **轉燈 24 顆**（旋轉球形 POV 燈，取代原本的 9 組半圓燈；實體配置不同，細節待補）
 > - **球燈 37 顆**（40cm 塑料燈罩，DMX 燈具，經 Art-Net 控制）——新增
-> - **洗牆燈 N 顆**（DMX 燈具，經 Art-Net 控制）——新增
+> - **洗牆燈 25 顆**（RGBW DMX 燈具，經 Art-Net 控制，獨立一台轉換器）——新增
 >
 > 系統部分（effect engine、串接、天氣、API、前端、設定檔、原子寫檔、驗證規則）原則上沿用 reference；
 > 本文件只寫**差異**。標 **待確認** 的項目會擋住對應里程碑。
@@ -95,7 +95,7 @@ channel = 469       # 必須明寫：預設會是 129×3+1 = 388；usermod 只�
 ### 3.1 已知燈具
 
 - **球燈**：37 顆，RGBW DMX 燈，通道順序 R G B W、沒有 dimmer／strobe；位址已燒錄，編號 1–37（與 `DMX＿線間距.pdf` 的編號相同）。
-- **洗牆燈**：型號、數量、通道表都**待確認**；設定格式已支援，確定後只要加一段 profile + patch。
+- **洗牆燈**：25 顆，RGBW，通道順序 R G B W、沒有 dimmer／strobe，位址 1, 5, 9 … 97；獨立一台 Art-Net → DMX 轉換器，IP **暫定** 2.0.0.100、universe 0（2026-11-11 確認數量與通道；IP 待現場確認）。安裝在後牆前的地面往上打牆，layout 範例暫以等距排列（見 §3.3）。
 
 ### 3.2 設定格式（M3 已實作）
 
@@ -157,7 +157,8 @@ renderFixtureFrame(preset, geometry, frame, {fps, raining, palette, frameStep, c
 
 - `follow-spinner`（跟隨最近的轉燈）**未做**：要等 Q9（是否需要連動）與 Q5（座標），且需要輸出迴圈先算好轉燈顏色（M6）。
 - **幾何／layout**：`[render] layout = "layout.json"`（選填；2026-11-10 由 `[dmx]` 移到 `[render]`，因為也放轉燈）。格式 `{"schemaVersion": 1, "spinners": {"1": {"x","y","z"}…}, "fixtures": {"ball": {"1": {…}}, "wash": {…}}}`，單位 cm，x／y／z 都可缺。原點 = 左牆內側線 × 前牆（上視圖下方、說明牌 A 那側）內側線，x 沿長牆往右、y 往後牆、z 離地；轉燈 z 為中心高度。轉燈編號 1–64，超過 `unit_count` 的忽略；沒有 `[dmx]` 時忽略 `fixtures`。球燈群組內每顆都有某軸時才依該軸正規化到 0–1，否則該軸改依編號排列（`config["dmx"]["geometry"]`）；轉燈座標在 `config["spinner_positions"]`，`GET /api/patch` 一併回傳。
-- `backend/layout.example.json`：24 台轉燈與 37 顆球燈的 x／y／z（見 Q5）。
+- `backend/layout.example.json`：24 台轉燈與 37 顆球燈的 x／y／z（見 Q5）；25 顆洗牆燈**暫定**沿後牆地面等距排列：x = 75 + 150 ×（編號 − 1），y = 933（離後牆 20 cm），z = 20，待實際安裝位置再改。
+- layout 中 patch 沒有的燈具編號會被忽略（同轉燈超過 `unit_count`；例如設定還沒接洗牆燈），不是正整數的編號才報錯（2026-11-11 前為報錯）。
 - **天氣**：色盤只換顏色，漸層效果保留自己的 axis，純色效果改依 `height` 分佈；`cloudy` 每顆依 x 錯開 `round(x × 8 × cloud_step)` 影格；`rain` 每顆在自己的隨機相位閃亮後衰減（0.7 Hz、閃亮佔 25%、其餘保留 20% 亮度），`off` 除外。常數在兩邊同名（`FIXTURE_RAIN`／`RAIN_*`、`CLOUD_SPREAD_STEPS`）。
 - 洗牆燈的亮度安全上限：用 DMX profile 既有的 `brightness`（送出前套用，M3 已實作），不另設 `wash_max_level`。
 
@@ -226,7 +227,7 @@ M5 已實作（`sequence.py`）：
 |---|---|---|
 | Q1 | ~~轉燈實體配置~~ 每台 3 條 × 129 顆、各繞垂直圓周一整圈（6 條半圓）；馬達沿用 moon_observe ch469（2026-11-09 確認）。3 條並聯共用資料、第 0 顆在頂部往下繞一圈、無空缺。效果中心在頂部（`pixel_rotation = 64`，見 §2） | M4、M6 |
 | Q2 | ~~球燈通道表~~ RGBW、37 顆、位址已燒錄（1–37）；通道順序 R G B W，沒有 dimmer／strobe（2026-11-09 確認，與目前範例設定相同）。**仍待確認**：「位址 1–37」是燈具編號（實際起始通道 1, 5, 9, …, 145，目前的預設），還是起始通道本身 | 現場接線前 |
-| Q3 | 洗牆燈數量、型號、通道表、安裝位置與照射面（設定格式已支援，確定後只改 config） | M6 |
+| Q3 | ~~洗牆燈數量、通道表~~ 25 顆 RGBW（R G B W）、位址 1, 5, … 97、獨立 IP（2026-11-11 確認，已寫進 `config.example.toml`）。**仍待確認**：轉換器實際 IP（暫定 2.0.0.100）、每顆的實際安裝位置（暫定沿後牆地面等距） | 現場接線前 |
 | Q4 | Art-Net → DMX node 型號、台數、port 數；球燈 DMX 鏈如何分段。`新北美_ip控箱.pdf`：12 個控箱各一個 node（2.0.0.101–112），各自帶一組球燈（例：105 → 1–4、101 → 5–7、109 → 24、27–29）。2026-11-10 已寫進 `config.example.toml`：11 個 node（控箱 104 沒有球燈，未列入）、universe 0，球燈位址沿用編號 4(n−1)+1（見 Q2） | M3、`--patch-report` |
 | Q5 | ~~平面座標~~ 2026-11-10 由 `doc/spaces05.png` 紅框內的上視圖＋側視圖交叉比對建立（`backend/layout.example.json`，標註圖 `doc/spaces05_annotated_top.png`／`_side.png`）。比例 1.836 cm/px（37 顆球燈高度擬合，RMS 6 cm；長牆間距量得 960 vs 標示 953）；兩圖 x 對齊誤差 < 1 px；燈桿間距與 `新北美_ip控箱.pdf` 尺寸相差 ≤ 12 cm。球燈高度已確認（14 號 360、26 號 750）；同桿前後兩顆球燈依側視圖遮擋判斷；同桿前後兩台轉燈由使用者確認（較低的在前側）。B22 y = 6 cm（高於圍牆，可）。轉燈 3、10、11、13、14、18、21 號沒有 H 標籤，中心高度 = 頂端 − 35 cm 估計 | M7 模擬器、`space-wave` |
 | Q6 | ~~主機平台~~ **Raspberry Pi 5**（2026-11-10 確認）。效能（`benchmark_render.py`，24 台 × 129 顆、40 FPS、預算 25 ms，Apple M4 實測）：CPython 最慢 12.6 ms（`stardust-cloud`，預算 50%）、PyPy 最慢 3.3 ms（`roulette-ring`，13%），一般效果 0.5–1.6 ms。Pi 5 單核心約慢 3–4 倍 → **CPython 約 38–50 ms，不夠；PyPy 一般效果約 2–6 ms、最慢約 10–13 ms，可行**（轉場時兩層約 ×2，`roulette-ring` 轉場接近預算）。M8 部署需改用 PyPy，並在 Pi 5 實測 | M8 部署、效能 |
@@ -411,3 +412,11 @@ M5 已實作（`sequence.py`）：
   - frontend 136 個測試（新增 `beatEdit.test.ts`），`tsc` 與 build 通過。
   - Playwright 實際操作：點選跳轉、拖曳段落開頭吸附到第 6 小節、播放跟隨、選拍並按 → 兩次（9.0602 → 9.0702 秒）後儲存，修正檔只改了那一拍；之後已還原。
 - 尚未做：用工具實際修正環境曲（`ambient-3min`）的拍點；Pi 實機驗證。
+
+### 2026-11-11：洗牆燈
+
+- `config.example.toml`：`wash-rgbw` profile（R G B W、`white = "min"`、`brightness` 1.0 作為亮度上限）、node `wash`（2.0.0.100，暫定，universe 0）、25 顆 patch（位址 1–100）。`--patch-report` 列出 `wash 2.0.0.100 universe 0`。
+- `layout.example.json`：25 顆洗牆燈沿後牆地面等距（見 §3.3）；高度、y 都相同，群組內正規化為 0.5，所以依高度的效果（`height-sweep`、`fixture-rise`）在洗牆燈上整排同步，依 x 的效果（`space-wave`、`horizontal-flow`、漸層 `axis = x`）才會沿牆變化。
+- 3D：洗牆燈除了地上的錐體，牆面（最近的長牆）多一片寬 1.6 m、高 4 m、往上與兩側漸淡的受光區，顏色同該顆燈。
+- 驗證：backend 208 個測試、frontend 163 個測試、`tsc`、build 通過；Playwright 全場與上視截圖，洗牆燈選「水平流動」時牆面受光正常，無頁面錯誤。
+- Pi 升級注意：安裝程式只在第一次安裝時建立 `config.toml` 與 `layout.json`，已安裝的 Pi 要手動加上洗牆燈的 profile／node／patch（照 `config.example.toml`）與 layout 的 `fixtures.wash`。

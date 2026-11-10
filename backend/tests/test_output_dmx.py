@@ -243,7 +243,7 @@ class FixtureApiTests(unittest.TestCase):
                     self.assertEqual((1, 1, 4, {"x": 961.0, "y": 202.0, "z": 340.0}), (first["id"], first["address"], first["lastChannel"], first["position"]))
                     self.assertEqual((37, 145, 148, 100), (last["id"], last["address"], last["lastChannel"], last["universe"]))
                     self.assertEqual(["dimmer", "r", "g", "b"], patch["fixtures"]["wash"][0]["channels"])
-                    self.assertIsNone(patch["fixtures"]["wash"][0]["position"])
+                    self.assertEqual({"x": 75.0, "y": 933.0, "z": 20.0}, patch["fixtures"]["wash"][0]["position"])  # back wall
                 finally:
                     server.shutdown()
                     worker.join(timeout=2)

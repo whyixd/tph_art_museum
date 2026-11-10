@@ -54,12 +54,20 @@ describe('site layout', () => {
     for (const arm of arms) expect(Math.hypot(arm.to[0] - arm.from[0], arm.to[2] - arm.from[2])).toBeLessThanOrEqual(1.2)
   })
 
+  it('puts the 25 wall washers on the floor along the back wall, 1.5 m apart', () => {
+    const { wash } = exampleSiteLayout()
+    expect(wash).toHaveLength(25)
+    expect(wash[0]).toEqual({ id: 1, position: { x: 75, y: 933, z: 20 } })
+    expect(wash.map((fixture) => fixture.position?.x)).toEqual(Array.from({ length: 25 }, (_, index) => 75 + 150 * index))
+    expect(new Set(wash.map((fixture) => fixture.position?.y))).toEqual(new Set([933]))
+  })
+
   it('converts centimetres to the Y-up scene, back wall towards -Z', () => {
     expect(toScene({ x: 961, y: 118, z: 565 })).toEqual([9.61, 5.65, -1.18])
   })
 
   it('lines up items without positions along the front', () => {
-    const layout = siteLayout(EXAMPLE_LAYOUT, 26, { ball: 37, wash: 2 })
+    const layout = siteLayout({ ...EXAMPLE_LAYOUT, fixtures: { ball: EXAMPLE_LAYOUT.fixtures?.ball } }, 26, { ball: 37, wash: 2 })
     expect(layout.spinners[25]).toBeNull()
     expect(layout.wash).toEqual([{ id: 1, position: null }, { id: 2, position: null }])
     const points = scenePositions(layout.wash.map((fixture) => fixture.position), 300)

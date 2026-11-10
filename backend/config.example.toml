@@ -166,7 +166,7 @@ channel = 469                    # must be explicit (default would be pixels * 3
 name = "ball-rgbw"
 channels = ["r", "g", "b", "w"]   # fixture channel order; other names (dimmer, strobe...) need a static value
 white = "min"                      # min: W = min(R,G,B) taken out of RGB; none: W stays dark
-brightness = 1.0                   # 0..1 (also the safety ceiling for wall washers' own profile)
+brightness = 1.0                   # 0..1
 
 [[dmx.nodes]]
 name = "box-105"
@@ -326,6 +326,29 @@ count = 4
 profile = "ball-rgbw"
 node = "box-112"
 address = 133
+
+# 洗牆燈：25 顆 RGBW（通道 R G B W，無 dimmer／strobe），沿後牆地面往上打牆，獨立一台轉換器。
+# 位址 1, 5, 9 … 97。IP 暫定 2.0.0.100（待現場確認），universe 0。
+# Wall washers: 25 RGBW (R G B W, no dimmer/strobe) on the floor along the back wall, washing up the wall,
+# on their own node. Addresses 1, 5, 9 ... 97. IP 2.0.0.100 is provisional (confirm on site), universe 0.
+[[dmx.profiles]]
+name = "wash-rgbw"
+channels = ["r", "g", "b", "w"]
+white = "min"
+brightness = 1.0                   # 洗牆燈的亮度安全上限 / safety ceiling for the wall washers
+
+[[dmx.nodes]]
+name = "wash"
+ip = "2.0.0.100"
+universe = 0
+
+[[dmx.patch]]
+group = "wash"
+first_id = 1
+count = 25
+profile = "wash-rgbw"
+node = "wash"
+address = 1
 
 # 音樂：Pi 從 USB 音效卡播放，燈光跟著音訊時鐘。沒有 PortAudio（libportaudio2）時音訊停用、燈光照常。
 # Music: the Pi plays it on the USB sound card and the lights follow the audio clock. Without PortAudio

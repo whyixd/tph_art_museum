@@ -28,6 +28,24 @@ profile = "ball-rgbw"
 node = "ball-node"
 address = 1
 '''
+WASHERS = '''
+[[dmx.profiles]]
+name = "wash-rgbw"
+channels = ["r", "g", "b", "w"]
+
+[[dmx.nodes]]
+name = "wash"
+ip = "192.0.2.201"
+universe = 0
+
+[[dmx.patch]]
+group = "wash"
+first_id = 1
+count = 3
+profile = "wash-rgbw"
+node = "wash"
+address = 1
+'''
 
 
 def write_config(root: Path, dmx: str) -> Path:
@@ -66,7 +84,23 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual((0.0, 1.0), (xs[3], xs[36]))  # ball 4 is leftmost (x 926), ball 37 rightmost (x 3551)
         ys = [row[2] for row in dmx["geometry"]["ball"]]
         self.assertEqual((0.0, 1.0), (ys[21], ys[6]))  # ball 22 nearest the front wall, ball 7 deepest
+        # 範例 layout 有 25 顆洗牆燈，這份設定沒接：忽略。 / The layout's 25 washers are not patched here: ignored.
         self.assertEqual([], dmx["geometry"]["wash"])
+
+    def test_example_layout_wall_washers_along_the_back_wall(self):
+        layout = json.loads((BACKEND / "layout.example.json").read_text(encoding="utf-8"))
+        washers = WASHERS.replace("count = 3", "count = 25")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "layout.json").write_text(json.dumps(layout), encoding="utf-8")
+            dmx = load_config(write_config(root, 'layout = "layout.json"\n' + BALLS + washers))[0]["dmx"]
+        positions = dmx["positions"]["wash"]
+        self.assertEqual(25, len(positions))
+        self.assertEqual({"x": 75.0, "y": 933.0, "z": 20.0}, positions[0])
+        self.assertEqual([150.0] * 24, [b["x"] - a["x"] for a, b in zip(positions, positions[1:])])
+        geometry = dmx["geometry"]["wash"]
+        self.assertEqual((0.5, 0.0, 0.5), geometry[0])   # same height and depth: 0.5; x from left to right
+        self.assertEqual((0.5, 1.0, 0.5), geometry[24])
 
     def test_spinner_positions_by_unit(self):
         layout = json.loads((BACKEND / "layout.example.json").read_text(encoding="utf-8"))
@@ -84,6 +118,11 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(15, len(config["poles"]))
         self.assertEqual({"x": 961.0, "y": 169.0, "z": 1000.0}, config["poles"][0])
 
+    def test_layout_ids_beyond_the_patch_are_ignored(self):
+        dmx = load_with_layout({"schemaVersion": 1, "fixtures": {"ball": {"38": {"z": 1}, "1": {"z": 2}}}})
+        self.assertEqual({"z": 2.0}, dmx["positions"]["ball"][0])
+        self.assertEqual(37, len(dmx["positions"]["ball"]))
+
     def test_without_layout_every_axis_follows_order(self):
         dmx = load_dmx(BALLS)
         self.assertEqual([None] * 37, dmx["positions"]["ball"])
@@ -97,7 +136,7 @@ class LayoutTests(unittest.TestCase):
             "pole 1 needs x, y and z": {"schemaVersion": 1, "poles": [{"x": 1, "y": 2}]},
             "at most 200": {"schemaVersion": 1, "poles": [{"x": 1, "y": 1, "z": 1}] * 201},
             "keyed by group": {"schemaVersion": 1, "fixtures": {"spinner": {}}},
-            "ids 38 are not in the patch": {"schemaVersion": 1, "fixtures": {"ball": {"38": {"z": 1}}}},
+            "ids x, 01 are not fixture ids": {"schemaVersion": 1, "fixtures": {"ball": {"x": {"z": 1}, "01": {"z": 1}}}},
             "some of x, y, z": {"schemaVersion": 1, "fixtures": {"ball": {"1": {"h": 1}}}},
             r"ball 1\.z": {"schemaVersion": 1, "fixtures": {"ball": {"1": {"z": "high"}}}},
         }

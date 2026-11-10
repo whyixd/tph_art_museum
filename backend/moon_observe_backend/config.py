@@ -302,11 +302,13 @@ def _layout(path: Path, unit_count: int, fixtures: dict[str, list[dict[str, Any]
         by_id = entries.get(group, {})
         if not isinstance(by_id, dict):
             raise ValueError(f"layout {group} must map fixture ids to positions")
+        # patch 沒有的編號忽略（layout 描述整個現場，設定可以只接一部分）；不是正整數的編號才報錯。
+        # Ids missing from the patch are ignored (the layout covers the whole site; a config may patch only part).
+        bad = sorted((key for key in by_id if not (key.isdigit() and key[0] != "0")), key=lambda key: (len(key), key))
+        if bad:
+            raise ValueError(f"layout {group} ids {', '.join(bad)} are not fixture ids 1, 2, ...")
         known = {str(fixture["id"]) for fixture in fixtures[group]}
-        unknown = sorted(set(by_id) - known, key=lambda key: (len(key), key))
-        if unknown:
-            raise ValueError(f"layout {group} ids {', '.join(unknown)} are not in the patch")
-        parsed = {key: _position(position, f"layout {group} {key}") for key, position in by_id.items()}
+        parsed = {key: _position(position, f"layout {group} {key}") for key, position in by_id.items() if key in known}
         positions[group] = [parsed.get(str(fixture["id"])) for fixture in fixtures[group]]
     return spinners, positions, poles
 

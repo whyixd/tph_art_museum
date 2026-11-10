@@ -131,8 +131,15 @@ class MuseumSpinnerTests(unittest.TestCase):
         self.assertEqual([(unit, f"2.0.0.{200 + unit}", [0]) for unit in range(1, 25)],
                          [(t["unit_id"], t["ip"], t["universes"]) for t in config["targets"]])
         dmx = config["dmx"]
-        self.assertEqual([f"2.0.0.{box}" for box in (105, 101, 106, 102, 107, 103, 108, 109, 110, 111, 112)],
+        self.assertEqual([f"2.0.0.{box}" for box in (105, 101, 106, 102, 107, 103, 108, 109, 110, 111, 112, 100)],
                          [node["ip"] for node in dmx["nodes"]])
+        # 洗牆燈：25 顆 RGBW，獨立的 2.0.0.100（暫定），位址 1, 5, … 97。
+        # Wall washers: 25 RGBW on their own 2.0.0.100 (provisional), addresses 1, 5, ... 97.
+        washers = dmx["fixtures"]["wash"]
+        self.assertEqual(list(range(1, 26)), [wash["id"] for wash in washers])
+        self.assertEqual([4 * index + 1 for index in range(25)], [wash["address"] for wash in washers])
+        self.assertEqual({"2.0.0.100"}, {dmx["nodes"][wash["node"]]["ip"] for wash in washers})
+        self.assertEqual(("r", "g", "b", "w"), tuple(dmx["profiles"]["wash-rgbw"]["channels"]))
         balls = dmx["fixtures"]["ball"]
         self.assertEqual(list(range(1, 38)), [ball["id"] for ball in balls])
         self.assertEqual([4 * index + 1 for index in range(37)], [ball["address"] for ball in balls])
