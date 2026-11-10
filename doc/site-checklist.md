@@ -52,6 +52,7 @@
 
 - [ ] `sudo bash bootstrap.sh <版本>`（token 直接 Enter）
 - [ ] `config.toml`：多網卡時設 `artnet.source_ip`
+- [ ] 「後端」分頁沒有「Art-Net 暫停」（有的話：eth0 沒接上或位址不是 `source_ip`；`ip -br addr show eth0`）
 - [ ] `sudo systemctl start tph-art-museum`；`journalctl -u tph-art-museum -f`
 - [ ] 60 秒後 `output:` 行：**0 skipped**，`max` 低於 25 ms（播放最慢的效果「輪盤收束」與轉場時再看一次）
 - [ ] 控制頁面全場 3D：24 台轉燈、37 顆球燈、15 根燈桿位置正確

@@ -128,7 +128,13 @@ export async function getBackendPatch(): Promise<BackendPatch | null> {
 }
 
 /** 輸出迴圈的影格時間（最近一個 60 秒區間）。 / Output loop frame timing over the last 60 s window. */
-export type OutputStats =
+/**
+ * Art-Net 狀態：sending 送出中；waiting = 本機沒有來源位址（例如 eth0 沒接線），暫停中、位址回來後自動開始。
+ * --api-only 時沒有這個欄位。 / Art-Net state; waiting = the source address is not on this host. Absent with --api-only.
+ */
+export type ArtnetLink = { state: 'sending' | 'waiting'; sourceIp: string | null }
+
+export type OutputStats = { artnet?: ArtnetLink } & (
   | { active: false }
   | {
     active: true
@@ -139,6 +145,7 @@ export type OutputStats =
     renderMs: { avg: number; max: number }
     budgetMs: number
   }
+)
 
 export async function getOutputStats(): Promise<OutputStats | null> {
   const response = await fetch('/api/output', { cache: 'no-store' })

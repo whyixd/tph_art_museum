@@ -13,6 +13,13 @@ export function OutputStatsLine() {
     return () => { active = false; window.clearInterval(timer) }
   }, [])
   if (!stats) return null
+  if (stats.artnet?.state === 'waiting') {
+    return (
+      <p className="backend-error" role="alert">
+        Art-Net 暫停：本機沒有來源位址 {stats.artnet.sourceIp}（Art-Net 網路線沒接上？）。網頁照常可用，接上後幾秒內自動開始送出。
+      </p>
+    )
+  }
   if (!stats.active) return <p className="control-note">輸出統計：後端沒有在輸出（--api-only 或尚未開始）。</p>
   const load = stats.renderMs.max / stats.budgetMs
   return (

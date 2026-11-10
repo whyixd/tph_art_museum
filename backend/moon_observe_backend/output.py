@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import math
 from pathlib import Path
+import socket
 import sys
 import time
 import tomllib
@@ -31,6 +33,26 @@ from .weather import WeatherStore
 
 SINGLE_ROUND_SECONDS = 60  # A single effect "round" for weather visits: at least this long.
 DMX_EXIT_REPEATS = 2  # 結束時每個 DMX universe 送幾次全 0。 / All-zero frames per DMX universe on exit.
+SOURCE_RETRY_SECONDS = 2.0  # 等待 Art-Net 來源位址時多久重試一次。 / Retry interval while waiting for the source address.
+
+
+class SourceAddressLost(OSError):
+    """The Art-Net source address (``[artnet] source_ip``) is not on this host (any more).
+
+    來源位址不在本機（例如 eth0 沒接線）：暫停 Art-Net，網頁與 API 照常，位址回來後自動繼續。
+    """
+
+
+def source_available(ip: str) -> bool:
+    """Whether ``ip`` is an address of this host, so Art-Net can be sent from it (a test bind)."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+        try:
+            probe.bind((ip, 0))
+        except OSError as error:
+            if error.errno == errno.EADDRNOTAVAIL:
+                return False
+            raise
+    return True
 
 
 class OutputStats:
@@ -49,6 +71,20 @@ class OutputStats:
         self._start: float | None = None
         self._current = self._empty()
         self._last: dict[str, Any] | None = None
+        self._link: dict[str, Any] | None = None
+
+    def set_link(self, state: str, source_ip: str | None) -> None:
+        """Art-Net state for the page: ``sending`` or ``waiting`` (source address not on this host).
+
+        Leaving ``sending`` clears the frame statistics, so a pause does not show up as one long frame.
+        Art-Net 狀態：sending 或 waiting（本機沒有來源位址）；離開 sending 時清掉影格統計。
+        """
+        with self.lock:
+            if state != "sending":
+                self._start = None
+                self._current = self._empty()
+                self._last = None
+            self._link = {"state": state, "sourceIp": source_ip}
 
     @staticmethod
     def _empty() -> dict[str, Any]:
@@ -83,13 +119,14 @@ class OutputStats:
         }
 
     def snapshot(self) -> dict[str, Any]:
-        """Last complete window, or the window so far before the first one completes."""
+        """Last complete window, or the window so far before the first one completes; plus the Art-Net state."""
         with self.lock:
+            link = {"artnet": dict(self._link)} if self._link is not None else {}
             if self._last is not None:
-                return {"active": True, **self._last}
+                return {"active": True, **self._last, **link}
             if self._start is None:
-                return {"active": False}
-            return {"active": True, "partial": True, **self._summary(self._current, 0.0)}
+                return {"active": False, **link}
+            return {"active": True, "partial": True, **self._summary(self._current, 0.0), **link}
 
 
 def fixture_counts(config: Mapping[str, Any]) -> dict[str, int]:
@@ -140,6 +177,7 @@ def stream(
     beat_flash_provider: Callable[[], float | None] | None = None,
     show_provider: Callable[[], tuple[tuple[dict[str, Any], ...], int, int] | None] | None = None,
     stats: OutputStats | None = None,
+    source_check: Callable[[], bool] | None = None,
     clock: Callable[[], float] = time.perf_counter,
     sleep: Callable[[float], None] = time.sleep,
 ) -> int:
@@ -155,6 +193,11 @@ def stream(
     sequence / single effect and its frame comes from the music time; weather does not apply. When it ends,
     the standby output restarts from its first frame.
     演出播放時取代串接／單一效果，影格由音樂時間決定，不套用天氣；演出結束後待機輸出從頭播放。
+
+    ``source_check`` runs before every frame; when it returns False (the source address left this host),
+    or a client cannot bind the source address, ``SourceAddressLost`` is raised and nothing more is sent
+    (no motor stop or DMX blackout either: those packets could not leave).
+    每格送出前檢查來源位址；位址不在本機時丟出 SourceAddressLost，不再送任何封包。
     """
     if seconds is not None and (not math.isfinite(seconds) or seconds <= 0):
         raise ValueError("seconds must be positive and finite")
@@ -185,25 +228,32 @@ def stream(
     restarts = 0
     last_frame: int | None = None
     last_boundary: tuple[int, int] | None = None
+    link_lost = False
+    source_address = (config["source_ip"], 0) if config["source_ip"] else None
+
+    def make_client(ip: str, universe: int, size: int) -> Any:
+        nonlocal link_lost
+        try:
+            return client_factory(ip, universe, size, fps=fps, source_address=source_address)
+        except OSError as error:
+            if source_address is not None and error.errno == errno.EADDRNOTAVAIL:
+                link_lost = True
+                raise SourceAddressLost(error.errno, f"Art-Net source address {source_address[0]} is not on this host") from error
+            raise
+
     try:
         for target in targets:
             universes = target.get("universes") or [target["universe"] + offset for offset in range(len(sizes))]
             unit_clients: list[Any] = []
             clients.append((target, unit_clients))
             for universe, size in zip(universes, sizes, strict=True):
-                client = client_factory(
-                    target["ip"], universe & 0x0F, size, fps=fps,
-                    source_address=(config["source_ip"], 0) if config["source_ip"] else None,
-                )
+                client = make_client(target["ip"], universe & 0x0F, size)
                 unit_clients.append(client)
                 client.set_simplified(False)
                 client.set_net(universe >> 8)
                 client.set_subnet((universe >> 4) & 0x0F)
         for node in (dmx["nodes"] if dmx else []):
-            client = client_factory(
-                node["ip"], node["universe"] & 0x0F, DMX_CHANNELS, fps=fps,
-                source_address=(config["source_ip"], 0) if config["source_ip"] else None,
-            )
+            client = make_client(node["ip"], node["universe"] & 0x0F, DMX_CHANNELS)
             dmx_clients.append(client)
             client.set_simplified(False)
             client.set_net(node["universe"] >> 8)
@@ -221,6 +271,10 @@ def stream(
                 continue
             skipped = due - frame
             frame = due
+            if source_check is not None and not source_check():
+                link_lost = True
+                raise SourceAddressLost(errno.EADDRNOTAVAIL,
+                                        f"Art-Net source address {config['source_ip']} left this host")
             frame_started = clock()
             show_state = show_provider() if show_provider is not None else None
             show_generation = show_state[2] if show_state is not None else None
@@ -361,7 +415,7 @@ def stream(
             # 先停馬達（最重要），再讓 DMX 燈具全暗。 / Stop the motors first (most important), then darken DMX.
             for target, unit_clients in clients:
                 try:
-                    if last_motor_value == 255 and target["unit_id"] in last_pixels:
+                    if not link_lost and last_motor_value == 255 and target["unit_id"] in last_pixels:
                         # 保留最後畫面，只把馬達改成緩停。 / Keep the last picture; only stop the motor.
                         packets = build_packets(last_pixels[target["unit_id"]], hardware=hardware,
                                                 motor_channel=motor_channel, motor_value=0)
@@ -373,12 +427,57 @@ def stream(
         finally:
             try:
                 # DMX 燈具全暗（含 dimmer 等固定通道）。 / DMX fixtures dark, static channels (dimmer...) included.
-                for _ in range(DMX_EXIT_REPEATS):
+                for _ in range(DMX_EXIT_REPEATS if not link_lost else 0):
                     for client in dmx_clients:
                         client.send(bytes(DMX_CHANNELS))
             finally:
                 for client in dmx_clients:
                     client.close()
+
+
+def stream_when_source_available(
+    config: Mapping[str, Any],
+    preset: Mapping[str, Any],
+    *,
+    stats: OutputStats | None = None,
+    available: Callable[[str], bool] = source_available,
+    wait: Callable[[float], None] = time.sleep,
+    log: Callable[[str], None] = lambda line: print(line, file=sys.stderr, flush=True),
+    **stream_options: Any,
+) -> int:
+    """``stream`` once the Art-Net source address is on this host; pause and resume when it comes and goes.
+
+    Without ``[artnet] source_ip`` this is just ``stream``. Otherwise, while the address is missing (e.g. the
+    Art-Net cable on eth0 is unplugged) nothing is sent and the check repeats every SOURCE_RETRY_SECONDS;
+    the page and API keep running in their own thread. The output restarts from its first frame on resume.
+    Art-Net 來源位址不在本機時暫停（每 2 秒重試），網頁與 API 照常；位址回來後從第一格重新開始送。
+    """
+    source_ip = config["source_ip"]
+    if source_ip is None:
+        if stats is not None:
+            stats.set_link("sending", None)
+        return stream(config, preset, stats=stats, **stream_options)
+    waiting = False
+    while True:
+        if not available(source_ip):
+            if not waiting:
+                waiting = True
+                if stats is not None:
+                    stats.set_link("waiting", source_ip)
+                log(f"warning: Art-Net paused: {source_ip} ([artnet] source_ip) is not an address of this host; "
+                    f"is the Art-Net network cable connected? The page and API stay up; retrying every "
+                    f"{SOURCE_RETRY_SECONDS:g} s.")
+            wait(SOURCE_RETRY_SECONDS)
+            continue
+        if waiting:
+            log(f"Art-Net source {source_ip} is on this host again; sending.")
+            waiting = False
+        if stats is not None:
+            stats.set_link("sending", source_ip)
+        try:
+            return stream(config, preset, stats=stats, source_check=lambda: available(source_ip), **stream_options)
+        except SourceAddressLost as error:
+            log(f"warning: {error}; Art-Net stopped.")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -457,8 +556,9 @@ def main(argv: list[str] | None = None) -> int:
                 worker = Thread(target=server.serve_forever, daemon=True)
                 worker.start()
                 try:
-                    print(f"Sending {preset['effectId']} -> {len(config['targets'])} Art-Net target(s){dmx_summary} at {config['fps']} FPS. {service_label} listening on {args.api_host}:{args.api_port}. Ctrl+C to stop.", flush=True)
-                    sent = stream(config, preset, seconds=args.seconds,
+                    source = f" from {config['source_ip']}" if config["source_ip"] else ""
+                    print(f"Output {preset['effectId']} -> {len(config['targets'])} Art-Net target(s){dmx_summary} at {config['fps']} FPS{source}. {service_label} listening on {args.api_host}:{args.api_port}. Ctrl+C to stop.", flush=True)
+                    sent = stream_when_source_available(config, preset, seconds=args.seconds,
                                   preset_provider=store.snapshot, motor_provider=store.motor_value,
                                   sequence_provider=sequence_store.snapshot,
                                   weather_provider=weather_store.snapshot if weather_store is not None else None,

@@ -420,3 +420,12 @@ M5 已實作（`sequence.py`）：
 - 3D：洗牆燈除了地上的錐體，牆面（最近的長牆）多一片寬 1.6 m、高 4 m、往上與兩側漸淡的受光區，顏色同該顆燈。
 - 驗證：backend 208 個測試、frontend 163 個測試、`tsc`、build 通過；Playwright 全場與上視截圖，洗牆燈選「水平流動」時牆面受光正常，無頁面錯誤。
 - Pi 升級注意：安裝程式只在第一次安裝時建立 `config.toml` 與 `layout.json`，已安裝的 Pi 要手動加上洗牆燈的 profile／node／patch（照 `config.example.toml`）與 layout 的 `fixtures.wash`。
+
+### 2026-11-11：Art-Net 來源位址不在時暫停，而不是服務失敗
+
+- 起因：Pi 不在現場時 eth0 沒接線，NetworkManager 不啟用 `netplan-eth0`，本機沒有 `source_ip`（2.0.0.10），服務以 `[Errno 99] Cannot assign requested address` 結束、每 3 秒重啟，控制頁面也打不開。
+- `output.stream_when_source_available`：有 `source_ip` 時先試綁定（`source_available`，`EADDRNOTAVAIL` = 不在本機）；不在就印一次警告、每 2 秒重試，**不送任何封包**，網頁與 API（另一條執行緒）照常。位址出現後印「again; sending」並從第一格開始送。
+- 送到一半位址消失：`stream` 每格送出前檢查，丟出 `SourceAddressLost`（建 client 時綁定失敗也一樣），不送馬達緩停與 DMX 全暗（封包送不出去），關閉 client 後回到等待。
+- `GET /api/output` 多了 `artnet: {state: "sending" | "waiting", sourceIp}`（`--api-only` 時沒有）；進入等待時清掉影格統計。前端「後端」分頁在等待時以紅字顯示「Art-Net 暫停：本機沒有來源位址 …」。
+- 驗證：backend 214 個測試（新增 `test_source_wait.py` 6 個：探測、等待後開始送、送到一半消失再恢復、等待清統計、建 client 時綁定失敗、沒有 source_ip 時直接送）；frontend 163 個測試、`tsc`、build 通過。開發機以 `source_ip = 2.0.0.10`（本機沒有）實際啟動：`/api/output` 為 waiting、`/api/state` 200、SIGINT 0.5 秒內正常結束（exit 0）。
+

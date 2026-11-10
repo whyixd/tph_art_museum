@@ -69,7 +69,7 @@ Backend 與 build 好的前端以同一個「版本化、不可變 release」部
 
 Art-Net 網段是 `2.0.0.0/8`：轉燈 2.0.0.201–224、DMX 轉換器 2.0.0.101–112（見 `config.example.toml`）。Pi 的 Ethernet 要設成 **2.0.0.10**（與 `artnet.source_ip` 相同），**不要**設預設閘道。
 
-`source_ip` 同時是安全閥：2.0.0.0/8 是公用網段，Pi 沒有 2.0.0.10 時（例如不在現場網路）Art-Net 綁定失敗、服務起不來，封包不會經 Wi-Fi 的預設閘道送上網際網路。不在現場測試時可以加一張虛擬網卡，封包送進去就丟掉：`sudo ip link add dummy0 type dummy && sudo ip addr add 2.0.0.10/8 dev dummy0 && sudo ip link set dummy0 up`（重開機後消失）。
+`source_ip` 同時是安全閥：2.0.0.0/8 是公用網段，Pi 沒有 2.0.0.10 時（例如不在現場網路、eth0 沒接線）Art-Net 暫停、一個封包都不送，不會經 Wi-Fi 的預設閘道送上網際網路。服務與控制頁面照常運作，頁面「後端」分頁與日誌會顯示「Art-Net 暫停」；每 2 秒檢查一次，位址出現（接上網路線）後自動開始送，送到一半位址消失也會再暫停。（2026-11-11 前是整個服務啟動失敗、每 3 秒重啟。）不在現場測試時可以加一張虛擬網卡，封包送進去就丟掉：`sudo ip link add dummy0 type dummy && sudo ip addr add 2.0.0.10/8 dev dummy0 && sudo ip link set dummy0 up`（重開機後消失）。
 
 ```bash
 nmcli con show            # 有線連線名稱：Pi OS（Debian 13）為 "netplan-eth0"，舊版可能是 "Wired connection 1"
@@ -79,7 +79,7 @@ sudo nmcli con up netplan-eth0
 ip route                  # default 仍走 wlan0；2.0.0.0/8 走 eth0（沒接線時顯示 linkdown，封包在 eth0 丟棄）
 ```
 
-設定會寫進 `/etc/netplan/90-NM-*.yaml`，重開機後保留。沒接線時 eth0 仍有 2.0.0.10，所以 `source_ip` 綁得到、服務會啟動，但封包只會走 eth0（被丟棄），不會經 Wi-Fi 送出。
+設定會寫進 `/etc/netplan/90-NM-*.yaml`，重開機後保留。沒接線時 NetworkManager 不會啟用這個連線，eth0 沒有 2.0.0.10（2026-11-11 在 Pi 上實測），Art-Net 會暫停（見上）；接上線後 NetworkManager 套用位址，輸出自動開始。
 
 控制頁面（`http://<Pi>:8765/`）的連法二選一：
 
