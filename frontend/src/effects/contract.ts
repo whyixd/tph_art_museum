@@ -110,6 +110,12 @@ export type EffectSampleContext = {
    * 轉燈中心在場地中的座標（cm，場地配置；缺的軸為 undefined）。 / The spinner centre in the room (cm, from the layout).
    */
   unitPosition?: { x?: number; y?: number; z?: number }
+  /**
+   * 轉燈在全部轉燈範圍內的平面位置（長、寬各自 0–1，同球燈 fixtureGeometry；缺座標時依編號）。中心擴散的水平流動用。
+   * The spinner's plan position within all spinners (length and width each 0–1, as fixtureGeometry; by unit order
+   * when positions are missing). Used by center-out-sine's horizontal flow.
+   */
+  unitFlowPosition?: { x: number; y: number }
 }
 
 export type EffectModule = {
@@ -134,14 +140,15 @@ export type EffectModule = {
     parameters?: Readonly<Record<string, number>>,
   ) => number
   /**
-   * 漸層模式時直接給出最終顏色（取代「亮度 × 漸層取色」，不看方向與中途切換）。
-   * In gradient mode, the final colour directly (replaces brightness × gradient; ignores the axis and axis change).
+   * 漸層模式時直接給出最終顏色（取代「亮度 × 漸層取色」，不看方向與中途切換）；回傳 null 時照一般的漸層方向。
+   * In gradient mode, the final colour directly (replaces brightness × gradient; ignores the axis and axis change);
+   * null falls back to the usual axis.
    */
   gradientColor?: (
     context: EffectSampleContext,
     parameters: Readonly<Record<string, number>>,
     colors: readonly RgbColor[],
-  ) => RgbColor
+  ) => RgbColor | null
   /** Overrides the 'unit' axis position (default unitIndex / (unitCount - 1)). */
   unitGradientPosition?: (context: EffectSampleContext, parameters?: Readonly<Record<string, number>>) => number
   loopGradient?: boolean

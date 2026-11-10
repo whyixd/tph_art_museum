@@ -20,6 +20,10 @@ def _virtual_height(led_index: int, led_count: int, global_frame: int, fps: int,
     return math.sin(phase) * x - math.cos(phase) * z
 
 
+def _flow(value: Any) -> tuple[float, float] | None:
+    return None if value is None else (float(value[0]), float(value[1]))
+
+
 def render_frame(
     preset: Mapping[str, Any],
     unit: Mapping[str, Any],
@@ -95,6 +99,7 @@ def render_frame(
                 unit_phase_projection=projection,
                 unit_rank=unit.get("pillarRank"),
                 unit_position=unit.get("position"),
+                unit_flow=_flow(unit.get("flowPosition")),
             ),
             global_frame,
             raining,

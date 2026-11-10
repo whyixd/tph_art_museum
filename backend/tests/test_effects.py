@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 
-from moon_observe_backend.effects import EffectContext, axis_change_weight, completion_frames, default_preset, preset_for_unit, preset_to_json, sample_effect, unit_palette_position, validate_preset, variable_parameters
+from moon_observe_backend.effects import EffectContext, axis_change_weight, completion_frames, default_preset, preset_for_unit, preset_to_json, same_on_every_unit, sample_effect, unit_palette_position, validate_preset, variable_parameters
 from moon_observe_backend.renderer import render_frame, rgb_bytes
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "effects_v2.json"
@@ -276,6 +276,37 @@ class EffectParityTests(unittest.TestCase):
                 self.assertAlmostEqual(expected[key], actual[channel], places=12, msg=sample)
             lit_split += expected["r"] != expected["b"]
         self.assertGreater(lit_split, 0)
+
+    def test_center_out_flow_matches_frontend_with_layout_positions(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["flowPositions"]
+        presets = [validate_preset(preset) for preset in fixture["presets"]]
+        self.assertEqual(4 * 4 * 24 * 4, len(fixture["samples"]))
+        self.assertEqual(fixture["completions"], [completion_frames(preset, 40, 24) for preset in presets])
+        for sample in fixture["samples"]:
+            position = fixture["positions"][sample["unitIndex"]]
+            context = EffectContext(sample["frame"], 40, sample["ledIndex"], 129, sample["unitIndex"], 24, sample["frame"],
+                                    unit_flow=(position["x"], position["y"]))
+            actual = sample_effect(presets[sample["presetIndex"]], context, sample["frame"])
+            for channel, key in enumerate(("r", "g", "b")):
+                self.assertAlmostEqual(sample["expected"][key], actual[channel], places=12, msg=sample)
+
+    def test_center_out_flow_moves_colours_across_spinners(self):
+        raw = default_preset("center-out-sine")
+        raw["color"] = {"mode": "gradient", "axis": "radius", "colors": [{"r": 1, "g": 0, "b": 0}, {"r": 0, "g": 0, "b": 1}]}
+        raw["parameters"].update(horizontalFlow=1, flowDepth=0, minLevel=0.9, flowSpeedHz=0.5)
+        preset = validate_preset(raw)
+
+        def colour(frame: int, x: float) -> tuple[float, ...]:
+            return sample_effect(preset, EffectContext(frame, 40, 64, 129, 0, 24, unit_flow=(x, 0.3)))
+
+        top = colour(0, 0.25)
+        # Half a second later (a quarter turn at 0.5 turns/s) the colour at x = 0.5 is the one x = 0.25 had at the start.
+        later = colour(20, 0.5)
+        self.assertAlmostEqual(top[0] / top[2], later[0] / later[2], places=9)
+        self.assertNotAlmostEqual(colour(0, 0.25)[0], colour(0, 0.5)[0])
+        # Off: the same picture on every unit, and the output loop may share it; on: it may not.
+        self.assertTrue(same_on_every_unit(validate_preset(default_preset("center-out-sine")), False))
+        self.assertFalse(same_on_every_unit(preset, False))
 
     def test_wave_split_colours_by_height(self):
         raw = default_preset("wave-split")

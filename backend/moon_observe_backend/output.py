@@ -292,6 +292,8 @@ def stream(
                     "pillarRank": (config.get("pillar_ranks") or [])[unit_id - 1] if unit_id <= len(config.get("pillar_ranks") or []) else None,
                     # wave-split 用轉燈中心的場地座標。 / wave-split uses the spinner centre in the room.
                     "position": (config.get("spinner_positions") or [])[unit_id - 1] if unit_id <= len(config.get("spinner_positions") or []) else None,
+                    # 中心擴散的水平流動：轉燈在全部轉燈範圍內的平面位置 (x, y)。 / center-out-sine flow: plan position (x, y).
+                    "flowPosition": (config.get("spinner_flow") or [])[unit_id - 1] if unit_id <= len(config.get("spinner_flow") or []) else None,
                 }
                 color_override = weather.get("color") if category is not None else None
                 if flash_color is not None:

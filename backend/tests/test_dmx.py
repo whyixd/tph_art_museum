@@ -78,6 +78,9 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(24, len(config["spinner_positions"]))
         self.assertEqual({"x": 961.0, "y": 118.0, "z": 565.0}, config["spinner_positions"][0])
         self.assertEqual({"x": 3370.0, "y": 349.0, "z": 885.0}, config["spinner_positions"][23])
+        # 中心擴散的水平流動：與前端 fixtureGeometry 算出的位置相同。 / Flow positions match the frontend's fixtureGeometry.
+        flow = json.loads((BACKEND / "fixtures" / "effects_v2.json").read_text(encoding="utf-8"))["flowPositions"]["positions"]
+        self.assertEqual([(entry["x"], entry["y"]) for entry in flow], config["spinner_flow"])
         self.assertEqual(15, len(config["poles"]))
         self.assertEqual({"x": 961.0, "y": 169.0, "z": 1000.0}, config["poles"][0])
 

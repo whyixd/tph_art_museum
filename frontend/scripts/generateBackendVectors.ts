@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { compileSequence, createSequenceStep, layerUnitWeight, resolveSequenceFrame } from '../src/simulation/sequence'
 import { writeFileSync } from 'node:fs'
 import { exampleSiteLayout } from '../src/site/layout'
+import { fixtureGeometry } from '../src/fixtures'
 import { createDefaultEffectPreset, createEffectContext, getEffectCompletion, getVariableParameters, presetForUnit, sampleEffect, type EffectPreset } from '../src/effects'
 
 const ids = [
@@ -262,6 +263,31 @@ const wavePositions = {
     })))),
 }
 
+// 中心擴散的水平流動：範例配置 24 台的平面位置（0–1）、漸層（含加速）、純色與關閉。
+// center-out-sine horizontal flow: the example layout's 24 plan positions (0–1), gradient (with acceleration), solid, off.
+const flowGeometry = fixtureGeometry(waveLayout.spinners)
+const flowBase = createDefaultEffectPreset('center-out-sine')
+const flowPresets: EffectPreset[] = [
+  { ...flowBase, parameters: { ...flowBase.parameters, horizontalFlow: 1 },
+    color: { mode: 'gradient', axis: 'radius', colors: [{ r: 1, g: 0.2, b: 0.1 }, { r: 0.1, g: 0.9, b: 0.3 }, { r: 0.2, g: 0.3, b: 1 }] } },
+  { ...flowBase, parameters: { ...flowBase.parameters, horizontalFlow: 1, flowDirectionDegrees: 35, flowBands: 2.5,
+    flowAcceleration: 3.5, flowRampSeconds: 6, flowDepth: 0.8, flowSpeedHz: 0.34 } },
+  { ...flowBase, parameters: { ...flowBase.parameters, horizontalFlow: 1, flowDirectionDegrees: 200, flowAcceleration: 2 },
+    color: { mode: 'solid', color: { r: 0.9, g: 0.4, b: 0.1 } } },
+  flowBase,
+]
+const flowPositions = {
+  positions: flowGeometry.map(([, x, y]) => ({ x, y })),
+  presets: flowPresets,
+  samples: flowPresets.flatMap((preset, presetIndex) => [0, 37, 300, 1234].flatMap((frame) =>
+    flowGeometry.flatMap(([, x, y], unitIndex) => [0, 32, 64, 100].map((ledIndex) => {
+      const context = createEffectContext(frame, 40, ledIndex, 129, unitIndex, flowGeometry.length, frame)
+      context.unitFlowPosition = { x, y }
+      return { presetIndex, frame, unitIndex, ledIndex, expected: sampleEffect(preset, context, frame) }
+    })))),
+  completions: flowPresets.map((preset) => getEffectCompletion(preset, 40, 24)?.frames ?? null),
+}
+
 const output = JSON.stringify({
   source: 'frontend/src/effects',
   schemaVersion: 2,
@@ -276,6 +302,7 @@ const output = JSON.stringify({
   unitEffects,
   rainLines,
   wavePositions,
+  flowPositions,
 }, null, 2)
 
 if (process.argv.includes('--write')) {

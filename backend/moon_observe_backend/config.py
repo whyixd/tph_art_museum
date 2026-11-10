@@ -463,6 +463,9 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         "spinner_positions": spinner_positions,
         "poles": poles,
         "pillar_ranks": pillar_ranks(spinner_positions, poles),
+        # 中心擴散的水平流動：轉燈在全部轉燈範圍內的平面位置 (x, y)，同球燈的 fixture_geometry。
+        # center-out-sine's horizontal flow: each spinner's plan position (x, y), as the balls' fixture_geometry.
+        "spinner_flow": [(x, y) for _, x, y in fixture_geometry(spinner_positions)],
         "unit_id": targets[0]["unit_id"],
         "unit_count": unit_count,
         "preset_path": str(preset_path),

@@ -127,6 +127,8 @@ function useSpinnerColors(props: SiteSceneProps, unitCount: number) {
   const { settings, weather, effectPreset, sequence, unitColors, layout } = props
   const ledCount = settings.ledCount
   const ranks = useMemo(() => pillarRanks(layout.spinners, layout.poles), [layout])
+  // 水平流動用：轉燈在全部轉燈範圍內的平面位置（0–1）。 / Horizontal flow: each spinner's plan position (0–1).
+  const flow = useMemo(() => fixtureGeometry(layout.spinners), [layout])
   const weatherPreset = useMemo(() => {
     const cache = new WeakMap<EffectPreset, EffectPreset>()
     return (preset: EffectPreset): EffectPreset => {
@@ -140,7 +142,7 @@ function useSpinnerColors(props: SiteSceneProps, unitCount: number) {
   }, [weather?.color, weather?.category])
   const cache = useMemo(() => new Map<string, Float32Array>(), [
     weatherPreset, effectPreset, sequence, ledCount, unitCount, unitColors, settings.controllerFps,
-    settings.unitFrameOffsetStep, weather?.frameStep, ranks,
+    settings.unitFrameOffsetStep, weather?.frameStep, ranks, flow,
   ])
   const frameStep = spinnerFrameStep(props)
   return (unit: number, globalFrame: number): Float32Array => {
@@ -171,6 +173,7 @@ function useSpinnerColors(props: SiteSceneProps, unitCount: number) {
           )
           context.unitRank = ranks[unit]
           context.unitPosition = layout.spinners[unit] ?? undefined
+          context.unitFlowPosition = flow[unit] ? { x: flow[unit][1], y: flow[unit][2] } : undefined
           const color = sampleEffect(preset, context, layer.elapsedFrame, raining)
           colors[led * 3] += color.r * weight
           colors[led * 3 + 1] += color.g * weight

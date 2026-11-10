@@ -82,6 +82,10 @@ const FIXED_PARAMETERS: Partial<Record<EffectId, readonly string[]>> = {
   'pillar-fill': ['stepSeconds', 'acceleration', 'fadeInSeconds', 'holdSeconds', 'fadeOutSeconds', 'endDarkSeconds'],
   // 錯落順序靠九台共用的整輪長度。 / The stagger order relies on one shared round length.
   'random-fill': ['staggerSeconds'],
+  // 水平流動要全部轉燈一起流，不開放各台不同。 / The horizontal flow moves all spinners together, so no per-unit values.
+  'center-out-sine': [
+    'horizontalFlow', 'flowSpeedHz', 'flowBands', 'flowDirectionDegrees', 'flowDepth', 'flowAcceleration', 'flowRampSeconds',
+  ],
 }
 
 export function ignoresWeatherTiming(effectId: EffectId): boolean {
@@ -183,7 +187,10 @@ export function sampleEffect(
   const brightness = raining && effect.rain ? effect.rain(context, preset.parameters, base) : base()
   if (preset.color.mode === 'solid') return scaleRgb(preset.color.color, brightness)
   const { colors, axis, axisChange } = preset.color
-  if (effect.gradientColor && !(raining && effect.rain)) return effect.gradientColor(context, preset.parameters, colors)
+  if (effect.gradientColor && !(raining && effect.rain)) {
+    const direct = effect.gradientColor(context, preset.parameters, colors)
+    if (direct !== null) return direct
+  }
   const color = (gradientAxis: GradientAxis) => gradientAxis === 'unit'
     ? sampleGradient(
       colors,

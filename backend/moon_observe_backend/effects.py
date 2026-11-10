@@ -40,7 +40,13 @@ EFFECT_IDS = (
 # min, max, default, integer
 PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
     "spectrum-cycle": {},
-    "center-out-sine": {"speedHz": (0.05, 2, 0.35, False), "minLevel": (0, 0.9, 0.3, False)},
+    "center-out-sine": {
+        "speedHz": (0.05, 2, 0.35, False), "minLevel": (0, 0.9, 0.3, False),
+        # 水平流動（同球燈 horizontal-flow）。 / Horizontal flow (as the ball horizontal-flow).
+        "horizontalFlow": (0, 1, 0, True), "flowSpeedHz": (0.02, 2, 0.2, False), "flowBands": (0.5, 6, 1, False),
+        "flowDirectionDegrees": (0, 360, 0, False), "flowDepth": (0, 1, 0.5, False),
+        "flowAcceleration": (1, 10, 1, False), "flowRampSeconds": (0.5, 120, 10, False),
+    },
     "moving-rings": {
         "speedHz": (0.05, 1.5, 0.25, False),
         "ringCount": (1, 6, 3, True),
@@ -163,6 +169,9 @@ FIXED_PARAMETERS: dict[str, tuple[str, ...]] = {
     "pillar-fill": ("stepSeconds", "acceleration", "fadeInSeconds", "holdSeconds", "fadeOutSeconds", "endDarkSeconds"),
     # 錯落順序靠九台共用的整輪長度。 / The stagger order relies on one shared round length.
     "random-fill": ("staggerSeconds",),
+    # 水平流動要全部轉燈一起流。 / The horizontal flow moves all spinners together.
+    "center-out-sine": ("horizontalFlow", "flowSpeedHz", "flowBands", "flowDirectionDegrees", "flowDepth",
+                        "flowAcceleration", "flowRampSeconds"),
     "unit-chase": ("stepSeconds", "fadeSeconds", "gapSeconds", "holdSeconds", "endDarkSeconds"),
     "unit-random": ("fadeInSeconds", "holdSeconds", "fadeOutSeconds", "gapSeconds"),
     "roulette-ring": tuple(  # every parameter
@@ -189,6 +198,8 @@ def same_on_every_unit(preset: Mapping[str, Any], raining: bool) -> bool:
     """True when every unit renders the same picture (given equal frame offsets)."""
     if raining or "unitVariation" in preset or preset["effectId"] not in UNIT_INDEPENDENT_EFFECTS:
         return False
+    if preset["effectId"] == "center-out-sine" and center_out_flow_enabled(preset["parameters"]):
+        return False  # 水平流動依轉燈位置。 / The horizontal flow depends on the spinner's position.
     color = preset["color"]
     return color["mode"] == "solid" or (color["axis"] != "unit" and color.get("axisChange", {}).get("to") != "unit")
 SPECTRUM = (
@@ -441,6 +452,9 @@ class EffectContext:
     unit_rank: int | None = None
     # 轉燈中心的場地座標（cm，可缺軸）；wave-split 用。 / Spinner centre in the room (cm, axes may be missing); wave-split.
     unit_position: Mapping[str, float] | None = None
+    # 轉燈在全部轉燈範圍內的平面位置 (x, y)，各自 0–1（同 fixture_geometry）；中心擴散的水平流動用。
+    # The spinner's plan position (x, y) within all spinners, each 0–1 (as fixture_geometry); center-out-sine's flow.
+    unit_flow: tuple[float, float] | None = None
 
     @property
     def strip(self) -> float:
@@ -521,7 +535,11 @@ def _brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float:
     if effect == "center-out-sine":
         phase = TAU * (1.5 * ctx.radius - p["speedHz"] * time)
         # 波谷保留最低亮度，不會變成全暗。 / The trough keeps minLevel, never black.
-        return p["minLevel"] + (0.5 + 0.5 * math.cos(phase)) * (1 - p["minLevel"])
+        level = p["minLevel"] + (0.5 + 0.5 * math.cos(phase)) * (1 - p["minLevel"])
+        if not center_out_flow_enabled(p):
+            return level
+        # 水平流動的亮帶，最暗 1 - 亮度起伏。 / The flowing bands; the darkest is 1 - depth.
+        return level * (1 - p["flowDepth"] * (0.5 - 0.5 * math.cos(TAU * center_out_flow_phase(p, ctx))))
     if effect == "moving-rings":
         return min(1.0, sum(ring_weights(p, ctx)))
     if effect == "sequential-center-fill":
@@ -888,6 +906,34 @@ def _axis_color(preset: Mapping[str, Any], colors: tuple[Rgb, ...], axis: str, c
     return _gradient(colors, position, loop)
 
 
+def center_out_flow_enabled(parameters: Mapping[str, Any]) -> bool:
+    return parameters.get("horizontalFlow", 0) >= 0.5
+
+
+def center_out_flow_distance(parameters: Mapping[str, Any], time: float) -> float:
+    """Turns travelled (frontend centerOutFlowDistance, as the ball flow_distance): the speed rises linearly from v0
+    to v0 × acceleration over the ramp, then holds; the turns are its integral."""
+    start = parameters["flowSpeedHz"]
+    end = start * parameters["flowAcceleration"]
+    ramp = parameters["flowRampSeconds"]
+    if end == start:
+        return start * time
+    if time <= ramp:
+        return start * time + (end - start) * time * time / (2 * ramp)
+    return start * ramp + (end - start) * ramp / 2 + end * (time - ramp)
+
+
+def center_out_flow_phase(parameters: Mapping[str, Any], ctx: EffectContext) -> float:
+    """Flow phase in turns (frontend centerOutFlowPhase): the spinner's plan position along the direction × bands −
+    turns travelled. Without positions both axes follow the unit order."""
+    order = 0.5 if ctx.unit_count <= 1 else ctx.unit_index / (ctx.unit_count - 1)
+    x, y = ctx.unit_flow if ctx.unit_flow is not None else (order, order)
+    angle = parameters["flowDirectionDegrees"] * math.pi / 180
+    along = x * math.cos(angle) + y * math.sin(angle)
+    time = ctx.controller_frame / ctx.controller_fps if ctx.controller_fps > 0 else 0
+    return parameters["flowBands"] * along - center_out_flow_distance(parameters, time)
+
+
 def sample_effect(
     preset: Mapping[str, Any], ctx: EffectContext, elapsed_frame: int | None = None, raining: bool = False,
 ) -> Rgb:
@@ -900,6 +946,12 @@ def sample_effect(
         stops = color["colors"]
         top, foam = _wave_split(preset["parameters"], ctx)
         return _mix(_mix(stops[-1], stops[0], top), stops[1] if len(stops) >= 3 else (1.0, 1.0, 1.0), foam)
+    if (preset["effectId"] == "center-out-sine" and color["mode"] == "gradient" and rain is None
+            and center_out_flow_enabled(preset["parameters"])):
+        # 水平流動：漸層沿流動方向首尾相接地取色（每台一色）。 / Flow: the gradient loops along the flow, one colour per spinner.
+        rgb = _gradient(color["colors"], center_out_flow_phase(preset["parameters"], ctx), True)
+        brightness = _brightness(preset, ctx)
+        return tuple(clamp01(channel * brightness) for channel in rgb)  # type: ignore[return-value]
     if preset["effectId"] == "color-alternate" and color["mode"] == "gradient" and rain is None:
         # 第一色、最後一色交替。 / The first and last colours alternate.
         stops = color["colors"]
@@ -1225,6 +1277,11 @@ def completion_frames(preset: Mapping[str, Any], fps: int, unit_count: int) -> i
     parameters = preset["parameters"]
     if effect == "spectrum-cycle":
         return 20
+    if effect == "center-out-sine" and center_out_flow_enabled(parameters):
+        # 同球燈水平流動：加速時以一次加速為一輪。 / As the ball flow: with acceleration, one ramp is one round.
+        if parameters["flowAcceleration"] > 1:
+            return max(1, _round_half_up(parameters["flowRampSeconds"] * fps))
+        return max(1, math.ceil(fps / parameters["flowSpeedHz"]))
     if effect in ("center-out-sine", "moving-rings"):
         return max(1, math.ceil(fps / parameters["speedHz"]))
     if effect == "reverse-tide":
