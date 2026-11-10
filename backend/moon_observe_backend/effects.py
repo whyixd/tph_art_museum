@@ -456,7 +456,9 @@ class EffectContext:
 
 
 def _gradient(colors: tuple[Rgb, ...], position: float, loop: bool) -> Rgb:
-    coordinate = (((position % 1) + 1) % 1) * len(colors) if loop else clamp01(position) * (len(colors) - 1)
+    # 循環時與前端 ((p % 1) + 1) % 1 逐位元一致：JS 的 % 是 fmod（負數保留負號），Python 的 % 不是。
+    # Looping matches the frontend's ((p % 1) + 1) % 1 bit for bit: JS % is fmod (keeps the sign), Python's is not.
+    coordinate = math.fmod(math.fmod(position, 1) + 1, 1) * len(colors) if loop else clamp01(position) * (len(colors) - 1)
     index = math.floor(coordinate)
     next_index = (index + 1) % len(colors) if loop else min(index + 1, len(colors) - 1)
     amount = clamp01(coordinate - index)

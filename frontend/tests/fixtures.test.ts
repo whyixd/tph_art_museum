@@ -3,6 +3,7 @@ import {
   FIXTURE_MANIFEST,
   createDefaultFixturePreset,
   fixtureGeometry,
+  flowDistance,
   getFixtureCompletion,
   renderFixtureFrame,
 } from '../src/fixtures'
@@ -44,6 +45,41 @@ describe('fixture effects', () => {
     const levels = renderFixtureFrame(preset, geometry, 12 * 3).map((color) => color.r)  // head on fixture 3
     ;[0, 1 / 3, 2 / 3, 1, 0].forEach((level, index) => expect(levels[index]).toBeCloseTo(level, 12))
     expect(getFixtureCompletion(preset, 40, 5)).toBe(12 * 5)
+  })
+
+  it('flows looping gradient colours and bright bands horizontally', () => {
+    const preset = createDefaultFixturePreset('horizontal-flow')
+    expect(getFixtureCompletion(preset, 40, 3)).toBe(200)
+    const geometry = fixtureGeometry([{ x: 0, y: 0, z: 300 }, { x: 500, y: 0, z: 300 }, { x: 1000, y: 0, z: 300 }])
+    const colours = [{ r: 1, g: 0, b: 0 }, { r: 0, g: 0, b: 1 }]
+    const gradient = { ...preset, parameters: { ...preset.parameters, depth: 0 }, color: { mode: 'gradient' as const, axis: 'height' as const, colors: colours } }
+    const at = (frame: number, target: typeof gradient | typeof preset = gradient) => renderFixtureFrame(target, geometry, frame)
+    // Phase = x − 0.2 t: at t = 0 the left end is red and the middle is blue (looping gradient, 2 colours).
+    expect(at(0)[0]).toEqual({ r: 1, g: 0, b: 0 })
+    expect(at(0)[1]).toEqual({ r: 0, g: 0, b: 1 })
+    // 2.5 s later (phase − 0.5) the colours have flowed half a band.
+    expect(at(100)[0].b).toBeCloseTo(1, 12)
+    // 90°: flows along y, so balls on one y line share a colour.
+    const across = { ...gradient, parameters: { ...gradient.parameters, directionDegrees: 90 } }
+    expect(new Set(renderFixtureFrame(across, geometry, 40).map((color) => JSON.stringify(color))).size).toBe(1)
+    // Solid: only the bright bands flow (darkest 1 − depth = 0.5).
+    const levels = renderFixtureFrame(preset, geometry, 0).map((color) => color.r)
+    expect(Math.max(...levels)).toBeCloseTo(1, 12)
+    expect(Math.min(...levels)).toBeCloseTo(0.5, 12)
+  })
+
+  it('speeds the horizontal flow up smoothly with acceleration', () => {
+    const base = createDefaultFixturePreset('horizontal-flow').parameters
+    const fast = { ...base, acceleration: 3, rampSeconds: 10 }
+    // Speed 0.2 → 0.6 turns/s over 10 s: 0.2 · 10 + 0.4 · 10 / 2 = 4 turns by 10 s, then 0.6 turns/s.
+    expect(flowDistance(fast, 10)).toBeCloseTo(4, 12)
+    expect(flowDistance(fast, 12)).toBeCloseTo(5.2, 12)
+    expect(flowDistance(base, 10)).toBeCloseTo(2, 12)
+    // The speed (slope) grows during the ramp and stays continuous at its end.
+    const slope = (time: number) => (flowDistance(fast, time + 1e-4) - flowDistance(fast, time)) / 1e-4
+    expect(slope(1)).toBeLessThan(slope(5))
+    expect(slope(9.9999)).toBeCloseTo(slope(10.0001), 3)
+    expect(getFixtureCompletion({ ...createDefaultFixturePreset('horizontal-flow'), parameters: fast }, 40, 3)).toBe(400)
   })
 
   it('keeps a base level and adds a travelling sine of the same colour', () => {

@@ -23,6 +23,7 @@ export type FixtureEffectId =
   | 'fixture-rise'
   | 'pole-rise'
   | 'base-wave'
+  | 'horizontal-flow'
 
 export type FixtureAxis = 'height' | 'x' | 'y' | 'index'
 
@@ -148,6 +149,18 @@ export const FIXTURE_MANIFEST: readonly FixtureManifestEntry[] = [
       direction,
     ],
   },
+  {
+    id: 'horizontal-flow', label: '水平流動',
+    description: '顏色在水平方向流動：漸層的顏色沿俯視方向（0° = 沿長牆、90° = 往後牆）首尾相接地流過所有燈，不看漸層方向；亮度起伏讓一道道亮帶跟著一起流，純色時就只看得到亮帶在流。加速倍數大於 1 時，從效果（或段落）開始在加速時間內由流速平順加快到流速 × 加速倍數，之後維持。方向以場地長、寬各自 0–1 計。',
+    parameters: [
+      parameter('speedHz', '流速', '圈/秒', 0.02, 2, 0.02, 0.2),
+      parameter('waveCount', '色帶數', '', 0.5, 6, 0.5, 1),
+      parameter('directionDegrees', '流動方向', '°', 0, 360, 5, 0),
+      parameter('depth', '亮度起伏', '', 0, 1, 0.05, 0.5),
+      parameter('acceleration', '加速倍數', '倍（1 = 不加速）', 1, 10, 0.25, 1),
+      parameter('rampSeconds', '加速時間', 's', 0.5, 120, 0.5, 10),
+    ],
+  },
 ]
 
 /** 雨天：每顆各自隨機相位閃亮後衰減。 / Rain: each fixture flashes at its own random phase, then decays. */
@@ -230,6 +243,9 @@ export function getFixtureCompletion(preset: FixturePreset, fps: number, fixture
       return frames(p.periodSeconds, fps)
     case 'base-wave':
       return Math.max(1, Math.ceil(fps / p.speedHz))
+    case 'horizontal-flow':
+      // 加速時以一次加速為一輪。 / With acceleration, one ramp is one round.
+      return p.acceleration > 1 ? frames(p.rampSeconds, fps) : Math.max(1, Math.ceil(fps / p.speedHz))
     default:
       return null
   }
@@ -271,6 +287,11 @@ export function fixtureBrightness(preset: FixturePreset, context: FixtureContext
       const behind = mod(head - order, count)
       const tail = Math.trunc(p.tailCount)
       return behind <= tail ? 1 - behind / (tail + 1) : 0
+    }
+    case 'horizontal-flow': {
+      // 亮帶跟著顏色一起流：最暗 1 - depth。 / Bright bands flow with the colours; the darkest is 1 - depth.
+      const phase = horizontalFlowPhase(p, context)
+      return 1 - p.depth * (0.5 - 0.5 * Math.cos(2 * Math.PI * phase))
     }
     case 'base-wave': {
       // 基本亮度＋正弦波：波峰在 base + (1 - base) × depth。 / Base plus a sine: the crest reaches base + (1 - base) × depth.
@@ -339,6 +360,28 @@ function rain(context: FixtureContext): number {
   return FIXTURE_RAIN.floor + (1 - FIXTURE_RAIN.floor) * pulse
 }
 
+/**
+ * 流過的圈數：速度在 ramp 秒內由 v0 線性加到 v1（= v0 × 加速倍數），之後維持 v1；圈數是速度的積分，所以不會跳動。
+ * Turns travelled: the speed rises linearly from v0 to v1 (= v0 × acceleration) over the ramp, then stays at v1; the
+ * turns are its integral, so the flow never jumps.
+ */
+export function flowDistance(p: Readonly<Record<string, number>>, time: number): number {
+  const start = p.speedHz
+  const end = p.speedHz * (p.acceleration ?? 1)
+  const ramp = p.rampSeconds ?? 10
+  if (end === start) return start * time
+  if (time <= ramp) return start * time + ((end - start) * time * time) / (2 * ramp)
+  return start * ramp + ((end - start) * ramp) / 2 + end * (time - ramp)
+}
+
+/** 水平流動的相位（圈）：沿俯視方向的位置 × 色帶數 − 流過的圈數。 / Flow phase in turns: distance along the direction × bands − turns travelled. */
+export function horizontalFlowPhase(p: Readonly<Record<string, number>>, context: FixtureContext): number {
+  const time = context.controllerFps > 0 ? context.controllerFrame / context.controllerFps : 0
+  const angle = (p.directionDegrees * Math.PI) / 180
+  const along = context.normalizedX * Math.cos(angle) + context.normalizedY * Math.sin(angle)
+  return p.waveCount * along - flowDistance(p, time)
+}
+
 function gradientPosition(axis: FixtureAxis, context: FixtureContext): number {
   if (axis === 'height') return context.normalizedHeight
   if (axis === 'x') return context.normalizedX
@@ -353,9 +396,12 @@ export function sampleFixture(preset: FixturePreset, context: FixtureContext, ra
   brightness *= preset.maxLevel ?? 1
   if (brightness <= 0) return BLACK
   const color = preset.color
+  // 水平流動：漸層沿流動方向首尾相接地取色。 / horizontal-flow: the gradient loops along the flow.
   const base = color.mode === 'solid'
     ? color.color
-    : sampleGradient(color.colors, gradientPosition(color.axis, context), false)
+    : preset.effectId === 'horizontal-flow'
+      ? sampleGradient(color.colors, horizontalFlowPhase(preset.parameters, context), true)
+      : sampleGradient(color.colors, gradientPosition(color.axis, context), false)
   return {
     r: clamp01(base.r * brightness),
     g: clamp01(base.g * brightness),

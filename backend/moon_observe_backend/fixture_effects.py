@@ -30,6 +30,7 @@ FIXTURE_EFFECT_IDS = (
     "fixture-rise",
     "pole-rise",
     "base-wave",
+    "horizontal-flow",
 )
 # min, max, default, integer
 FIXTURE_PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
@@ -70,6 +71,14 @@ FIXTURE_PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "waveCount": (0.5, 6, 1, False),
         "waveAxis": (0, 3, 0, True),
         "direction": (0, 1, 0, True),
+    },
+    "horizontal-flow": {
+        "speedHz": (0.02, 2, 0.2, False),
+        "waveCount": (0.5, 6, 1, False),
+        "directionDegrees": (0, 360, 0, False),
+        "depth": (0, 1, 0.5, False),
+        "acceleration": (1, 10, 1, False),
+        "rampSeconds": (0.5, 120, 10, False),
     },
 }
 # 雨天：每顆各自隨機相位、短暫閃亮後衰減，其餘時間保留 RAIN_FLOOR 的亮度。
@@ -208,6 +217,9 @@ def fixture_completion_frames(preset: Mapping[str, Any], fps: int, fixture_count
         return _frames(p["periodSeconds"], fps)
     if effect == "base-wave":
         return max(1, math.ceil(fps / p["speedHz"]))
+    if effect == "horizontal-flow":
+        # 加速時以一次加速為一輪。 / With acceleration, one ramp is one round.
+        return _frames(p["rampSeconds"], fps) if p["acceleration"] > 1 else max(1, math.ceil(fps / p["speedHz"]))
     return None
 
 
@@ -255,6 +267,9 @@ def fixture_brightness(preset: Mapping[str, Any], ctx: FixtureContext) -> float:
         return 1 - behind / (tail + 1) if behind <= tail else 0.0
     if effect == "pole-rise":
         return _pole_rise(p, ctx)
+    if effect == "horizontal-flow":
+        # 亮帶跟著顏色一起流：最暗 1 - depth。 / Bright bands flow with the colours; the darkest is 1 - depth.
+        return 1 - p["depth"] * (0.5 - 0.5 * math.cos(TAU * horizontal_flow_phase(p, ctx)))
     if effect == "base-wave":
         # 基本亮度＋正弦波：波峰在 base + (1 - base) × depth。 / Base plus a sine: the crest reaches base + (1 - base) × depth.
         axis = FIXTURE_AXES[min(3, max(0, int(p["waveAxis"])))]
@@ -325,6 +340,28 @@ def _pole_rise(p: Mapping[str, Any], ctx: FixtureContext) -> float:
     return remaining * remaining
 
 
+def flow_distance(p: Mapping[str, Any], time: float) -> float:
+    """Turns travelled (frontend flowDistance): the speed rises linearly from v0 to v0 × acceleration over the
+    ramp, then holds; the turns are its integral, so the flow never jumps."""
+    start = p["speedHz"]
+    end = p["speedHz"] * p["acceleration"]
+    ramp = p["rampSeconds"]
+    if end == start:
+        return start * time
+    if time <= ramp:
+        return start * time + (end - start) * time * time / (2 * ramp)
+    return start * ramp + (end - start) * ramp / 2 + end * (time - ramp)
+
+
+def horizontal_flow_phase(p: Mapping[str, Any], ctx: FixtureContext) -> float:
+    """horizontal-flow phase in turns (frontend horizontalFlowPhase): distance along the plan direction × bands −
+    turns travelled."""
+    time = ctx.controller_frame / ctx.controller_fps if ctx.controller_fps > 0 else 0
+    angle = p["directionDegrees"] * math.pi / 180
+    along = ctx.normalized_x * math.cos(angle) + ctx.normalized_y * math.sin(angle)
+    return p["waveCount"] * along - flow_distance(p, time)
+
+
 def _rain(ctx: FixtureContext) -> float:
     time = ctx.controller_frame / ctx.controller_fps if ctx.controller_fps > 0 else 0
     pulse = clamp01(1 - _cycle(RAIN_HZ * time + hash01(0, ctx.fixture_index, 23)) / RAIN_FLASH)
@@ -350,8 +387,13 @@ def sample_fixture(preset: Mapping[str, Any], ctx: FixtureContext, raining: bool
     if brightness <= 0:
         return BLACK
     color = preset["color"]
-    base = color["color"] if color["mode"] == "solid" else _gradient(
-        color["colors"], _gradient_position(color["axis"], ctx), False)
+    if color["mode"] == "solid":
+        base = color["color"]
+    elif preset["effectId"] == "horizontal-flow":
+        # 水平流動：漸層沿流動方向首尾相接地取色。 / horizontal-flow: the gradient loops along the flow.
+        base = _gradient(color["colors"], horizontal_flow_phase(preset["parameters"], ctx), True)
+    else:
+        base = _gradient(color["colors"], _gradient_position(color["axis"], ctx), False)
     return tuple(clamp01(channel * brightness) for channel in base)  # type: ignore[return-value]
 
 

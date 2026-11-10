@@ -11,6 +11,7 @@ from moon_observe_backend.fixture_effects import (
     fixture_completion_frames,
     fixture_geometry,
     fixture_preset_to_json,
+    flow_distance,
     render_fixture_frame,
     sample_fixture,
     validate_fixture_preset,
@@ -127,6 +128,26 @@ class FixturePresetTests(unittest.TestCase):
             preset = validate_fixture_preset(case["preset"])
             frames = b"".join(to_bytes(render_fixture_frame(preset, geometry, frame, fps=40, poles=poles)) for frame in range(700))
             self.assertEqual(case["sha256"], hashlib.sha256(frames).hexdigest(), case["preset"]["parameters"])
+
+    def test_horizontal_flow_moves_colours_along_the_direction(self):
+        raw = default_fixture_preset("horizontal-flow")
+        raw["parameters"]["depth"] = 0
+        raw["color"] = {"mode": "gradient", "axis": "height", "colors": [{"r": 1, "g": 0, "b": 0}, {"r": 0, "g": 0, "b": 1}]}
+        preset = validate_fixture_preset(raw)
+        self.assertEqual(200, fixture_completion_frames(preset, 40, 3))
+        geometry = fixture_geometry([{"x": x, "y": 0, "z": 300} for x in (0, 500, 1000)])
+        first = render_fixture_frame(preset, geometry, 0)
+        self.assertEqual((1.0, 0.0, 0.0), first[0])
+        self.assertEqual((0.0, 0.0, 1.0), first[1])
+        self.assertAlmostEqual(1.0, render_fixture_frame(preset, geometry, 100)[0][2], places=12)
+
+    def test_horizontal_flow_accelerates_smoothly(self):
+        raw = default_fixture_preset("horizontal-flow")
+        raw["parameters"].update(acceleration=3, rampSeconds=10)
+        fast = validate_fixture_preset(raw)["parameters"]
+        self.assertAlmostEqual(4.0, flow_distance(fast, 10), places=12)
+        self.assertAlmostEqual(5.2, flow_distance(fast, 12), places=12)
+        self.assertEqual(400, fixture_completion_frames(validate_fixture_preset(raw), 40, 3))
 
     def test_base_wave_keeps_base_and_adds_sine(self):
         preset = validate_fixture_preset(default_fixture_preset("base-wave"))
