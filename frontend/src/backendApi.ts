@@ -430,6 +430,8 @@ export type BackendShowSection = {
   spinner: EffectPreset
   ball?: FixturePreset
   wash?: FixturePreset
+  /** 某幾台轉燈改用別的效果（燈台編號從 1 起）。 / Spinners playing another effect (unit numbers from 1). */
+  overrides?: { units: number[]; spinner: EffectPreset }[]
   transition: ShowTransition
 }
 
@@ -438,9 +440,10 @@ export type BackendShowDocument = Omit<ShowDocument, 'sections'> & { sections: B
 export function fromBackendShow(document: BackendShowDocument): ShowDocument {
   return {
     ...document,
-    sections: document.sections.map(({ id, start, spinner, ball, wash, transition }) => ({
+    sections: document.sections.map(({ id, start, spinner, ball, wash, overrides, transition }) => ({
       id, start, preset: spinner, transition,
       ...(ball || wash ? { fixtures: { ...(ball ? { ball } : {}), ...(wash ? { wash } : {}) } } : {}),
+      ...(overrides?.length ? { overrides: overrides.map(({ units, spinner: preset }) => ({ units, preset })) } : {}),
     })),
   }
 }
@@ -448,8 +451,13 @@ export function fromBackendShow(document: BackendShowDocument): ShowDocument {
 export function toBackendShow(document: ShowDocument): BackendShowDocument {
   return {
     ...document,
-    sections: document.sections.map(({ id, start, preset, fixtures, transition }) => ({
-      id, start, spinner: preset, ...fixtures, transition,
+    sections: document.sections.map(({ id, start, preset, fixtures, overrides, transition }) => ({
+      id, start, spinner: preset, ...fixtures,
+      // 沒選任何轉燈的覆寫不存。 / Overrides without units are not saved.
+      ...(overrides?.some((override) => override.units.length)
+        ? { overrides: overrides.filter((override) => override.units.length).map(({ units, preset: spinner }) => ({ units: [...units].sort((a, b) => a - b), spinner })) }
+        : {}),
+      transition,
     })),
   }
 }

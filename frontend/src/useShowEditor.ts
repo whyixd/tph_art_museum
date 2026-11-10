@@ -48,6 +48,9 @@ export function useShowEditor(fps: number, onEdited: (sectionId: number | null) 
   const [draft, setDraft] = useState<ShowDocument | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState(1)
+  // 正在編輯的轉燈覆寫（選取段落的第幾組；null = 主效果）。 / The override being edited (index in the selected section).
+  const [overrideIndex, setOverrideIndex] = useState<number | null>(null)
+  useEffect(() => { setOverrideIndex(null) }, [selectedId])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<PreviewAudio>('idle')
@@ -146,14 +149,63 @@ export function useShowEditor(fps: number, onEdited: (sectionId: number | null) 
     }), id)
   }
 
-  /** 效果、顏色與燈具編輯器改的是選取段落的 preset／fixtures。 / The effect editors change the selected section. */
+  /**
+   * 效果、顏色與燈具編輯器改的是選取段落的 preset／fixtures；正在編輯覆寫時，轉燈效果改的是那組覆寫。
+   * The effect editors change the selected section; while an override is selected, the spinner effect goes to it.
+   */
   const updateSelectedPresets = (change: (holder: PresetHolder) => PresetHolder) => {
     updateSection(selectedId, (section) => {
       const { fixtures: _old, ...base } = section
-      const next = change({ preset: section.preset, ...(section.fixtures ? { fixtures: section.fixtures } : {}) })
+      const override = overrideIndex !== null ? section.overrides?.[overrideIndex] : undefined
+      const next = change({ preset: override?.preset ?? section.preset, ...(section.fixtures ? { fixtures: section.fixtures } : {}) })
       const fixtures: StepFixtures | undefined = next.fixtures && Object.keys(next.fixtures).length ? next.fixtures : undefined
-      return { ...base, preset: next.preset, ...(fixtures ? { fixtures } : {}) }
+      const overrides = override
+        ? section.overrides!.map((entry, index) => index === overrideIndex ? { ...entry, preset: next.preset } : entry)
+        : section.overrides
+      return {
+        ...base,
+        preset: override ? section.preset : next.preset,
+        ...(fixtures ? { fixtures } : {}),
+        ...(overrides?.length ? { overrides } : {}),
+      }
     })
+  }
+
+  const selectedSection = draft?.sections.find((section) => section.id === selectedId) ?? draft?.sections[0]
+  const editedOverride = overrideIndex !== null ? selectedSection?.overrides?.[overrideIndex] : undefined
+
+  const setOverrides = (change: (overrides: NonNullable<ShowSection['overrides']>) => NonNullable<ShowSection['overrides']>) => {
+    updateSection(selectedId, (section) => {
+      const { overrides: _old, ...base } = section
+      const overrides = change(section.overrides ?? [])
+      return overrides.length ? { ...base, overrides } : base
+    })
+  }
+
+  /** 新增一組覆寫（先用這段的效果），並開始編輯它。 / Add an override (starting from the section's effect) and edit it. */
+  const addOverride = () => {
+    if (!selectedSection) return
+    const index = selectedSection.overrides?.length ?? 0
+    setOverrides((overrides) => [...overrides, { units: [], preset: structuredClone(selectedSection.preset) }])
+    setOverrideIndex(index)
+  }
+
+  const removeOverride = (index: number) => {
+    setOverrides((overrides) => overrides.filter((_, position) => position !== index))
+    setOverrideIndex(null)
+  }
+
+  /** 把一台轉燈加入／移出正在編輯的覆寫；加入時會從其他覆寫移走。 / Toggle a unit in the edited override, moving it from others. */
+  const toggleOverrideUnit = (unit: number) => {
+    if (overrideIndex === null) return
+    setOverrides((overrides) => overrides.map((entry, index) => {
+      if (index === overrideIndex) {
+        return { ...entry, units: entry.units.includes(unit) ? entry.units.filter((value) => value !== unit) : [...entry.units, unit].sort((a, b) => a - b) }
+      }
+      return entry.units.includes(unit) && !overrides[overrideIndex].units.includes(unit)
+        ? { ...entry, units: entry.units.filter((value) => value !== unit) }
+        : entry
+    }))
   }
 
   const addSection = (duplicate: boolean) => {
@@ -321,6 +373,10 @@ export function useShowEditor(fps: number, onEdited: (sectionId: number | null) 
   return {
     shows, tracks, beatMaps, beatMap, loadBeatMap, draft, dirty, selectedId, busy, error, compiled, preview, previewFrame,
     setSelectedId, open, create, edit, updateSection, updateSelectedPresets, addSection, removeSection,
+    // 轉燈覆寫 / Spinner overrides
+    overrideIndex: editedOverride ? overrideIndex : null,
+    editedPreset: editedOverride?.preset ?? selectedSection?.preset ?? null,
+    selectOverride: setOverrideIndex, addOverride, removeOverride, toggleOverrideUnit,
     setEnding: (ending: ShowEnding) => edit((show) => ({ ...show, ending }), lastSectionId(draft)),
     setTitle: (title: string) => setDraft((current) => current ? { ...current, title } : current),
     setId: (id: string) => setDraft((current) => current ? { ...current, id } : current),

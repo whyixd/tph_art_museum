@@ -633,7 +633,7 @@ export function ControlPanel({
         {shownTab === 'show' && (
           <ShowEditor editor={showEditor} controlMode={controlMode} enabled={showEnabled} onEnabled={onShowEnabled}
             currentIndex={currentShowIndex} previewSeconds={showPreviewSeconds} backendPlaying={backendShowPlaying} fps={settings.controllerFps}
-            onPlayFrom={onShowPlayFrom} sectionEditor={sectionEditor} />
+            onPlayFrom={onShowPlayFrom} sectionEditor={sectionEditor} unitCount={unitCount} />
         )}
 
         {shownTab === 'backend' && playbackSupported && (

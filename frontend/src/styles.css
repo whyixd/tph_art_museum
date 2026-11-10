@@ -678,3 +678,12 @@ input[type="range"] {
 .show-section-heading { display: block; margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid #273846; }
 .show-section-effects { display: grid; gap: 0.6rem; margin-top: 0.6rem; }
 .show-section-effects .segmented-control { margin-top: 0; }
+
+/* 轉燈覆寫 / Spinner overrides */
+.show-overrides { display: grid; gap: 0.5rem; margin: 0.4rem 0 0.6rem; }
+.show-override-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.show-override-list button { padding: 0.35rem 0.6rem; font-size: 0.8rem; text-align: left; }
+.show-override-item { display: inline-flex; gap: 0.2rem; }
+.override-units { display: grid; grid-template-columns: repeat(auto-fill, minmax(3.2rem, 1fr)); gap: 0.3rem; }
+.override-unit { display: flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.4rem; border: 1px solid #2b4050; border-radius: 0.4rem; font-size: 0.8rem; color: #d6e0ea; cursor: pointer; }
+.override-unit.taken { color: #f2c46d; border-color: #6b5a2e; }

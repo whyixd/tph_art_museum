@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fromBackendShow, toBackendShow } from '../src/backendApi'
 import { createDefaultEffectPreset } from '../src/effects'
-import { resolveSequenceFrame } from '../src/simulation/sequence'
+import { layerPresetForUnit, resolveSequenceFrame } from '../src/simulation/sequence'
 import {
   barBeatAt, compileShow, showFrameAt, startSeconds, transitionSeconds, type BeatMap, type ShowDocument,
 } from '../src/simulation/show'
@@ -24,6 +24,31 @@ function show(overrides: Partial<ShowDocument> = {}): ShowDocument {
     ...overrides,
   }
 }
+
+describe('spinner overrides', () => {
+  const blue = { ...createDefaultEffectPreset('full-on'), color: { mode: 'solid' as const, color: { r: 0, g: 0, b: 1 } } }
+  const withOverrides = () => {
+    const document = show()
+    document.sections[0] = { ...document.sections[0], overrides: [{ units: [3, 2], preset: blue }, { units: [], preset: blue }] }
+    return document
+  }
+
+  it('picks the override effect for listed units, through compile and layers', () => {
+    const compiled = compileShow(withOverrides(), CLICK, 40)
+    const layer = resolveSequenceFrame(compiled, 40)!.layers[0]
+    expect(layerPresetForUnit(layer, 0)).toBe(compiled.steps[0].preset)
+    expect(layerPresetForUnit(layer, 1)).toBe(blue) // unit 2
+    expect(layerPresetForUnit(layer, 2)).toBe(blue) // unit 3
+    expect(layerPresetForUnit(resolveSequenceFrame(compiled, 150)!.layers[0], 1)).toBe(compiled.steps[1].preset)
+  })
+
+  it('saves overrides with sorted units and drops the ones without units', () => {
+    const backend = toBackendShow(withOverrides())
+    expect(backend.sections[0].overrides).toEqual([{ units: [2, 3], spinner: blue }])
+    expect(backend.sections[1].overrides).toBeUndefined()
+    expect(fromBackendShow(backend).sections[0].overrides).toEqual([{ units: [2, 3], preset: blue }])
+  })
+})
 
 describe('show compile (mirrors backend compile_show)', () => {
   it('places sections on bars and beats', () => {

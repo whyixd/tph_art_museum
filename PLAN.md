@@ -369,7 +369,8 @@ M5 已實作（`sequence.py`）：
 2026-11-10 決定跳過 M11、先做 M12：演出只需要拍點檔定位段落，不需要拍點效果。
 
 - **Show v1**（`show.py`、`frontend/src/simulation/show.ts`）：`{schemaVersion: 1, id, title, trackId, ending, sections}`。
-  - 段落 `{id, start, spinner, ball?, wash?, transition}`；`start` 是 `{seconds}` 或 `{bar, beat?}`（第 1 小節從拍點檔的 `firstDownbeat` 起算，第 0 小節是弱起；`beat` 從 1 起）。第一段固定 `{seconds: 0}`；每段播到下一段開始，最後一段播到曲尾。
+  - 段落 `{id, start, spinner, ball?, wash?, overrides?, transition}`；`start` 是 `{seconds}` 或 `{bar, beat?}`（第 1 小節從拍點檔的 `firstDownbeat` 起算，第 0 小節是弱起；`beat` 從 1 起）。第一段固定 `{seconds: 0}`；每段播到下一段開始，最後一段播到曲尾。
+  - `overrides`（選填，2026-11-10 加入）：`[{units: [燈台編號，從 1 起], spinner: EffectPreset}]`，段落中這幾台轉燈改用別的效果；同一段裡一台只能屬於一組（後端驗證，`units` 排序後儲存）。前端 `layerPresetForUnit`、後端 `render_sequence_frame` 逐台選效果；轉場照常逐台套用；依次數播放時覆寫照自己的週期循環。編輯：演出分頁的段落效果上方選「覆寫 n」，效果／顏色分頁就改那組；勾燈台編號或在 3D 畫面點轉燈（整顆光球大小的點選範圍）加入／移除。串接目前不支援。
   - `transition` 是**進入這一段**的轉場：`{kind, seconds}` 或 `{kind, beats}`（拍數依該處實際拍距換算，可用小數）；種類同串接（`cut`／`crossfade`／`fade-black`／`unit-fade-black`／`unit-breathe-black`），從段落開始的拍點起算。
   - `ending`：`{kind: "loop"}`（音樂循環、第一段的轉場用在接回開頭）或 `{kind: "fade-black", seconds}`（曲終淡出，之後回到待機輸出）。
 - **編譯**：演出編成與串接相同的影格表（曲長 × FPS 向上取整），沿用同一套渲染與轉場；影格取整用 `floor(x + 0.5)`，前後端一致（同一組節拍器測試向量）。

@@ -31,6 +31,8 @@ SHOW_SCHEMA_VERSION = 1
 SHOWS_FILE_SCHEMA_VERSION = 1
 MAX_SHOWS = 32
 MAX_SECTIONS = 256
+MAX_OVERRIDES = 64  # 每段最多幾組轉燈覆寫 / spinner overrides per section
+MAX_OVERRIDE_UNIT = 64  # 與 config.MAX_UNITS 相同 / same as config.MAX_UNITS
 MAX_TRANSITION_BEATS = 32
 MAX_TRANSITION_SECONDS = 10
 MAX_END_FADE_SECONDS = 10
@@ -71,6 +73,30 @@ def _validate_transition(raw: Any, label: str) -> dict[str, Any]:
     raise ValueError(f"{label} transition must be {{kind, seconds}} or {{kind, beats}}")
 
 
+def _validate_overrides(raw: Any, label: str, pixels: int) -> list[dict[str, Any]]:
+    """[{units: [unit numbers from 1], spinner: EffectPreset}]: some spinners of a section play another effect.
+
+    A unit belongs to at most one override per section; units are stored sorted.
+    段落中某幾台轉燈改用別的效果；同一段裡一台只能屬於一個覆寫。"""
+    if not isinstance(raw, list) or len(raw) > MAX_OVERRIDES:
+        raise ValueError(f"{label} overrides must be a list of at most {MAX_OVERRIDES}")
+    seen: set[int] = set()
+    result = []
+    for index, entry in enumerate(raw):
+        name = f"{label} override {index + 1}"
+        if not isinstance(entry, dict) or set(entry) != {"units", "spinner"}:
+            raise ValueError(f"{name} must contain units and spinner")
+        units = entry["units"]
+        if not isinstance(units, list) or not units or any(
+                type(unit) is not int or not 1 <= unit <= MAX_OVERRIDE_UNIT for unit in units):
+            raise ValueError(f"{name} units must list unit numbers 1..{MAX_OVERRIDE_UNIT}")
+        if len(set(units)) != len(units) or seen & set(units):
+            raise ValueError(f"{name}: a spinner can belong to only one override")
+        seen |= set(units)
+        result.append({"units": sorted(units), "spinner": preset_to_json(validate_preset(entry["spinner"], pixels))})
+    return result
+
+
 def validate_show(raw: Any, pixels: int = 156) -> dict[str, Any]:
     """Check the document's shape and presets and return it canonical; positions are checked by ``compile_show``."""
     fields = {"schemaVersion", "id", "title", "trackId", "ending", "sections"}
@@ -101,8 +127,8 @@ def validate_show(raw: Any, pixels: int = 156) -> dict[str, Any]:
     for index, section in enumerate(sections):
         label = f"section {index + 1}"
         if not isinstance(section, dict) or not {"id", "start", "spinner", "transition"} <= set(section) \
-                or set(section) - {"id", "start", "spinner", *FIXTURE_GROUPS, "transition"}:
-            raise ValueError(f"{label} must contain id, start, spinner and transition (optional: ball, wash)")
+                or set(section) - {"id", "start", "spinner", *FIXTURE_GROUPS, "overrides", "transition"}:
+            raise ValueError(f"{label} must contain id, start, spinner and transition (optional: ball, wash, overrides)")
         section_id = section["id"]
         if type(section_id) is not int or section_id <= 0 or section_id in ids:
             raise ValueError("section ids must be distinct positive integers")
@@ -116,6 +142,10 @@ def validate_show(raw: Any, pixels: int = 156) -> dict[str, Any]:
         for group in FIXTURE_GROUPS:
             if group in section:
                 canonical[group] = fixture_preset_to_json(validate_fixture_preset(section[group]))
+        if "overrides" in section:
+            overrides = _validate_overrides(section["overrides"], label, pixels)
+            if overrides:
+                canonical["overrides"] = overrides
         canonical["transition"] = _validate_transition(section["transition"], label)
         result.append(canonical)
     return {
@@ -194,6 +224,9 @@ def compile_show(document: Any, beat_map: Mapping[str, Any], fps: int, pixels: i
         compiled.append({
             "id": section["id"], "preset": validate_preset(section["spinner"], pixels),
             **{group: validate_fixture_preset(section[group]) if group in section else None for group in FIXTURE_GROUPS},
+            # 轉燈覆寫：燈台編號 → 該台改用的 preset。 / Overrides: unit number → the preset that unit plays.
+            "overrides": {unit: preset for entry in section.get("overrides", [])
+                          for preset in (validate_preset(entry["spinner"], pixels),) for unit in entry["units"]},
             "start": frames[index], "duration": length, "cycle": None, "clock": None,
             "group_cycles": {group: None for group in CLOCKS},
             "transition_frames": incoming,

@@ -36,7 +36,7 @@ import {
   simulatedUnknownPhase,
   type SimulationSettings,
 } from '../model'
-import { layerUnitWeight, resolveSequenceFrame, unitFadeWeight, type CompiledSequence, type SequenceFrame, type SequenceLayer } from '../sequence'
+import { layerPresetForUnit, layerUnitWeight, resolveSequenceFrame, unitFadeWeight, type CompiledSequence, type SequenceFrame, type SequenceLayer } from '../sequence'
 import { frontFacingBrightness } from './facing'
 
 export type SceneView = 'single' | 'site' | 'top'
@@ -68,6 +68,8 @@ export type SiteSceneProps = {
   pixelRotation: number
   visible: GroupVisibility
   selectedUnit: number
+  /** 改為標示這幾台（燈台索引，0 起；例如正在編輯的轉燈覆寫）。 / Mark these units instead (indices), e.g. an edited override. */
+  markedUnits?: readonly number[] | null
   selectedFixture: FixtureSelection
   showStructure: boolean
   onSelectUnit: (unitIndex: number) => void
@@ -156,10 +158,12 @@ function useSpinnerColors(props: SiteSceneProps, unitCount: number) {
       for (const layer of playback.layers) {
         const weight = layerUnitWeight(layer, unit, unitCount)
         if (weight <= 0) continue
-        const unitPreset = presetForUnit(layer.preset, unit, unitCount)
+        // 覆寫：這台在名單內就改用覆寫的效果。 / Overrides: a listed unit plays its override's effect.
+        const ownPreset = layerPresetForUnit(layer, unit)
+        const unitPreset = presetForUnit(ownPreset, unit, unitCount)
         const preset = weatherPreset(unitPreset)
         // 共用時間表的效果不套用各台錯開。 / Shared-schedule effects skip unit offsets.
-        const offset = ignoresWeatherTiming(layer.preset.effectId) ? 0 : unit * frameStep
+        const offset = ignoresWeatherTiming(ownPreset.effectId) ? 0 : unit * frameStep
         const frame = layerControllerFrame(layer, unitPreset, settings.controllerFps, unitCount, offset)
         for (let led = 0; led < ledCount; led += 1) {
           const context = createEffectContext(
@@ -213,6 +217,13 @@ function SpinnerUnit({
   useEffect(() => () => ring.dispose(), [ring])
   return (
     <group position={placement.position} onClick={(event) => { event.stopPropagation(); onSelect() }}>
+      {/* 看不見的點選範圍（整顆光球大小）：燈環與燈點太細，很難點中。 / Invisible hit sphere: the rings and LEDs are too thin to click. */}
+      {view !== 'single' && (
+        <mesh>
+          <sphereGeometry args={[SPINNER_RADIUS, 16, 12]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      )}
       {selected && view !== 'single' && (
         <mesh position={[0, SPINNER_RADIUS + 0.25, 0]} rotation-z={Math.PI}>
           <coneGeometry args={[0.1, 0.2, 3]} />
@@ -387,7 +398,8 @@ function Spinners(props: SiteSceneProps & { placements: UnitPlacement[]; unitCou
       </points>
       {placements.map((placement) => (
         <SpinnerUnit key={placement.index} placement={placement} ledCount={ledCount} view={view}
-          selected={placement.index === props.selectedUnit} showStructure={props.showStructure}
+          selected={props.markedUnits ? props.markedUnits.includes(placement.index) : placement.index === props.selectedUnit}
+          showStructure={props.showStructure}
           onSelect={() => props.onSelectUnit(placement.index)}
           onRotor={(node) => { rotorRefs.current[placement.index] = node }}
           onLights={(node) => { lightRefs.current[placement.index] = node }}

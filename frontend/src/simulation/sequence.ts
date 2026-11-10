@@ -13,6 +13,12 @@ export type PlaybackRule =
   | { kind: 'time'; seconds: number }
   | { kind: 'count'; count: number; clock?: SequenceClock }
 
+/**
+ * 段落中某幾台轉燈改用別的效果（燈台編號從 1 起；同一段裡一台只能屬於一個覆寫）。
+ * Some spinners of a step use another effect (unit numbers from 1; a unit belongs to at most one override per step).
+ */
+export type UnitOverride = { units: number[]; preset: EffectPreset }
+
 /** Ball / wall-washer presets of a step (backend Sequence v2); omitted groups are dark. Edited in M7. */
 export type StepFixtures = { ball?: FixturePreset; wash?: FixturePreset }
 
@@ -23,6 +29,8 @@ export type SequenceStep = {
   playback: PlaybackRule
   transition: { kind: TransitionKind; seconds: number }
   fixtures?: StepFixtures
+  /** 演出段落的轉燈覆寫（串接目前不用）。 / Spinner overrides (show sections; sequences do not use them yet). */
+  overrides?: UnitOverride[]
 }
 
 export type SequenceDocument = {
@@ -59,6 +67,8 @@ export type SequenceLayer = {
   preset: EffectPreset
   /** The step's ball / wash presets (absent = dark). */
   fixtures?: StepFixtures
+  /** 這段的轉燈覆寫。 / The step's spinner overrides. */
+  overrides?: UnitOverride[]
   groupCycles: GroupCycles
   stepIndex: number
   localFrame: number
@@ -151,10 +161,11 @@ function localFrame(step: CompiledStep, frame: number): number {
   return cycle === null ? frame : frame % cycle
 }
 
-function stepLayer(step: CompiledStep): Pick<SequenceLayer, 'preset' | 'fixtures' | 'groupCycles' | 'stepIndex' | 'cycleFrames'> {
+function stepLayer(step: CompiledStep): Pick<SequenceLayer, 'preset' | 'fixtures' | 'overrides' | 'groupCycles' | 'stepIndex' | 'cycleFrames'> {
   return {
     preset: step.preset,
     ...(step.fixtures ? { fixtures: step.fixtures } : {}),
+    ...(step.overrides?.length ? { overrides: step.overrides } : {}),
     groupCycles: step.groupCycles,
     stepIndex: step.index,
     cycleFrames: step.groupCycles.spinner,
@@ -256,6 +267,12 @@ export function unitFadeWeight(fade: UnitFade, unitIndex: number, unitCount: num
   if (!fade.breathe) return 1 - progress
   if (progress < 2 / 3) return 1 - BREATH_DEPTH * (0.5 - 0.5 * Math.cos(2 * Math.PI * progress * 1.5))
   return Math.min(1, (1 - progress) * 3)
+}
+
+/** 這台轉燈在這一層用的效果：在覆寫名單內就用覆寫的效果。 / The effect a unit plays in a layer: its override's, if any. */
+export function layerPresetForUnit(layer: Pick<SequenceLayer, 'preset' | 'overrides'>, unitIndex: number): EffectPreset {
+  const unit = unitIndex + 1
+  return layer.overrides?.find((override) => override.units.includes(unit))?.preset ?? layer.preset
 }
 
 /** A layer's weight for one unit; only unit-fade-black and unit-breathe-black differ per unit. */

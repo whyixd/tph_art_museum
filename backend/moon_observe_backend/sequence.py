@@ -310,11 +310,19 @@ def render_sequence_frame(
     color_override: Mapping[str, Any] | None = None,
     shared: dict[Any, list[Rgb]] | None = None,
 ) -> list[tuple[float, float, float]]:
-    layers = _layer_details(compiled, frame)
     count = int(unit["logicalPixelCount"])
     result = [[0.0, 0.0, 0.0] for _ in range(count)]
     unit_index = int(unit["unitId"]) - 1
-    for preset, elapsed, cycle, source_frame, weight, unit_fade in layers:
+    for step, elapsed, source_frame, weight, unit_fade in _step_layers(compiled, frame):
+        preset = step["preset"]
+        cycle = step["group_cycles"]["spinner"]
+        # 轉燈覆寫：這台在名單內就改用覆寫的效果，依次數播放時照它自己的週期循環（前端 layerPresetForUnit）。
+        # Overrides: a listed unit plays its own effect, wrapping on its own cycle in count steps (frontend layerPresetForUnit).
+        override = (step.get("overrides") or {}).get(unit_index + 1)
+        if override is not None:
+            preset = override
+            if cycle is not None:
+                cycle = _completion_frames(override, fps, unit_count) or cycle
         if unit_fade is not None:
             weight *= unit_fade_weight(unit_fade, unit_index, unit_count)
         if weight <= 0:

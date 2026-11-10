@@ -1,5 +1,5 @@
 import type { EffectPreset } from '../effects'
-import type { CompiledSequence, CompiledStep, StepFixtures, TransitionKind } from './sequence'
+import type { CompiledSequence, CompiledStep, StepFixtures, TransitionKind, UnitOverride } from './sequence'
 
 // 演出（Show，M12）：一首曲目＋依小節／拍／秒定位的段落，編譯成與串接相同的影格表（與後端 show.py 一致）。
 // A show (M12): one track plus sections placed by bar / beat / seconds, compiled to the same frame schedule as a
@@ -30,6 +30,8 @@ export type ShowSection = {
   start: ShowStart
   preset: EffectPreset
   fixtures?: StepFixtures
+  /** 某幾台轉燈改用別的效果。 / Spinners that play another effect. */
+  overrides?: UnitOverride[]
   /** 進入這一段的轉場。 / The transition into this section. */
   transition: ShowTransition
 }
@@ -118,6 +120,7 @@ export function compileShow(show: ShowDocument, beatMap: BeatMap, fps: number): 
       id: section.id,
       preset: section.preset,
       ...(section.fixtures ? { fixtures: section.fixtures } : {}),
+      ...(section.overrides?.length ? { overrides: section.overrides } : {}),
       playback: { kind: 'time', seconds: durationFrames / fps },
       // 和串接一樣，轉場種類記在前一段。 / As in a sequence, the transition kind is stored on the outgoing step.
       transition: { kind: following?.transition.kind ?? 'cut', seconds: 0 },

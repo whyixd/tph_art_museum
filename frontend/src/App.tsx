@@ -151,7 +151,11 @@ export function App() {
   // 只在編輯器內容與後端已儲存的串接一致時標示播放段落。 / Mark the playing step only when the editor matches the saved sequence.
   const playingStepId = sequenceEnabled && !sequenceDirty ? backendPlayingStepId : null
   const selectedStep = sequenceSteps.find((step) => step.id === selectedStepId) ?? sequenceSteps[0]
-  const effectPreset = inShow ? selectedSection!.preset : inSequence ? selectedStep.preset : effectPresets[effectId]
+  // 演出中正在編輯轉燈覆寫時，效果與顏色分頁顯示那組覆寫。 / While editing an override, the effect tabs show it.
+  const effectPreset = inShow ? showEditor.editedPreset ?? selectedSection!.preset : inSequence ? selectedStep.preset : effectPresets[effectId]
+  const editingOverride = inShow && showEditor.overrideIndex !== null
+  const overrideUnits = editingOverride
+    ? (selectedSection!.overrides?.[showEditor.overrideIndex!]?.units ?? []).map((unit) => unit - 1) : null
   const editedFixtures: FixturePresets = inShow
     ? { ball: selectedSection!.fixtures?.ball ?? null, wash: selectedSection!.fixtures?.wash ?? null }
     : inSequence
@@ -679,9 +683,11 @@ export function App() {
               pixelRotation={pixelRotation}
               visible={visible}
               selectedUnit={selectedUnit}
+              markedUnits={overrideUnits}
               selectedFixture={selectedFixture}
               showStructure={showStructure}
-              onSelectUnit={setSelectedUnit}
+              // 編輯轉燈覆寫時，點轉燈是加入／移出這組覆寫。 / While editing an override, clicking a spinner toggles it.
+              onSelectUnit={(unit) => { if (editingOverride) showEditor.toggleOverrideUnit(unit + 1); else setSelectedUnit(unit) }}
               onSelectFixture={setSelectedFixture}
               onDiagnostics={setDiagnostics}
               unitColors={unitTestColors}

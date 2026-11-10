@@ -122,6 +122,40 @@ class CompileTests(unittest.TestCase):
         self.assertGreater(balls[0][0], 0)
         self.assertEqual(2, sequence_position(compiled, 2400 + 220)["loopIteration"])
 
+    def test_spinner_overrides(self):
+        raw = show()
+        raw["sections"][0]["overrides"] = [
+            {"units": [3, 2], "spinner": solid(0, 0, 1)},
+            {"units": [5], "spinner": solid(1, 1, 0)},
+        ]
+        document = validate_show(raw, 4)
+        self.assertEqual([2, 3], document["sections"][0]["overrides"][0]["units"])
+        self.assertNotIn("overrides", document["sections"][1])
+        self.assertEqual(document, validate_show(json.loads(json.dumps(document)), 4))
+        for bad in ([{"units": [2], "spinner": solid(0, 0, 1)}, {"units": [2], "spinner": solid(0, 1, 0)}],
+                    [{"units": [0], "spinner": solid(0, 0, 1)}], [{"units": [], "spinner": solid(0, 0, 1)}],
+                    [{"units": [2, 2], "spinner": solid(0, 0, 1)}], [{"units": [2]}]):
+            broken = show()
+            broken["sections"][0]["overrides"] = bad
+            with self.assertRaises(ValueError):
+                validate_show(broken, 4)
+
+        compiled = compile_show(raw, CLICK, 40, 4)
+
+        def colour(unit_id: int, frame: int = 40) -> tuple[float, ...]:
+            unit = {"unitId": unit_id, "logicalPixelCount": 4, "frameOffset": 0}
+            return render_sequence_frame(compiled, unit, frame, unit_count=6, fps=40, rpm=360)[0]
+
+        # Section 1: unit 1 plays the main red, units 2 and 3 the blue override, unit 5 the yellow one.
+        self.assertEqual([(1.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0)],
+                         [colour(unit) for unit in range(1, 6)])
+        # Section 2 has no overrides: every unit is green; the crossfade blends each unit's own outgoing effect.
+        self.assertEqual((0.0, 1.0, 0.0), colour(2, 150))
+        red, green, blue = colour(2, 90 + 19)
+        self.assertAlmostEqual(20 / 41, green, places=6)
+        self.assertAlmostEqual(21 / 41, blue, places=6)
+        self.assertEqual(0.0, red)
+
     def test_frame_from_music_time(self):
         looping = compile_show(show(), CLICK, 40, 4)
         self.assertEqual(20, show_frame(looping, 0.5, 40))

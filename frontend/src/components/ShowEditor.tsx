@@ -38,9 +38,11 @@ type ShowEditorProps = {
   onPlayFrom: (sectionId: number) => void
   /** 選取段落的效果與顏色編輯器（與「效果」「顏色」分頁相同）。 / The selected section's effect and colour editors. */
   sectionEditor: ReactNode
+  /** 轉燈台數（覆寫的燈台勾選）。 / Spinner count (override unit checkboxes). */
+  unitCount: number
 }
 
-export function ShowEditor({ editor, controlMode, enabled, onEnabled, currentIndex, previewSeconds, backendPlaying, fps, onPlayFrom, sectionEditor }: ShowEditorProps) {
+export function ShowEditor({ editor, controlMode, enabled, onEnabled, currentIndex, previewSeconds, backendPlaying, fps, onPlayFrom, sectionEditor, unitCount }: ShowEditorProps) {
   const [newTrack, setNewTrack] = useState('')
   const { shows, tracks, draft, beatMap, compiled, selectedId } = editor
   if (shows === undefined) return <p className="control-note">讀取演出中…</p>
@@ -287,7 +289,13 @@ export function ShowEditor({ editor, controlMode, enabled, onEnabled, currentInd
                   <p className="control-note">轉場從這段的開始位置（拍點上）起算。</p>
                 </>
               )}
-              <strong className="show-section-heading">第 {selectedIndex + 1} 段的效果</strong>
+              <strong className="show-section-heading">
+                第 {selectedIndex + 1} 段的效果
+                {editor.overrideIndex !== null ? ` · 覆寫 ${editor.overrideIndex + 1}` : selected.overrides?.length ? ' · 主效果' : ''}
+              </strong>
+              {controlMode === 'simulation' && enabled && (
+                <OverrideEditor editor={editor} section={selected} unitCount={unitCount} />
+              )}
               {controlMode === 'simulation' && enabled ? sectionEditor : (
                 <p className="control-note">
                   {controlMode === 'simulation' ? '勾選上方「在模擬畫面預覽這個演出」後，可在這裡直接改這段的效果與顏色。'
@@ -347,6 +355,56 @@ export function ShowEditor({ editor, controlMode, enabled, onEnabled, currentInd
         </div>
         <p className="control-note">Pi 從 USB 音效卡播放音樂，燈光跟著音訊時鐘；套用效果、串接或手動播放音樂會停止演出。</p>
       </div>
+    </div>
+  )
+}
+
+/**
+ * 轉燈覆寫：段落中某幾台轉燈改用別的效果。選一組覆寫後，效果與顏色分頁改的是那組；勾燈台編號或在 3D 畫面點轉燈加入／移除。
+ * Spinner overrides: some spinners of a section play another effect. While one is selected the effect and colour tabs
+ * edit it; tick unit numbers or click spinners in the 3D view to add or remove them.
+ */
+function OverrideEditor({ editor, section, unitCount }: { editor: ShowEditorState; section: ShowSection; unitCount: number }) {
+  const overrides = section.overrides ?? []
+  const current = editor.overrideIndex
+  const ownerOf = (unit: number) => overrides.findIndex((override) => override.units.includes(unit))
+  const effectLabel = (effectId: Parameters<typeof getEffectManifest>[0]) => getEffectManifest(effectId).label.replace(/^.* \/ /, '')
+  return (
+    <div className="show-overrides">
+      <div className="show-override-list" role="group" aria-label="轉燈覆寫">
+        <button type="button" className={current === null ? 'active' : 'secondary'} aria-pressed={current === null}
+          onClick={() => editor.selectOverride(null)}>
+          主效果 · {effectLabel(section.preset.effectId)}
+        </button>
+        {overrides.map((override, index) => (
+          <span key={index} className="show-override-item">
+            <button type="button" className={current === index ? 'active' : 'secondary'} aria-pressed={current === index}
+              onClick={() => editor.selectOverride(index)}>
+              覆寫 {index + 1} · {effectLabel(override.preset.effectId)} · {override.units.length ? `轉燈 ${override.units.join('、')}` : '尚未選轉燈'}
+            </button>
+            <button type="button" className="secondary" aria-label={`刪除覆寫 ${index + 1}`}
+              onClick={() => editor.removeOverride(index)}>✕</button>
+          </span>
+        ))}
+        <button type="button" className="secondary" onClick={editor.addOverride}>＋ 新增覆寫</button>
+      </div>
+      {current !== null && overrides[current] && (
+        <>
+          <p className="control-note">勾選的轉燈在這段改用覆寫 {current + 1} 的效果；也可以直接在 3D 畫面點轉燈加入／移除（已在別組的會移過來）。沒選轉燈的覆寫不會儲存。</p>
+          <div className="override-units" role="group" aria-label={`覆寫 ${current + 1} 的轉燈`}>
+            {Array.from({ length: unitCount }, (_, index) => index + 1).map((unit) => {
+              const owner = ownerOf(unit)
+              return (
+                <label key={unit} className={owner >= 0 && owner !== current ? 'override-unit taken' : 'override-unit'}
+                  title={owner >= 0 && owner !== current ? `目前在覆寫 ${owner + 1}` : undefined}>
+                  <input type="checkbox" checked={owner === current} onChange={() => editor.toggleOverrideUnit(unit)} />
+                  <span>{unit}</span>
+                </label>
+              )
+            })}
+          </div>
+        </>
+      )}
     </div>
   )
 }
