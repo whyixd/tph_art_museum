@@ -22,7 +22,7 @@ export const centerOutSine: EffectModule = {
     schemaVersion: EFFECT_SCHEMA_VERSION,
     id: 'center-out-sine',
     label: 'Center-out sine / 中心擴散',
-    description: '平滑 sine 亮度波由圓心向外傳播。',
+    description: '平滑 sine 亮度波由圓心向外傳播。波谷不會全暗，最暗是「最低亮度」（設 0.04 為舊版效果）。',
     parameters: [
       {
         key: 'speedHz',
@@ -32,6 +32,15 @@ export const centerOutSine: EffectModule = {
         max: 2,
         step: 0.05,
         defaultValue: 0.35,
+      },
+      {
+        key: 'minLevel',
+        label: '最低亮度',
+        unit: '',
+        min: 0,
+        max: 0.9,
+        step: 0.05,
+        defaultValue: 0.3,
       },
     ],
   },
@@ -43,7 +52,9 @@ export const centerOutSine: EffectModule = {
       speedHz * effectTimeSeconds(context)
     )
     const sineBrightness = 0.5 + 0.5 * Math.cos(phase)
-    const brightness = 0.04 + sineBrightness * 0.96
+    // 波谷保留最低亮度，不會變成全暗。 / The trough keeps minLevel, never black.
+    const minLevel = parameters.minLevel ?? 0.3
+    const brightness = minLevel + sineBrightness * (1 - minLevel)
     const color = mixRgb(
       CENTER_COLOR,
       EDGE_COLOR,

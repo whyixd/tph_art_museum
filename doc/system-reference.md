@@ -85,7 +85,7 @@ sampleEffect(preset, context, elapsedFrame, raining) -> RGB（各通道 0–1）
 | effectId | 中文名 | 有週期（可用次數播放） | 雨天線條 |
 |---|---|---|---|
 | `spectrum-cycle` | 光譜循環 | 20 影格 | – |
-| `center-out-sine` | 中心擴散 | ✓ | 只留波峰細環 |
+| `center-out-sine` | 中心擴散（波谷保留最低亮度 `minLevel`，預設 0.3） | ✓ | 只留波峰細環 |
 | `moving-rings` | 往返光環（每環一色、互相穿過） | ✓ | – |
 | `sequential-center-fill` | 逐月（Unit 1→9 由中心填滿） | ✓ | 同心條紋 |
 | `periodic-leds` | 落雨 | ✓ | – |

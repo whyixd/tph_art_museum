@@ -284,6 +284,20 @@ describe('逐月 effect', () => {
 })
 
 describe('center-out sine effect', () => {
+  it('never goes dark: the trough stays at the minimum level', () => {
+    const preset = createDefaultEffectPreset('center-out-sine')
+    const level = (frame: number, led: number, minLevel = 0.3) => {
+      const color = sampleEffect({ ...preset, parameters: { ...preset.parameters, minLevel } }, createEffectContext(frame, 40, led, 129))
+      return Math.max(color.r, color.g, color.b)
+    }
+    const all = Array.from({ length: 115 }, (_, frame) => Array.from({ length: 129 }, (_, led) => level(frame, led))).flat()
+    expect(Math.min(...all)).toBeGreaterThanOrEqual(0.3 - 1e-9)
+    expect(Math.max(...all)).toBeCloseTo(1, 2)
+    // 0.04 is the previous look.
+    const old = Array.from({ length: 115 }, (_, frame) => level(frame, 30, 0.04))
+    expect(Math.min(...old)).toBeLessThan(0.05)
+  })
+
   it('starts bright at the center and propagates its peak outward', () => {
     const preset = createDefaultEffectPreset('center-out-sine')
     preset.parameters.speedHz = 0.3

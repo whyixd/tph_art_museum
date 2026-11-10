@@ -40,7 +40,7 @@ EFFECT_IDS = (
 # min, max, default, integer
 PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
     "spectrum-cycle": {},
-    "center-out-sine": {"speedHz": (0.05, 2, 0.35, False)},
+    "center-out-sine": {"speedHz": (0.05, 2, 0.35, False), "minLevel": (0, 0.9, 0.3, False)},
     "moving-rings": {
         "speedHz": (0.05, 1.5, 0.25, False),
         "ringCount": (1, 6, 3, True),
@@ -137,7 +137,7 @@ PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
 # 與前端 manifest 的 step 一致；各燈台數值會對齊這個刻度。整數參數刻度為 1。
 # Matches the frontend manifest steps; per-unit values snap to them. Integer parameters step by 1.
 PARAMETER_STEPS: dict[str, dict[str, float]] = {
-    "center-out-sine": {"speedHz": 0.05},
+    "center-out-sine": {"speedHz": 0.05, "minLevel": 0.05},
     "moving-rings": {"speedHz": 0.05},
     "periodic-leds": {"periodSeconds": 0.01},
     "reverse-tide": {"speedHz": 0.05, "holdSeconds": 0.1},
@@ -520,7 +520,8 @@ def _brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float:
         return spatial * (0.7 + 0.3 * math.cos(TAU * phase))
     if effect == "center-out-sine":
         phase = TAU * (1.5 * ctx.radius - p["speedHz"] * time)
-        return 0.04 + (0.5 + 0.5 * math.cos(phase)) * 0.96
+        # 波谷保留最低亮度，不會變成全暗。 / The trough keeps minLevel, never black.
+        return p["minLevel"] + (0.5 + 0.5 * math.cos(phase)) * (1 - p["minLevel"])
     if effect == "moving-rings":
         return min(1.0, sum(ring_weights(p, ctx)))
     if effect == "sequential-center-fill":

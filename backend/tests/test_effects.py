@@ -241,6 +241,13 @@ class EffectParityTests(unittest.TestCase):
         self.assertEqual((156, 0, 0), (lit(239, leader), lit(240, leader), lit(319, leader)))
         self.assertNotIn("staggerSeconds", variable_parameters("random-fill"))
 
+    def test_center_out_sine_keeps_a_minimum_level(self):
+        preset = validate_preset(default_preset("center-out-sine"))
+        self.assertEqual(0.3, preset["parameters"]["minLevel"])
+        levels = [max(sample_effect(preset, EffectContext(frame, 40, led, 129))) for frame in range(115) for led in range(0, 129, 4)]
+        self.assertGreaterEqual(min(levels), 0.3 - 1e-9)
+        self.assertAlmostEqual(1.0, max(levels), places=2)
+
     def test_full_on_fades_out_once(self):
         def at(frame: int, **parameters) -> float:
             raw = default_preset("full-on")
@@ -425,7 +432,7 @@ class EffectParityTests(unittest.TestCase):
 
     def test_frontend_unit_variation_values_and_cycles(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
-        self.assertEqual(117, len(fixture["unitVariations"]))
+        self.assertEqual(120, len(fixture["unitVariations"]))
         for case in fixture["unitVariations"]:
             preset = validate_preset(case["preset"])
             self.assertEqual(case["preset"], preset_to_json(preset))

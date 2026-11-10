@@ -129,7 +129,8 @@
       "schemaVersion": 2,
       "effectId": "center-out-sine",
       "parameters": {
-        "speedHz": 0.35
+        "speedHz": 0.35,
+        "minLevel": 0.3
       },
       "color": {
         "mode": "gradient",
@@ -152,7 +153,8 @@
       "schemaVersion": 2,
       "effectId": "center-out-sine",
       "parameters": {
-        "speedHz": 0.35
+        "speedHz": 0.35,
+        "minLevel": 0.3
       },
       "color": {
         "mode": "solid",
@@ -167,7 +169,8 @@
       "schemaVersion": 2,
       "effectId": "center-out-sine",
       "parameters": {
-        "speedHz": 0.35
+        "speedHz": 0.35,
+        "minLevel": 0.3
       },
       "color": {
         "mode": "gradient",
@@ -190,7 +193,8 @@
       "schemaVersion": 2,
       "effectId": "center-out-sine",
       "parameters": {
-        "speedHz": 0.35
+        "speedHz": 0.35,
+        "minLevel": 0.3
       },
       "color": {
         "mode": "gradient",
@@ -3557,9 +3561,9 @@
         "unitPhaseProjection": 0.49
       },
       "expected": {
-        "r": 0.026400000000000003,
-        "g": 0.011200000000000002,
-        "b": 0.04
+        "r": 0.198,
+        "g": 0.084,
+        "b": 0.3
       }
     },
     {
@@ -3573,9 +3577,9 @@
         "unitPhaseProjection": 0.51
       },
       "expected": {
-        "r": 0.2027876960055676,
-        "g": 0.9150585290829744,
-        "b": 0.9991129332760004
+        "r": 0.20283645844491993,
+        "g": 0.9152785645531097,
+        "b": 0.9993531805137503
       }
     },
     {
@@ -3589,9 +3593,9 @@
         "unitPhaseProjection": -0.51
       },
       "expected": {
-        "r": 0.20296608788378367,
-        "g": 0.9158635040045117,
-        "b": 0.9999918506670844
+        "r": 0.20296653585611912,
+        "g": 0.9158655254333973,
+        "b": 0.9999940577780824
       }
     },
     {
@@ -3605,9 +3609,9 @@
         "unitPhaseProjection": -1
       },
       "expected": {
-        "r": 0.03069921132648632,
-        "g": 0.013023907835479045,
-        "b": 0.0465139565552823
+        "r": 0.2011348415922296,
+        "g": 0.08532993279670348,
+        "b": 0.3047497599882267
       }
     },
     {
@@ -3621,9 +3625,9 @@
         "unitPhaseProjection": 0
       },
       "expected": {
-        "r": 0.04429445276109878,
-        "g": 0.019521366634108247,
-        "b": 0.06772184038242564
+        "r": 0.20944051158991409,
+        "g": 0.09230422231048889,
+        "b": 0.32021384194551866
       }
     },
     {
@@ -3637,9 +3641,9 @@
         "unitPhaseProjection": 0.5
       },
       "expected": {
-        "r": 0.2165244657284926,
-        "g": 0.09542624905059235,
-        "b": 0.33104450767327237
+        "r": 0.33502489604530544,
+        "g": 0.1476515324058419,
+        "b": 0.5122199535117611
       }
     },
     {
@@ -3653,9 +3657,9 @@
         "unitPhaseProjection": 1
       },
       "expected": {
-        "r": 0.1549662726990437,
-        "g": 0.6992692966419657,
-        "b": 0.7635019792864517
+        "r": 0.16796667061724624,
+        "g": 0.7579322492315408,
+        "b": 0.8275535265630376
       }
     },
     {
@@ -3669,9 +3673,9 @@
         "unitPhaseProjection": -0.49
       },
       "expected": {
-        "r": 0.1701192012790201,
-        "g": 0.7676453214739256,
-        "b": 0.8381588111331253
+        "r": 0.17901568104014567,
+        "g": 0.8077897673381782,
+        "b": 0.8819907997845704
       }
     },
     {
@@ -3685,9 +3689,9 @@
         "unitPhaseProjection": 1
       },
       "expected": {
-        "r": 0.02512218621528556,
-        "g": 0.029906366798402216,
-        "b": 0.05412759053891106
+        "r": 0.14401987368520486,
+        "g": 0.17144651073673817,
+        "b": 0.3103013681012893
       }
     },
     {
@@ -3701,9 +3705,9 @@
         "unitPhaseProjection": 0.49
       },
       "expected": {
-        "r": 0.008,
-        "g": 0.03,
-        "b": 0.004
+        "r": 0.06,
+        "g": 0.22499999999999998,
+        "b": 0.03
       }
     },
     {
@@ -3717,9 +3721,9 @@
         "unitPhaseProjection": 0.51
       },
       "expected": {
-        "r": 0.19982258665520009,
-        "g": 0.7493346999570003,
-        "b": 0.09991129332760004
+        "r": 0.19987063610275008,
+        "g": 0.7495148853853127,
+        "b": 0.09993531805137504
       }
     },
     {
@@ -3733,9 +3737,9 @@
         "unitPhaseProjection": -0.51
       },
       "expected": {
-        "r": 0.1999983701334169,
-        "g": 0.7499938880003133,
-        "b": 0.09999918506670845
+        "r": 0.1999988115556165,
+        "g": 0.7499955433335618,
+        "b": 0.09999940577780825
       }
     },
     {
@@ -3749,9 +3753,9 @@
         "unitPhaseProjection": -1
       },
       "expected": {
-        "r": 0.009302791311056461,
-        "g": 0.03488546741646173,
-        "b": 0.004651395655528231
+        "r": 0.06094995199764534,
+        "g": 0.22856231999117,
+        "b": 0.03047497599882267
       }
     },
     {
@@ -3765,9 +3769,9 @@
         "unitPhaseProjection": 0
       },
       "expected": {
-        "r": 0.013544368076485128,
-        "g": 0.05079138028681923,
-        "b": 0.006772184038242564
+        "r": 0.06404276838910374,
+        "g": 0.24016038145913898,
+        "b": 0.03202138419455187
       }
     },
     {
@@ -3781,9 +3785,9 @@
         "unitPhaseProjection": 0.5
       },
       "expected": {
-        "r": 0.06620890153465447,
-        "g": 0.24828338075495426,
-        "b": 0.03310445076732724
+        "r": 0.10244399070235222,
+        "g": 0.3841649651338208,
+        "b": 0.05122199535117611
       }
     },
     {
@@ -3797,9 +3801,9 @@
         "unitPhaseProjection": 1
       },
       "expected": {
-        "r": 0.15270039585729034,
-        "g": 0.5726264844648388,
-        "b": 0.07635019792864517
+        "r": 0.16551070531260753,
+        "g": 0.6206651449222782,
+        "b": 0.08275535265630377
       }
     },
     {
@@ -3813,9 +3817,9 @@
         "unitPhaseProjection": -0.49
       },
       "expected": {
-        "r": 0.16763176222662507,
-        "g": 0.628619108349844,
-        "b": 0.08381588111331253
+        "r": 0.1763981599569141,
+        "g": 0.6614930998384279,
+        "b": 0.08819907997845705
       }
     },
     {
@@ -3829,9 +3833,9 @@
         "unitPhaseProjection": 1
       },
       "expected": {
-        "r": 0.010825518107782213,
-        "g": 0.04059569290418329,
-        "b": 0.0054127590538911065
+        "r": 0.06206027362025786,
+        "g": 0.23272602607596696,
+        "b": 0.03103013681012893
       }
     },
     {
@@ -3845,8 +3849,8 @@
         "unitPhaseProjection": 0.49
       },
       "expected": {
-        "r": 0.04,
-        "g": 0.004,
+        "r": 0.3,
+        "g": 0.03,
         "b": 0
       }
     },
@@ -3861,9 +3865,9 @@
         "unitPhaseProjection": 0.51
       },
       "expected": {
-        "r": 0.5027794115840517,
-        "g": 0.14954464549679491,
-        "b": 0.49633352169194855
+        "r": 0.5029003101940163,
+        "g": 0.14958060508334844,
+        "b": 0.496452870319734
       }
     },
     {
@@ -3877,9 +3881,9 @@
         "unitPhaseProjection": -0.51
       },
       "expected": {
-        "r": 0.49677014517010004,
-        "g": 0.1503213556164069,
-        "b": 0.5032217054969844
+        "r": 0.49677124160588615,
+        "g": 0.15032168739502788,
+        "b": 0.5032228161721962
       }
     },
     {
@@ -3894,8 +3898,8 @@
       },
       "expected": {
         "r": 0,
-        "g": 0.009302791311056461,
-        "b": 0.0465139565552823
+        "g": 0.06094995199764534,
+        "b": 0.3047497599882267
       }
     },
     {
@@ -3909,9 +3913,9 @@
         "unitPhaseProjection": 0
       },
       "expected": {
-        "r": 0.06728492528318418,
-        "g": 0.00681587554816671,
-        "b": 0.0004369150992414557
+        "r": 0.3181479461910314,
+        "g": 0.03222797377000059,
+        "b": 0.0020658957544872174
       }
     },
     {
@@ -3925,9 +3929,9 @@
         "unitPhaseProjection": 0.5
       },
       "expected": {
-        "r": 0.002135771017246924,
-        "g": 0.06599532443292978,
-        "b": 0.32890873665602544
+        "r": 0.003304644861366209,
+        "g": 0.10211352621621561,
+        "b": 0.5089153086503949
       }
     },
     {
@@ -3941,9 +3945,9 @@
         "unitPhaseProjection": 1
       },
       "expected": {
-        "r": 0.38421389925382726,
-        "g": 0.11427900593190761,
-        "b": 0.3792880800326244
+        "r": 0.4164462907865608,
+        "g": 0.12386607623395145,
+        "b": 0.41110723577647673
       }
     },
     {
@@ -3957,9 +3961,9 @@
         "unitPhaseProjection": -0.49
       },
       "expected": {
-        "r": 0.41637566746613325,
-        "g": 0.12599419548001176,
-        "b": 0.42178314366699204
+        "r": 0.43815026828007697,
+        "g": 0.1325831331289064,
+        "b": 0.44384053150449343
       }
     },
     {
@@ -3973,9 +3977,9 @@
         "unitPhaseProjection": 1
       },
       "expected": {
-        "r": 0.042603651908046124,
-        "g": 0.006565152916977599,
-        "b": 0.011523938630864934
+        "r": 0.24423720586036962,
+        "g": 0.03763655303422089,
+        "b": 0.06606416224091965
       }
     },
     {
@@ -3989,9 +3993,9 @@
         "unitPhaseProjection": 0.49
       },
       "expected": {
-        "r": 0.027999999999999997,
-        "g": 0.004,
-        "b": 0.036000000000000004
+        "r": 0.21,
+        "g": 0.03,
+        "b": 0.27
       }
     },
     {
@@ -4005,9 +4009,9 @@
         "unitPhaseProjection": 0.51
       },
       "expected": {
-        "r": 0.006768184386708407,
-        "g": 0.13149615379890595,
-        "b": 0.9675280728046944
+        "r": 0.006769811867996391,
+        "g": 0.1315277734353582,
+        "b": 0.9677607251297672
       }
     },
     {
@@ -4021,9 +4025,9 @@
         "unitPhaseProjection": -0.51
       },
       "expected": {
-        "r": 0.0067741383432285375,
-        "g": 0.13161183066844162,
-        "b": 0.9683792050653512
+        "r": 0.0067741532946256205,
+        "g": 0.1316121211527278,
+        "b": 0.9683813424031628
       }
     },
     {
@@ -4037,9 +4041,9 @@
         "unitPhaseProjection": -1
       },
       "expected": {
-        "r": 0.03255976958869761,
-        "g": 0.004651395655528231,
-        "b": 0.04186256089975407
+        "r": 0.21332483199175867,
+        "g": 0.03047497599882267,
+        "b": 0.274274783989404
       }
     },
     {
@@ -4053,9 +4057,9 @@
         "unitPhaseProjection": 0
       },
       "expected": {
-        "r": 0.045570244850883825,
-        "g": 0.012277314288684935,
-        "b": 0.06033797520524504
+        "r": 0.2154729271930167,
+        "g": 0.05805167070109094,
+        "b": 0.2853002036946847
       }
     },
     {
@@ -4069,9 +4073,9 @@
         "unitPhaseProjection": 0.5
       },
       "expected": {
-        "r": 0.22276091709885354,
-        "g": 0.060015165584638555,
-        "b": 0.29494997748179946
+        "r": 0.34467445904049465,
+        "g": 0.09286052060439046,
+        "b": 0.45637145535467233
       }
     },
     {
@@ -4085,9 +4089,9 @@
         "unitPhaseProjection": 1
       },
       "expected": {
-        "r": 0.005172110182263073,
-        "g": 0.10048671211253953,
-        "b": 0.7393654651025573
+        "r": 0.005606007760588333,
+        "g": 0.108916722205716,
+        "b": 0.8013921570136253
       }
     },
     {
@@ -4101,9 +4105,9 @@
         "unitPhaseProjection": -0.49
       },
       "expected": {
-        "r": 0.005677850010901733,
-        "g": 0.11031251449752062,
-        "b": 0.8116621777489171
+        "r": 0.005974776385637325,
+        "g": 0.1160813697780979,
+        "b": 0.8541085099849295
       }
     },
     {
@@ -4117,9 +4121,9 @@
         "unitPhaseProjection": 1
       },
       "expected": {
-        "r": 0.014317620723195834,
-        "g": 0.01124457042163185,
-        "b": 0.0374702610633881
+        "r": 0.08207971672356688,
+        "g": 0.06446260679265496,
+        "b": 0.21480862449850538
       }
     },
     {
@@ -17881,504 +17885,504 @@
       "globalFrame": 0,
       "controllerFrame": 0,
       "unitIndex": 0,
-      "sha256": "97674225b1cd3fd31d03748f6fd685a7af04cbec8b1e1abd2fa8623b9c2cd52b"
+      "sha256": "c5e161237dd8e78dd6b8e43351c4198d7e9635aebfb3741f6a75cfad73cdb9ba"
     },
     {
       "presetIndex": 4,
       "globalFrame": 0,
       "controllerFrame": 16,
       "unitIndex": 8,
-      "sha256": "b644c115a19624d1d82bf948e8af0b250c20a57822febbd7ab08f2c347cd3c86"
+      "sha256": "5b247aa73b8ce5126cf39db7d918be2012054d64e012788b6cc4d6215eda9bb2"
     },
     {
       "presetIndex": 4,
       "globalFrame": 3,
       "controllerFrame": 3,
       "unitIndex": 0,
-      "sha256": "932b78e9f963e95b8febac156fe9543cd995c1d3ae9dfc190ed5e147f33c58d4"
+      "sha256": "d35be213ddd74eced1a070f2ad8509dc1de7c5943bcd196165eecb52311af4e3"
     },
     {
       "presetIndex": 4,
       "globalFrame": 3,
       "controllerFrame": 19,
       "unitIndex": 8,
-      "sha256": "d2bde1bb85ba189171489feff938248a6e8d0ba01f7797d2fd3b2ef31487dd78"
+      "sha256": "a1d9b998ab5b70168109b8fb1c1f68afdfbe381f0624490d3ac4fd8a68124a6c"
     },
     {
       "presetIndex": 4,
       "globalFrame": 4,
       "controllerFrame": 4,
       "unitIndex": 0,
-      "sha256": "d2b629ec0086db0a671cdaa2f084f18af231befae16a727a4961e3f85b0b5ac5"
+      "sha256": "7c1e4fe79033c2a66bcbd16eb362d1bd0641f1f1ec6d012b2bbe3d83bc45a107"
     },
     {
       "presetIndex": 4,
       "globalFrame": 4,
       "controllerFrame": 20,
       "unitIndex": 8,
-      "sha256": "0961757f46437ef0a8a65c41eb6f6a45899a02663039aeb835af60e4de24877c"
+      "sha256": "a6a7e0185fd6f6c8862d0b4a85a6458c4069d4f84d8a7247fe736d8757c7d974"
     },
     {
       "presetIndex": 4,
       "globalFrame": 19,
       "controllerFrame": 19,
       "unitIndex": 0,
-      "sha256": "d2bde1bb85ba189171489feff938248a6e8d0ba01f7797d2fd3b2ef31487dd78"
+      "sha256": "a1d9b998ab5b70168109b8fb1c1f68afdfbe381f0624490d3ac4fd8a68124a6c"
     },
     {
       "presetIndex": 4,
       "globalFrame": 19,
       "controllerFrame": 35,
       "unitIndex": 8,
-      "sha256": "48bd3758c671dc561258cdb1d0609499c84140c2f94137191c14b15693318dd8"
+      "sha256": "199636b56288247fd524fe894e0603b34927cef9d71809da8109e253f3c5fd51"
     },
     {
       "presetIndex": 4,
       "globalFrame": 20,
       "controllerFrame": 20,
       "unitIndex": 0,
-      "sha256": "0961757f46437ef0a8a65c41eb6f6a45899a02663039aeb835af60e4de24877c"
+      "sha256": "a6a7e0185fd6f6c8862d0b4a85a6458c4069d4f84d8a7247fe736d8757c7d974"
     },
     {
       "presetIndex": 4,
       "globalFrame": 20,
       "controllerFrame": 36,
       "unitIndex": 8,
-      "sha256": "ee43f0e363e6e615e8a1a8a3f5a71e8466e5bb91f6cc51385b718a5c248bc11a"
+      "sha256": "cf33ec20a3a84f5e98f550f7d59cec3657bb36a3c4dc17039c94542ab8346689"
     },
     {
       "presetIndex": 4,
       "globalFrame": 100,
       "controllerFrame": 100,
       "unitIndex": 0,
-      "sha256": "14a54491dc5a515ed5fe469ee45d536d0ca164b67dcea70f0a0f0f49520fcd7e"
+      "sha256": "f5b2f44417a9e1f481e1a6f1b8177518a68778c1fb32e25e1aaebeb5db4b8d00"
     },
     {
       "presetIndex": 4,
       "globalFrame": 100,
       "controllerFrame": 116,
       "unitIndex": 8,
-      "sha256": "0d0e726c79e85217b0ccd94ef94abbb51a706a1a61e0dcbdb8a4873d3cde8c90"
+      "sha256": "3db069fadfb3512026e20833a58e1770df2ce720e30b8363071bbab18f2102a3"
     },
     {
       "presetIndex": 4,
       "globalFrame": 800,
       "controllerFrame": 800,
       "unitIndex": 0,
-      "sha256": "97674225b1cd3fd31d03748f6fd685a7af04cbec8b1e1abd2fa8623b9c2cd52b"
+      "sha256": "c5e161237dd8e78dd6b8e43351c4198d7e9635aebfb3741f6a75cfad73cdb9ba"
     },
     {
       "presetIndex": 4,
       "globalFrame": 800,
       "controllerFrame": 816,
       "unitIndex": 8,
-      "sha256": "b644c115a19624d1d82bf948e8af0b250c20a57822febbd7ab08f2c347cd3c86"
+      "sha256": "5b247aa73b8ce5126cf39db7d918be2012054d64e012788b6cc4d6215eda9bb2"
     },
     {
       "presetIndex": 4,
       "globalFrame": 1600,
       "controllerFrame": 1600,
       "unitIndex": 0,
-      "sha256": "97674225b1cd3fd31d03748f6fd685a7af04cbec8b1e1abd2fa8623b9c2cd52b"
+      "sha256": "c5e161237dd8e78dd6b8e43351c4198d7e9635aebfb3741f6a75cfad73cdb9ba"
     },
     {
       "presetIndex": 4,
       "globalFrame": 1600,
       "controllerFrame": 1616,
       "unitIndex": 8,
-      "sha256": "b644c115a19624d1d82bf948e8af0b250c20a57822febbd7ab08f2c347cd3c86"
+      "sha256": "5b247aa73b8ce5126cf39db7d918be2012054d64e012788b6cc4d6215eda9bb2"
     },
     {
       "presetIndex": 4,
       "globalFrame": 2650,
       "controllerFrame": 2650,
       "unitIndex": 0,
-      "sha256": "2eba5cdaec9b85a074f95850f5116d6fa1fc1e28440f9ca3185fcb7abb49b75b"
+      "sha256": "a693adf6675beed733272d3e5c3f74da021b3ea3b10a2173dda017421ff518f1"
     },
     {
       "presetIndex": 4,
       "globalFrame": 2650,
       "controllerFrame": 2666,
       "unitIndex": 8,
-      "sha256": "c401fb4ec705f3435eb84aba8b16d8780b964735816553fc016c885d10872dc5"
+      "sha256": "86294bd35e9d4722f0fa81e72605a6e2a089bdb4a59cd5885ba17693442760e9"
     },
     {
       "presetIndex": 5,
       "globalFrame": 0,
       "controllerFrame": 0,
       "unitIndex": 0,
-      "sha256": "9e71838415fa7827dff847a641c0ddbaee3ecae3f6be5e43fd99f704f7a79ea5"
+      "sha256": "1993df3d9742f21ef1025f1f6f2d8473ab9a333be5829acf91068d9318a32bc4"
     },
     {
       "presetIndex": 5,
       "globalFrame": 0,
       "controllerFrame": 16,
       "unitIndex": 8,
-      "sha256": "bc728e4b63e9c15faaecd87d2e46a53c10441e4ff71b40b830a4423ebf33cd6e"
+      "sha256": "e2aa95351ec7737a0070f65aa0d6de819229550c2eefeff491b884131d8332c3"
     },
     {
       "presetIndex": 5,
       "globalFrame": 3,
       "controllerFrame": 3,
       "unitIndex": 0,
-      "sha256": "feef75e396ae97fcc1d53a370d4ecea89a80dab14229bdf5ee4a15476c7753ec"
+      "sha256": "2c661cb343992c20b19d3fc4d538dbc4cd5166ecf98e86e17d27d157aadaa6d4"
     },
     {
       "presetIndex": 5,
       "globalFrame": 3,
       "controllerFrame": 19,
       "unitIndex": 8,
-      "sha256": "6d5c0bfabfe7baf786fb3f908590b3da272d8f3f6e8b760d8d33e6a9beeb6e99"
+      "sha256": "86b2e47edecc4668074a0f50d1c4d295472b0173224f1066f7216f92b6f038b0"
     },
     {
       "presetIndex": 5,
       "globalFrame": 4,
       "controllerFrame": 4,
       "unitIndex": 0,
-      "sha256": "7f549e2321069f5ac0b64a18fd0869ddd55a72b962159e7853a5c070b111a601"
+      "sha256": "3ab077648a9fa38603e587b3b38ac028df061b2ee4e6a08fcc343424919ccc4b"
     },
     {
       "presetIndex": 5,
       "globalFrame": 4,
       "controllerFrame": 20,
       "unitIndex": 8,
-      "sha256": "04bb596df6d97ae15acd079b1239148a9baf490d2fa4b0292d615db2013172eb"
+      "sha256": "b45b664b3ada368768a071c1060fff2a7a52599a5e61d6ce71d6914d4dc5493c"
     },
     {
       "presetIndex": 5,
       "globalFrame": 19,
       "controllerFrame": 19,
       "unitIndex": 0,
-      "sha256": "6d5c0bfabfe7baf786fb3f908590b3da272d8f3f6e8b760d8d33e6a9beeb6e99"
+      "sha256": "86b2e47edecc4668074a0f50d1c4d295472b0173224f1066f7216f92b6f038b0"
     },
     {
       "presetIndex": 5,
       "globalFrame": 19,
       "controllerFrame": 35,
       "unitIndex": 8,
-      "sha256": "d979f7c02a08ced6564c5e240ee64d09a5f0dc0ef5e7b553258f98e61919769c"
+      "sha256": "04b324eb7a5bd0900a679e14c3aa30ef7df9b813cd60a376aa460411d9a7bd12"
     },
     {
       "presetIndex": 5,
       "globalFrame": 20,
       "controllerFrame": 20,
       "unitIndex": 0,
-      "sha256": "04bb596df6d97ae15acd079b1239148a9baf490d2fa4b0292d615db2013172eb"
+      "sha256": "b45b664b3ada368768a071c1060fff2a7a52599a5e61d6ce71d6914d4dc5493c"
     },
     {
       "presetIndex": 5,
       "globalFrame": 20,
       "controllerFrame": 36,
       "unitIndex": 8,
-      "sha256": "2382b235fbfead67ce38e8f566694cd7facfa411c59811471f3fd28a9a34e715"
+      "sha256": "62fd6d8fc5cbfdc94030670f02206307fc73582eefbf90a5ebcbdab75e77bc70"
     },
     {
       "presetIndex": 5,
       "globalFrame": 100,
       "controllerFrame": 100,
       "unitIndex": 0,
-      "sha256": "e461911d14fee756b7cb9c9d6ee05a93654f01871653743e8a273d85bb84070b"
+      "sha256": "4b75d96be595ec95139e877e02c6099b4fc2b3abcefd1115b81174f3c2d58df6"
     },
     {
       "presetIndex": 5,
       "globalFrame": 100,
       "controllerFrame": 116,
       "unitIndex": 8,
-      "sha256": "2914f41f405dae2f8fe3e5e304d00c0b8ce11bc3604ea82ad1cf554a216500af"
+      "sha256": "1604f440bdc430cb5ab20d01c38b5e8ea0be89d3cfde51e03a8c86d4552db875"
     },
     {
       "presetIndex": 5,
       "globalFrame": 800,
       "controllerFrame": 800,
       "unitIndex": 0,
-      "sha256": "9e71838415fa7827dff847a641c0ddbaee3ecae3f6be5e43fd99f704f7a79ea5"
+      "sha256": "1993df3d9742f21ef1025f1f6f2d8473ab9a333be5829acf91068d9318a32bc4"
     },
     {
       "presetIndex": 5,
       "globalFrame": 800,
       "controllerFrame": 816,
       "unitIndex": 8,
-      "sha256": "bc728e4b63e9c15faaecd87d2e46a53c10441e4ff71b40b830a4423ebf33cd6e"
+      "sha256": "e2aa95351ec7737a0070f65aa0d6de819229550c2eefeff491b884131d8332c3"
     },
     {
       "presetIndex": 5,
       "globalFrame": 1600,
       "controllerFrame": 1600,
       "unitIndex": 0,
-      "sha256": "9e71838415fa7827dff847a641c0ddbaee3ecae3f6be5e43fd99f704f7a79ea5"
+      "sha256": "1993df3d9742f21ef1025f1f6f2d8473ab9a333be5829acf91068d9318a32bc4"
     },
     {
       "presetIndex": 5,
       "globalFrame": 1600,
       "controllerFrame": 1616,
       "unitIndex": 8,
-      "sha256": "bc728e4b63e9c15faaecd87d2e46a53c10441e4ff71b40b830a4423ebf33cd6e"
+      "sha256": "e2aa95351ec7737a0070f65aa0d6de819229550c2eefeff491b884131d8332c3"
     },
     {
       "presetIndex": 5,
       "globalFrame": 2650,
       "controllerFrame": 2650,
       "unitIndex": 0,
-      "sha256": "10916492c3ef300b6e083907649f0fb55d1df0a1ed3ee1ff92c6feb835a3ad49"
+      "sha256": "ac50c8edf1d5dc872a9e9b6cabf1c235ff53899753cb511dafe07eb3fbf93bcf"
     },
     {
       "presetIndex": 5,
       "globalFrame": 2650,
       "controllerFrame": 2666,
       "unitIndex": 8,
-      "sha256": "39d22a618a5df22eded48c4a6a4acc80eeb404d8bbc5adbd32f942c69f60ba1a"
+      "sha256": "a8e31bf96a582adebbf8d35483aa240c0affa930fd33ded77eb247d2b2b07698"
     },
     {
       "presetIndex": 6,
       "globalFrame": 0,
       "controllerFrame": 0,
       "unitIndex": 0,
-      "sha256": "bd16570e4cd218b4fcb5407df8725a4ab2f243d66f8d46eb2322ef1b7af1ffb5"
+      "sha256": "6e914f042fddc16668455a040ffa53512c887fa1e55d7d1c77bdfda446ad2939"
     },
     {
       "presetIndex": 6,
       "globalFrame": 0,
       "controllerFrame": 16,
       "unitIndex": 8,
-      "sha256": "8ac5ff4791ae24a9d3025a12dc052f202b83e025eb528fb6e1710c761f97aa58"
+      "sha256": "3d5a1fbfee8e204f10a0483653ea056d43b3a0f8c1ca3fd1fab0af721734ed17"
     },
     {
       "presetIndex": 6,
       "globalFrame": 3,
       "controllerFrame": 3,
       "unitIndex": 0,
-      "sha256": "0fec532f23644077e1b5d6566b5c53319c248861a2d0d2017e122ad23ddea7a3"
+      "sha256": "603384961f0a21e08ee0c02c3ab042873f661a84a97a99e11023264d9ffd6679"
     },
     {
       "presetIndex": 6,
       "globalFrame": 3,
       "controllerFrame": 19,
       "unitIndex": 8,
-      "sha256": "9253164036d46049266b72910f1c7963bc81f95dc4e2a40994df9680e319ded8"
+      "sha256": "0cfe02799c18fc043ba4c998e3c70470a864c4f62e4e3dda3d7bc8160859a44b"
     },
     {
       "presetIndex": 6,
       "globalFrame": 4,
       "controllerFrame": 4,
       "unitIndex": 0,
-      "sha256": "2841e9f8de5a23e8c958c0f3959845cbb1c2e98513a7a83af973389c0a88efee"
+      "sha256": "44a405c4bb1103a9fc00c5995548972c966be64bc139b003a017fcccd70830ef"
     },
     {
       "presetIndex": 6,
       "globalFrame": 4,
       "controllerFrame": 20,
       "unitIndex": 8,
-      "sha256": "2ecfdc18a09d9f56dc528ac2d070085ec0009e20daa0da4e590aba2be8d5bfda"
+      "sha256": "26c25065bde47341e9626e8b1649d838eed419da594ad73e3c7fc8a92566e8c4"
     },
     {
       "presetIndex": 6,
       "globalFrame": 19,
       "controllerFrame": 19,
       "unitIndex": 0,
-      "sha256": "9253164036d46049266b72910f1c7963bc81f95dc4e2a40994df9680e319ded8"
+      "sha256": "0cfe02799c18fc043ba4c998e3c70470a864c4f62e4e3dda3d7bc8160859a44b"
     },
     {
       "presetIndex": 6,
       "globalFrame": 19,
       "controllerFrame": 35,
       "unitIndex": 8,
-      "sha256": "b00e05aa3cdff9b8663c0c3cf8ba8d947e30cd7bd645c37aba167f14322b57f1"
+      "sha256": "56193f47fd3149dad7ff95237035ebf203e9ee73d8db7b429747a664ed357afb"
     },
     {
       "presetIndex": 6,
       "globalFrame": 20,
       "controllerFrame": 20,
       "unitIndex": 0,
-      "sha256": "2ecfdc18a09d9f56dc528ac2d070085ec0009e20daa0da4e590aba2be8d5bfda"
+      "sha256": "26c25065bde47341e9626e8b1649d838eed419da594ad73e3c7fc8a92566e8c4"
     },
     {
       "presetIndex": 6,
       "globalFrame": 20,
       "controllerFrame": 36,
       "unitIndex": 8,
-      "sha256": "6558adb99ec2851cea9aeadeedb5bde01d46bb1b974bd0f31d6ace76e6c9ccbb"
+      "sha256": "0f8d5ab5d50e7ca6a6b6ad4ffd1e2189a97ba90299f9f7cf7d9776e09f677ed8"
     },
     {
       "presetIndex": 6,
       "globalFrame": 100,
       "controllerFrame": 100,
       "unitIndex": 0,
-      "sha256": "1171ac15de01904b85fdcb51b8c823e4c196e924e177344b2073fd51a86110cf"
+      "sha256": "c97cb1eeec5c39d8e7af9c940308b22245c84b69436e608039964b5bfe626c13"
     },
     {
       "presetIndex": 6,
       "globalFrame": 100,
       "controllerFrame": 116,
       "unitIndex": 8,
-      "sha256": "5cdc10d689f1f20e8efd9cbb8722072d6a853644568ffce3b8375bd9df8b6d87"
+      "sha256": "c6549822d2e25f0d3c0c547dac4d74bfac0484ca88e29b21dd6e52633c0bc913"
     },
     {
       "presetIndex": 6,
       "globalFrame": 800,
       "controllerFrame": 800,
       "unitIndex": 0,
-      "sha256": "bd16570e4cd218b4fcb5407df8725a4ab2f243d66f8d46eb2322ef1b7af1ffb5"
+      "sha256": "6e914f042fddc16668455a040ffa53512c887fa1e55d7d1c77bdfda446ad2939"
     },
     {
       "presetIndex": 6,
       "globalFrame": 800,
       "controllerFrame": 816,
       "unitIndex": 8,
-      "sha256": "8ac5ff4791ae24a9d3025a12dc052f202b83e025eb528fb6e1710c761f97aa58"
+      "sha256": "3d5a1fbfee8e204f10a0483653ea056d43b3a0f8c1ca3fd1fab0af721734ed17"
     },
     {
       "presetIndex": 6,
       "globalFrame": 1600,
       "controllerFrame": 1600,
       "unitIndex": 0,
-      "sha256": "bd16570e4cd218b4fcb5407df8725a4ab2f243d66f8d46eb2322ef1b7af1ffb5"
+      "sha256": "6e914f042fddc16668455a040ffa53512c887fa1e55d7d1c77bdfda446ad2939"
     },
     {
       "presetIndex": 6,
       "globalFrame": 1600,
       "controllerFrame": 1616,
       "unitIndex": 8,
-      "sha256": "8ac5ff4791ae24a9d3025a12dc052f202b83e025eb528fb6e1710c761f97aa58"
+      "sha256": "3d5a1fbfee8e204f10a0483653ea056d43b3a0f8c1ca3fd1fab0af721734ed17"
     },
     {
       "presetIndex": 6,
       "globalFrame": 2650,
       "controllerFrame": 2650,
       "unitIndex": 0,
-      "sha256": "bfc865ba9512c426404a7792ec4750f82435ea76759f4e1d22ab36041c68dc7e"
+      "sha256": "7927d3925b41e501f8fb3ef37962e96bd09a0c8938ba6f9d1fc016dd6901cdce"
     },
     {
       "presetIndex": 6,
       "globalFrame": 2650,
       "controllerFrame": 2666,
       "unitIndex": 8,
-      "sha256": "9e07b50cafef911de10498b3296a0ae2820b99519b9548c41343c4626331f488"
+      "sha256": "358c4b1da1fd1f5f6af5dc65104578597274438bc84a3efb9c2e3401351d2523"
     },
     {
       "presetIndex": 7,
       "globalFrame": 0,
       "controllerFrame": 0,
       "unitIndex": 0,
-      "sha256": "87ae854e32c912f3d182512f002c1bdbfda834c25450a04ae5a361ecb5edbfb1"
+      "sha256": "1950dc22ddb7da3fd31cd4c4b4be97a45761f55cec31e858fb4d564c1b4e973f"
     },
     {
       "presetIndex": 7,
       "globalFrame": 0,
       "controllerFrame": 16,
       "unitIndex": 8,
-      "sha256": "b4b9c58df369d388bd05de11120b21cf637ef385674e9373ccc577a2d6feab20"
+      "sha256": "a97aad933a3e3a270c3edface0309f0cbdef3199887fbb2e79fbc736856cdea9"
     },
     {
       "presetIndex": 7,
       "globalFrame": 3,
       "controllerFrame": 3,
       "unitIndex": 0,
-      "sha256": "ba06b2df3eb137bfdba63f588987fb74303206f1c08ed5c61193f48e8cd5f04d"
+      "sha256": "987f34b1c6ee5e5e47620ac209f1c6f29f396272a2823655cb7752b4185fcf58"
     },
     {
       "presetIndex": 7,
       "globalFrame": 3,
       "controllerFrame": 19,
       "unitIndex": 8,
-      "sha256": "0af578ccf247a38eecea0ca9c139391b7baa840c077c61ce3ac5a36daf3869aa"
+      "sha256": "eb5bf77b8b8edc2d53cfec46d4bf77c04253cadba3e6d14e9f88252d65c77375"
     },
     {
       "presetIndex": 7,
       "globalFrame": 4,
       "controllerFrame": 4,
       "unitIndex": 0,
-      "sha256": "372e889616d2f2049a5947fa89cf7900e4123c023276fdf914f6496b2c4cdc84"
+      "sha256": "95ad498b093603ff280865db73029e4b54716ce552b609b96ea508c557c2f813"
     },
     {
       "presetIndex": 7,
       "globalFrame": 4,
       "controllerFrame": 20,
       "unitIndex": 8,
-      "sha256": "2be001ca0f46bc837cfb16b917bdd168a59e94445e1ea4b1ea0758234647cf7f"
+      "sha256": "a458ab19277ae04c9181bbc3b042052d274595d4fec1d1dc0541d8f66d945242"
     },
     {
       "presetIndex": 7,
       "globalFrame": 19,
       "controllerFrame": 19,
       "unitIndex": 0,
-      "sha256": "0af578ccf247a38eecea0ca9c139391b7baa840c077c61ce3ac5a36daf3869aa"
+      "sha256": "eb5bf77b8b8edc2d53cfec46d4bf77c04253cadba3e6d14e9f88252d65c77375"
     },
     {
       "presetIndex": 7,
       "globalFrame": 19,
       "controllerFrame": 35,
       "unitIndex": 8,
-      "sha256": "f2ae3f3a426bfbd6b939d0e8ef1785ccc93fbe11eb0fe4a92c310299f8e6ce48"
+      "sha256": "1a0da06873052ce5e13522326aed5bcaa43f2939f4960f37ff3c4d5375c39ee0"
     },
     {
       "presetIndex": 7,
       "globalFrame": 20,
       "controllerFrame": 20,
       "unitIndex": 0,
-      "sha256": "2be001ca0f46bc837cfb16b917bdd168a59e94445e1ea4b1ea0758234647cf7f"
+      "sha256": "a458ab19277ae04c9181bbc3b042052d274595d4fec1d1dc0541d8f66d945242"
     },
     {
       "presetIndex": 7,
       "globalFrame": 20,
       "controllerFrame": 36,
       "unitIndex": 8,
-      "sha256": "275058753c44c8301b1a12dc235bfe0d94bf45e01b11a005c6a94acbfa29896f"
+      "sha256": "652bcc310e9d7392b8c770b4146e8b84466acbef5ac14041d9f9fb0708a17ccf"
     },
     {
       "presetIndex": 7,
       "globalFrame": 100,
       "controllerFrame": 100,
       "unitIndex": 0,
-      "sha256": "23bb4d1b30e1c3a0540e5d54a2c78fbf34e461e3140461f81918780c4c370c8a"
+      "sha256": "42a778340d8345c08ea34f4980f9d76e5638a6200c439ded8eb3c4181df82fec"
     },
     {
       "presetIndex": 7,
       "globalFrame": 100,
       "controllerFrame": 116,
       "unitIndex": 8,
-      "sha256": "0b87501a346aebbe12984fa3ccaae9f1cc63e0097ac7c22955135fc41d4c63d8"
+      "sha256": "ef8696521b310071d861a9b441615e4c6e52f5e046bdc09d0f2e52b0522cf986"
     },
     {
       "presetIndex": 7,
       "globalFrame": 800,
       "controllerFrame": 800,
       "unitIndex": 0,
-      "sha256": "87ae854e32c912f3d182512f002c1bdbfda834c25450a04ae5a361ecb5edbfb1"
+      "sha256": "1950dc22ddb7da3fd31cd4c4b4be97a45761f55cec31e858fb4d564c1b4e973f"
     },
     {
       "presetIndex": 7,
       "globalFrame": 800,
       "controllerFrame": 816,
       "unitIndex": 8,
-      "sha256": "b4b9c58df369d388bd05de11120b21cf637ef385674e9373ccc577a2d6feab20"
+      "sha256": "a97aad933a3e3a270c3edface0309f0cbdef3199887fbb2e79fbc736856cdea9"
     },
     {
       "presetIndex": 7,
       "globalFrame": 1600,
       "controllerFrame": 1600,
       "unitIndex": 0,
-      "sha256": "87ae854e32c912f3d182512f002c1bdbfda834c25450a04ae5a361ecb5edbfb1"
+      "sha256": "1950dc22ddb7da3fd31cd4c4b4be97a45761f55cec31e858fb4d564c1b4e973f"
     },
     {
       "presetIndex": 7,
       "globalFrame": 1600,
       "controllerFrame": 1616,
       "unitIndex": 8,
-      "sha256": "b4b9c58df369d388bd05de11120b21cf637ef385674e9373ccc577a2d6feab20"
+      "sha256": "a97aad933a3e3a270c3edface0309f0cbdef3199887fbb2e79fbc736856cdea9"
     },
     {
       "presetIndex": 7,
       "globalFrame": 2650,
       "controllerFrame": 2650,
       "unitIndex": 0,
-      "sha256": "f35b7ae20b64c08878b59ae86e33a17ed0834a8d2edb051840a805906e5b7edd"
+      "sha256": "38c6a05f2e47c4ee74e3efc102e467ee0b669e7be7a0cf1efe8c006ea7249a21"
     },
     {
       "presetIndex": 7,
       "globalFrame": 2650,
       "controllerFrame": 2666,
       "unitIndex": 8,
-      "sha256": "3ef5c18117bab8e59ffe780b9bbe02d16d542c152cbdf9cac4ae47dd27e4d816"
+      "sha256": "a939053268fc93973f35cd4bd563deb59c6ba5b40d8fbea9e226284f9b731d05"
     },
     {
       "presetIndex": 8,
@@ -29979,7 +29983,8 @@
         "schemaVersion": 2,
         "effectId": "center-out-sine",
         "parameters": {
-          "speedHz": 0.35
+          "speedHz": 0.35,
+          "minLevel": 0.3
         },
         "color": {
           "mode": "gradient",
@@ -30022,7 +30027,8 @@
         "schemaVersion": 2,
         "effectId": "center-out-sine",
         "parameters": {
-          "speedHz": 0.35
+          "speedHz": 0.35,
+          "minLevel": 0.3
         },
         "color": {
           "mode": "gradient",
@@ -30065,7 +30071,8 @@
         "schemaVersion": 2,
         "effectId": "center-out-sine",
         "parameters": {
-          "speedHz": 0.35
+          "speedHz": 0.35,
+          "minLevel": 0.3
         },
         "color": {
           "mode": "gradient",
@@ -30102,6 +30109,138 @@
         1.15
       ],
       "completionFrames": 134
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "center-out-sine",
+        "parameters": {
+          "speedHz": 0.35,
+          "minLevel": 0.3
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "radius",
+          "colors": [
+            {
+              "r": 0.2,
+              "g": 0.92,
+              "b": 1
+            },
+            {
+              "r": 0.66,
+              "g": 0.28,
+              "b": 1
+            }
+          ]
+        },
+        "unitVariation": {
+          "parameter": "minLevel",
+          "from": 0.9,
+          "to": 0.020000000000000004,
+          "distribution": "linear"
+        }
+      },
+      "values": [
+        0.9,
+        0.8,
+        0.7,
+        0.55,
+        0.45,
+        0.35,
+        0.25,
+        0.15,
+        0
+      ],
+      "completionFrames": 115
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "center-out-sine",
+        "parameters": {
+          "speedHz": 0.35,
+          "minLevel": 0.3
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "radius",
+          "colors": [
+            {
+              "r": 0.2,
+              "g": 0.92,
+              "b": 1
+            },
+            {
+              "r": 0.66,
+              "g": 0.28,
+              "b": 1
+            }
+          ]
+        },
+        "unitVariation": {
+          "parameter": "minLevel",
+          "from": 0.9,
+          "to": 0.020000000000000004,
+          "distribution": "skip"
+        }
+      },
+      "values": [
+        0.9,
+        0.45,
+        0,
+        0.55,
+        0.15,
+        0.7,
+        0.25,
+        0.8,
+        0.35
+      ],
+      "completionFrames": 115
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "center-out-sine",
+        "parameters": {
+          "speedHz": 0.35,
+          "minLevel": 0.3
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "radius",
+          "colors": [
+            {
+              "r": 0.2,
+              "g": 0.92,
+              "b": 1
+            },
+            {
+              "r": 0.66,
+              "g": 0.28,
+              "b": 1
+            }
+          ]
+        },
+        "unitVariation": {
+          "parameter": "minLevel",
+          "from": 0.9,
+          "to": 0.020000000000000004,
+          "distribution": "random"
+        }
+      },
+      "values": [
+        0.7,
+        0.2,
+        0.35,
+        0.75,
+        0.3,
+        0.45,
+        0.4,
+        0.15,
+        0.5
+      ],
+      "completionFrames": 115
     },
     {
       "preset": {
