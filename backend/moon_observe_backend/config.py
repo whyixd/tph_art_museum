@@ -201,6 +201,7 @@ def _position(value: Any, name: str) -> dict[str, float]:
 
 
 MAX_POLES = 200
+DEFAULT_RPM = 190  # 轉燈實際轉速；前端 DEFAULT_SETTINGS.rpm 相同 / spinner speed, same as the frontend default
 ARM_REACH_CM = 120  # 與前端 site/layout.ts 相同 / same as the frontend site/layout.ts
 
 
@@ -306,7 +307,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         raise ValueError("unknown config field")
     source_ip = _ipv4(artnet["source_ip"], "artnet.source_ip") if "source_ip" in artnet else None
     fps = _integer(render.get("fps", 40), "render.fps", 1, 120)
-    rpm = _integer(render.get("rpm", 360), "render.rpm", 0, 10000)
+    rpm = _integer(render.get("rpm", DEFAULT_RPM), "render.rpm", 0, 10000)
     pixels = _integer(render.get("pixels", 156), "render.pixels", 1, MAX_PIXELS)
     unit_count = _integer(render.get("unit_count", 9), "render.unit_count", 1, MAX_UNITS)
     unit_id = _integer(render.get("unit_id", 1), "render.unit_id", 1, unit_count)

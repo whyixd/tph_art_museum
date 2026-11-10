@@ -71,6 +71,7 @@ class VersionTests(unittest.TestCase):
         self.assertEqual(str((root / "preset" / "sequence.json").resolve()), config["sequence_path"])
         self.assertEqual({"x": 961.0, "y": 118.0, "z": 565.0}, config["spinner_positions"][0])
         self.assertEqual(15, len(config["poles"]))
+        self.assertEqual(190, config["rpm"])  # 範例設定的轉速 / the example config's speed
         # pillar-fill：柱子依配置順序、每根由低到高（與前端 site.test.ts 相同）。 / Same order as the frontend test.
         self.assertEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 12, 14, 15, 19, 17, 18, 16, 20, 21, 22, 23],
                          config["pillar_ranks"])

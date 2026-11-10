@@ -24,6 +24,8 @@ export type EffectId =
   | 'two-tone-trail'
   | 'firework-rise'
   | 'pillar-fill'
+  | 'color-alternate'
+  | 'wave-split'
 
 export type RgbColor = {
   r: number
@@ -104,6 +106,10 @@ export type EffectSampleContext = {
    * Order by pillar (from 0; pillarRanks): pillars in layout order, low to high on each. Falls back to unitIndex.
    */
   unitRank?: number
+  /**
+   * 轉燈中心在場地中的座標（cm，場地配置；缺的軸為 undefined）。 / The spinner centre in the room (cm, from the layout).
+   */
+  unitPosition?: { x?: number; y?: number; z?: number }
 }
 
 export type EffectModule = {

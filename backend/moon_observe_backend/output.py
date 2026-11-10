@@ -288,6 +288,8 @@ def stream(
                     "frameOffset": (unit_id - 1) * weather["frameStep"] if category == "cloudy" else 0,
                     # pillar-fill 依柱子的順序。 / pillar-fill's order by pillar.
                     "pillarRank": (config.get("pillar_ranks") or [])[unit_id - 1] if unit_id <= len(config.get("pillar_ranks") or []) else None,
+                    # wave-split 用轉燈中心的場地座標。 / wave-split uses the spinner centre in the room.
+                    "position": (config.get("spinner_positions") or [])[unit_id - 1] if unit_id <= len(config.get("spinner_positions") or []) else None,
                 }
                 color_override = weather.get("color") if category is not None else None
                 if flash_color is not None:

@@ -20,7 +20,8 @@ export type TemporalSample = {
 }
 
 export const DEFAULT_SETTINGS: SimulationSettings = {
-  rpm: 360,
+  // 轉燈實際轉速（2026-11-10 改為 190）；連上後端時改用 /api/state 的 output.rpm。 / Spinner speed; the backend's output.rpm replaces it.
+  rpm: 190,
   controllerFps: 40,
   exposureMs: 25,
   persistenceMs: 45,

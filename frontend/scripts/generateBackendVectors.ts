@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto'
 import { compileSequence, createSequenceStep, layerUnitWeight, resolveSequenceFrame } from '../src/simulation/sequence'
 import { writeFileSync } from 'node:fs'
+import { exampleSiteLayout } from '../src/site/layout'
 import { createDefaultEffectPreset, createEffectContext, getEffectCompletion, getVariableParameters, presetForUnit, sampleEffect, type EffectPreset } from '../src/effects'
 
 const ids = [
@@ -28,6 +29,8 @@ const ids = [
   'two-tone-trail',
   'firework-rise',
   'pillar-fill',
+  'color-alternate',
+  'wave-split',
 ] as const
 
 const gradient8 = [
@@ -239,6 +242,26 @@ const rainLines = {
   })),
 }
 
+// 海浪分界：範例場地配置的 24 台轉燈座標、幾個影格與燈點（含兩色與純色）。
+// wave-split with the example layout's 24 spinner positions, a few frames and LEDs (two colours and solid too).
+const waveLayout = exampleSiteLayout()
+const wavePresets: EffectPreset[] = [
+  createDefaultEffectPreset('wave-split'),
+  { ...createDefaultEffectPreset('wave-split'), parameters: { ...createDefaultEffectPreset('wave-split').parameters, directionDegrees: 120, chop: 0, softnessCm: 0, levelMeters: 5.5 },
+    color: { mode: 'gradient', axis: 'radius', colors: [{ r: 0.9, g: 0.2, b: 0.1 }, { r: 0, g: 0.6, b: 0.9 }] } },
+  { ...createDefaultEffectPreset('wave-split'), color: { mode: 'solid', color: { r: 0.1, g: 0.5, b: 1 } } },
+]
+const wavePositions = {
+  positions: waveLayout.spinners,
+  presets: wavePresets,
+  samples: wavePresets.flatMap((preset, presetIndex) => [0, 37, 400, 1234].flatMap((frame) =>
+    waveLayout.spinners.flatMap((_, unitIndex) => [0, 20, 40, 60, 64, 90, 128].map((ledIndex) => {
+      const context = createEffectContext(frame, 40, ledIndex, 129, unitIndex, waveLayout.spinners.length, frame)
+      context.unitPosition = waveLayout.spinners[unitIndex] ?? undefined
+      return { presetIndex, frame, unitIndex, ledIndex, expected: sampleEffect(preset, context, frame) }
+    })))),
+}
+
 const output = JSON.stringify({
   source: 'frontend/src/effects',
   schemaVersion: 2,
@@ -252,6 +275,7 @@ const output = JSON.stringify({
   axisChanges,
   unitEffects,
   rainLines,
+  wavePositions,
 }, null, 2)
 
 if (process.argv.includes('--write')) {

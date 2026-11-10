@@ -44,7 +44,7 @@ uv run --locked --project backend python backend/run.py
 preset = "/etc/tph-art-museum/preset/preset.json"
 sequence = "/etc/tph-art-museum/preset/sequence.json"
 fps = 40
-rpm = 360
+rpm = 190
 pixels = 156
 unit_id = 1
 unit_count = 9
@@ -125,7 +125,7 @@ universe = 0
 preset = "preset.json"
 sequence = "sequence.json"
 fps = 40
-rpm = 360
+rpm = 190
 pixels = 156
 unit_count = 9
 

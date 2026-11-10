@@ -59,6 +59,8 @@ describe('museum defaults', () => {
   it('uses 129 LEDs per strip and no per-unit offset, as the backend example', () => {
     expect(DEFAULT_SETTINGS.ledCount).toBe(129)
     expect(DEFAULT_SETTINGS.unitFrameOffsetStep).toBe(0)
+    // 轉燈實際轉速，與後端 config.DEFAULT_RPM 相同。 / Spinner speed, same as the backend config.DEFAULT_RPM.
+    expect(DEFAULT_SETTINGS.rpm).toBe(190)
   })
 })
 

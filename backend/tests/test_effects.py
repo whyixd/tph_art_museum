@@ -52,8 +52,8 @@ class EffectParityTests(unittest.TestCase):
     def test_frontend_golden_vectors(self) -> None:
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
         presets = [validate_preset(preset) for preset in fixture["presets"]]
-        self.assertEqual(23, len({preset["effectId"] for preset in presets}))
-        self.assertEqual(828, len(fixture["samples"]))
+        self.assertEqual(25, len({preset["effectId"] for preset in presets}))
+        self.assertEqual(900, len(fixture["samples"]))
         for sample in fixture["samples"]:
             data = sample["context"]
             context = EffectContext(
@@ -77,7 +77,7 @@ class EffectParityTests(unittest.TestCase):
     def test_frontend_full_frame_bytes(self) -> None:
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
         presets = [validate_preset(preset) for preset in fixture["presets"]]
-        self.assertEqual(1656, len(fixture["frames"]))
+        self.assertEqual(1800, len(fixture["frames"]))
         for case in fixture["frames"]:
             preset = presets[case["presetIndex"]]
             pixels = [
@@ -241,6 +241,71 @@ class EffectParityTests(unittest.TestCase):
         self.assertEqual((156, 0, 0), (lit(239, leader), lit(240, leader), lit(319, leader)))
         self.assertNotIn("staggerSeconds", variable_parameters("random-fill"))
 
+    def test_full_on_fades_out_once(self):
+        def at(frame: int, **parameters) -> float:
+            raw = default_preset("full-on")
+            raw["parameters"].update(parameters)
+            return sample_effect(validate_preset(raw), EffectContext(frame, 40, 10, 129))[0]
+
+        self.assertEqual([1.0, 1.0], [at(0), at(40000)])
+        self.assertIsNone(completion_frames(validate_preset(default_preset("full-on")), 40, 9))
+        self.assertEqual(1.0, at(39, holdSeconds=1, fadeOutSeconds=2))
+        self.assertAlmostEqual(0.5, at(79, holdSeconds=1, fadeOutSeconds=2), places=12)
+        self.assertEqual(0.0, at(119, holdSeconds=1, fadeOutSeconds=2))
+        self.assertEqual(0.0, at(4000, holdSeconds=1, fadeOutSeconds=2))
+
+    def test_wave_split_matches_frontend_with_layout_positions(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["wavePositions"]
+        presets = [validate_preset(preset) for preset in fixture["presets"]]
+        self.assertEqual(24, len(fixture["positions"]))
+        self.assertEqual(3 * 4 * 24 * 7, len(fixture["samples"]))
+        lit_split = 0
+        for sample in fixture["samples"]:
+            context = EffectContext(sample["frame"], 40, sample["ledIndex"], 129, sample["unitIndex"], 24, sample["frame"],
+                                    unit_position=fixture["positions"][sample["unitIndex"]])
+            actual = sample_effect(presets[sample["presetIndex"]], context, sample["frame"])
+            expected = sample["expected"]
+            for channel, key in enumerate(("r", "g", "b")):
+                self.assertAlmostEqual(expected[key], actual[channel], places=12, msg=sample)
+            lit_split += expected["r"] != expected["b"]
+        self.assertGreater(lit_split, 0)
+
+    def test_wave_split_colours_by_height(self):
+        raw = default_preset("wave-split")
+        raw["parameters"].update(amplitudeMeters=0, foamCm=0, softnessCm=0, levelMeters=5)
+        preset = validate_preset(raw)
+
+        def colour(z: float, led: int) -> tuple[float, ...]:
+            rgb = sample_effect(preset, EffectContext(0, 40, led, 129, 0, 24, unit_position={"x": 1000, "y": 0, "z": z}))
+            return tuple(round(channel, 9) for channel in rgb)
+
+        # A flat surface at 5 m: a spinner centred at 5 m is amber at the top LED (64) and blue at the bottom (0).
+        self.assertEqual((1.0, 0.55, 0.15), colour(500, 64))
+        self.assertEqual((0.0, 0.3, 1.0), colour(500, 0))
+        self.assertEqual((1.0, 0.55, 0.15), colour(600, 0))  # wholly above the water
+        self.assertEqual((0.0, 0.3, 1.0), colour(400, 64))   # wholly below
+        raw["parameters"].update(foamCm=10)
+        foamy = validate_preset(raw)
+        # The LED at the waterline (LED 32 sits level with the centre) is white foam.
+        self.assertEqual((1.0, 1.0, 1.0), sample_effect(foamy, EffectContext(0, 40, 32, 129, 0, 24,
+                                                                             unit_position={"x": 1000, "y": 0, "z": 500 - 35 * math.cos(math.pi * 0.5)})))
+
+    def test_color_alternate_switches_colours_every_interval(self):
+        preset = validate_preset(default_preset("color-alternate"))
+        self.assertEqual(16, completion_frames(preset, 40, 9))
+
+        def at(target, frame: int) -> tuple[float, ...]:
+            return sample_effect(target, EffectContext(frame, 40, 30, 129, 2, 9))
+
+        self.assertEqual([(1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 0.35, 1.0), (1.0, 0.0, 0.0)],
+                         [at(preset, frame) for frame in (0, 7, 8, 16)])
+        raw = default_preset("color-alternate")
+        raw["parameters"]["intervalFrames"] = 1
+        self.assertEqual([1.0, 0.0, 1.0, 0.0], [at(validate_preset(raw), frame)[0] for frame in range(4)])
+        raw["color"] = {"mode": "solid", "color": {"r": 0, "g": 1, "b": 0}}
+        solid = validate_preset(raw)
+        self.assertEqual([(0.0, 1.0, 0.0), (0.0, 0.0, 0.0)], [at(solid, 0), at(solid, 1)])
+
     def test_moving_rings_cross_with_their_own_colours(self):
         raw = default_preset("moving-rings")
         self.assertEqual("gradient", raw["color"]["mode"])
@@ -360,7 +425,7 @@ class EffectParityTests(unittest.TestCase):
 
     def test_frontend_unit_variation_values_and_cycles(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
-        self.assertEqual(108, len(fixture["unitVariations"]))
+        self.assertEqual(117, len(fixture["unitVariations"]))
         for case in fixture["unitVariations"]:
             preset = validate_preset(case["preset"])
             self.assertEqual(case["preset"], preset_to_json(preset))
@@ -502,7 +567,7 @@ class UnitEffectTests(unittest.TestCase):
     def test_rain_lines_match_frontend(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["rainLines"]
         frames = [frame for start, end in fixture["frameRanges"] for frame in range(start, end)]
-        self.assertEqual(46, len(fixture["cases"]))
+        self.assertEqual(50, len(fixture["cases"]))
         for case in fixture["cases"]:
             preset = validate_preset(default_preset(case["effectId"]))
             data = bytearray()

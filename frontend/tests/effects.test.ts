@@ -60,6 +60,8 @@ describe('effect synchronization contract', () => {
       'two-tone-trail',
       'firework-rise',
       'pillar-fill',
+      'color-alternate',
+      'wave-split',
     ])
     expect(decoded.every(
       (effect) => effect.schemaVersion === EFFECT_SCHEMA_VERSION,
@@ -403,8 +405,8 @@ describe('effect color controls', () => {
     for (const effect of EFFECT_MANIFEST) {
       const preset = createDefaultEffectPreset(effect.id)
       preset.color = { mode: 'solid', color: { r: 1, g: 0, b: 0 } }
-      // random-fill starts dark and lights its first LED after about 4.8 s.
-      const frame = effect.id === 'random-fill' ? 400 : 40
+      // random-fill starts dark and lights its first LED after about 4.8 s; color-alternate is off at frame 40.
+      const frame = effect.id === 'random-fill' ? 400 : effect.id === 'color-alternate' ? 0 : 40
       const colors = Array.from({ length: 156 }, (_, ledIndex) => sampleEffect(
         preset,
         createEffectContext(frame, 40, ledIndex, 156, 0, 1, frame, 1),
@@ -551,6 +553,87 @@ describe('random-fill', () => {
   function createEffectCompletionFrames() {
     return getEffectCompletion(preset, fps, 9)?.frames
   }
+})
+
+describe('full-on fade out', () => {
+  const at = (parameters: Record<string, number>, frame: number) => sampleEffect(
+    { ...createDefaultEffectPreset('full-on'), parameters: { ...createDefaultEffectPreset('full-on').parameters, ...parameters } },
+    createEffectContext(frame, 40, 10, 129),
+  ).r
+
+  it('stays fully lit by default', () => {
+    expect([0, 400, 40000].map((frame) => at({}, frame))).toEqual([1, 1, 1])
+    expect(getEffectCompletion(createDefaultEffectPreset('full-on'), 40, 9)).toBeNull()
+  })
+
+  it('holds, fades out linearly and then stays dark', () => {
+    // Hold 1 s (40 frames), fade 2 s (80 frames).
+    const fade = { holdSeconds: 1, fadeOutSeconds: 2 }
+    expect(at(fade, 39)).toBe(1)
+    expect(at(fade, 40)).toBeCloseTo(1 - 1 / 80, 12)
+    expect(at(fade, 79)).toBeCloseTo(0.5, 12)
+    expect(at(fade, 119)).toBe(0)
+    expect(at(fade, 4000)).toBe(0)
+    expect(at({ holdSeconds: 0, fadeOutSeconds: 1 }, 0)).toBeCloseTo(1 - 1 / 40, 12)
+  })
+})
+
+describe('wave-split', () => {
+  const preset = createDefaultEffectPreset('wave-split')
+  const flat = { ...preset, parameters: { ...preset.parameters, amplitudeMeters: 0, foamCm: 0, softnessCm: 0, levelMeters: 5 } }
+  const at = (target: EffectPreset, z: number, led: number, frame = 0, x = 1000) => {
+    const context = createEffectContext(frame, 40, led, 129, 0, 24)
+    context.unitPosition = { x, y: 0, z }
+    const color = sampleEffect(target, context)
+    return { r: +color.r.toFixed(9), g: +color.g.toFixed(9), b: +color.b.toFixed(9) }
+  }
+  const AMBER = { r: 1, g: 0.55, b: 0.15 }
+  const BLUE = { r: 0, g: 0.3, b: 1 }
+
+  it('splits each sphere at the water height: first colour above, last below', () => {
+    expect(at(flat, 500, 64)).toEqual(AMBER) // top LED above a 5 m surface
+    expect(at(flat, 500, 0)).toEqual(BLUE) // bottom LED below it
+    expect(at(flat, 600, 0)).toEqual(AMBER)
+    expect(at(flat, 400, 64)).toEqual(BLUE)
+  })
+
+  it('draws a foam line at the waterline and moves the surface along x', () => {
+    const foamy = { ...flat, parameters: { ...flat.parameters, foamCm: 10 } }
+    expect(at(foamy, 500, 32)).toEqual({ r: 1, g: 1, b: 1 }) // LED 32 is level with the centre
+    // A moving wave: the same sphere changes over time and differs between positions along the wave.
+    const centreColour = (frame: number, x: number) => at(preset, 620, 64, frame, x)
+    expect(new Set([0, 40, 80, 120, 160].map((frame) => JSON.stringify(centreColour(frame, 1000)))).size).toBeGreaterThan(1)
+    expect(new Set([0, 250, 500, 750].map((x) => JSON.stringify(centreColour(0, 1000 + x)))).size).toBeGreaterThan(1)
+  })
+
+  it('lights only the water and foam with a solid colour', () => {
+    const solid = { ...flat, color: { mode: 'solid' as const, color: { r: 0, g: 1, b: 0 } } }
+    expect(at(solid, 500, 0)).toEqual({ r: 0, g: 1, b: 0 })
+    expect(at(solid, 500, 64)).toEqual({ r: 0, g: 0, b: 0 })
+  })
+})
+
+describe('color-alternate', () => {
+  const at = (preset: EffectPreset, frame: number) => sampleEffect(preset, createEffectContext(frame, 40, 30, 129, 2, 9))
+
+  it('switches between the first and last colour every interval, down to one frame', () => {
+    const preset = createDefaultEffectPreset('color-alternate')
+    expect(getEffectCompletion(preset, 40, 9)?.frames).toBe(16)
+    expect(at(preset, 0)).toEqual({ r: 1, g: 0, b: 0 })
+    expect(at(preset, 7)).toEqual({ r: 1, g: 0, b: 0 })
+    expect(at(preset, 8)).toEqual({ r: 0, g: 0.35, b: 1 })
+    expect(at(preset, 16)).toEqual({ r: 1, g: 0, b: 0 })
+    const fastest = { ...preset, parameters: { intervalFrames: 1 } }
+    expect([0, 1, 2, 3].map((frame) => at(fastest, frame).r)).toEqual([1, 0, 1, 0])
+    const three = { ...preset, color: { mode: 'gradient' as const, axis: 'radius' as const, colors: [{ r: 1, g: 0, b: 0 }, { r: 0, g: 1, b: 0 }, { r: 0, g: 0, b: 1 }] } }
+    expect(at(three, 8)).toEqual({ r: 0, g: 0, b: 1 })
+  })
+
+  it('strobes a solid colour on and off', () => {
+    const solid = { ...createDefaultEffectPreset('color-alternate'), color: { mode: 'solid' as const, color: { r: 0, g: 1, b: 0 } } }
+    expect(at(solid, 0)).toEqual({ r: 0, g: 1, b: 0 })
+    expect(at(solid, 8)).toEqual({ r: 0, g: 0, b: 0 })
+  })
 })
 
 describe('pillar-fill', () => {

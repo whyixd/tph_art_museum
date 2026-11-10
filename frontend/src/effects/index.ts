@@ -1,4 +1,5 @@
 import { centerOutSine } from './centerOutSine'
+import { colorAlternate } from './colorAlternate'
 import { fireworkRise } from './fireworkRise'
 import { fullOn } from './fullOn'
 import { axisChangeWeight, defaultEffectColor, sampleGradient } from './color'
@@ -27,6 +28,7 @@ import { unitChase } from './unitChase'
 import { unitRandom } from './unitRandom'
 import { twoToneTrail } from './twoToneTrail'
 import { unitVariationValue } from './unitVariation'
+import { waveSplit } from './waveSplit'
 import { worldUpperHalf } from './worldUpperHalf'
 
 const EFFECTS: Record<EffectId, EffectModule> = {
@@ -53,6 +55,8 @@ const EFFECTS: Record<EffectId, EffectModule> = {
   'two-tone-trail': twoToneTrail,
   'firework-rise': fireworkRise,
   'pillar-fill': pillarFill,
+  'color-alternate': colorAlternate,
+  'wave-split': waveSplit,
 }
 
 export const EFFECT_MANIFEST = Object.values(EFFECTS).map(
@@ -74,6 +78,7 @@ const FIXED_PARAMETERS: Partial<Record<EffectId, readonly string[]>> = {
     'spreadStepSeconds', 'ringHoldSeconds', 'glitchSeconds', 'glitchSpreadSeconds', 'flickerFrames', 'endDarkSeconds',
   ],
   'random-leds': ['durationMode'],
+  'wave-split': ['levelMeters', 'amplitudeMeters', 'wavelengthMeters', 'speedMps', 'directionDegrees', 'chop', 'foamCm', 'softnessCm'],
   'pillar-fill': ['stepSeconds', 'acceleration', 'fadeInSeconds', 'holdSeconds', 'fadeOutSeconds', 'endDarkSeconds'],
   // 錯落順序靠九台共用的整輪長度。 / The stagger order relies on one shared round length.
   'random-fill': ['staggerSeconds'],

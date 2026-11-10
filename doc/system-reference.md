@@ -100,13 +100,15 @@ sampleEffect(preset, context, elapsedFrame, raining) -> RGB（各通道 0–1）
 | `twenty-beat` | 二十拍萬花筒 | 20 影格 | – |
 | `sine-swell` | 流光波 | ✓ | 只留波峰細環 |
 | `random-fill` | 隨機填滿 | ✓ | 已亮的燈閃雨絲 |
-| `full-on` | 全亮 | – | 滿版雨絲 |
+| `full-on` | 全亮（可選全亮後淡出至全暗） | – | 滿版雨絲 |
 | `unit-chase` | 逐台巡行 | ✓ | 不適用 |
 | `unit-random` | 隨機單台 | ✓ | 不適用 |
 | `roulette-ring` | 輪盤收束 | ✓ | 不適用 |
 | `two-tone-trail` | 雙色拖尾（底色＋上下來回的亮點與拖尾） | ✓ | – |
 | `firework-rise` | 煙火上升（參考 WLED Meteor：流星由底部衝上頂部，尾巴不規則碎開淡出） | ✓ | – |
 | `pillar-fill` | 依柱子逐台點亮（柱子依配置順序、每根由低到高） | ✓ | 不適用 |
+| `color-alternate` | 雙色交替（最短 1 影格） | ✓ | – |
+| `wave-split` | 海浪分界（依燈的離地高度分上下兩色，分界是起伏的海面＋浪花線；用場地配置座標） | ✓ | – |
 
 - 週期：前端 `getEffectCompletion`，後端 `completion_frames`（`None` = 無週期，串接只能以時間播放）。
 - `unit-chase`、`unit-random`、`roulette-ring`、`pillar-fill` 是**整台為單位**的效果：`ignoresWeatherTiming` / `WEATHER_TIMING_FREE`，九台共用時間表，不套用多雲錯開、沒有雨天版本、參數不可逐台變化。
@@ -325,7 +327,7 @@ universe = 0             # 0..32767，從 0 起算
 preset = "preset.json"     # 必填
 sequence = "sequence.json" # 預設 sequence.json
 fps = 40                   # 1..120，預設 40
-rpm = 360                  # 0..10000，預設 360（只影響相位估計）
+rpm = 190                  # 0..10000，預設 190（只影響相位估計）
 pixels = 156               # 固定 156
 unit_id = 1                # 單一 target 時使用
 unit_count = 9             # 1..9

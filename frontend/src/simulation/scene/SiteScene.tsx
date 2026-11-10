@@ -166,6 +166,7 @@ function useSpinnerColors(props: SiteSceneProps, unitCount: number) {
             frame, settings.controllerFps, led, ledCount, unit, unitCount, layer.localFrame,
           )
           context.unitRank = ranks[unit]
+          context.unitPosition = layout.spinners[unit] ?? undefined
           const color = sampleEffect(preset, context, layer.elapsedFrame, raining)
           colors[led * 3] += color.r * weight
           colors[led * 3 + 1] += color.g * weight

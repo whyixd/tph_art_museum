@@ -184,7 +184,7 @@ function UnitVariationEditor({
 // 這些效果的顏色不看漸層方向（隨機填滿每台一色、雙色拖尾依亮點經過取色、往返光環每環一色）。
 // These effects ignore the gradient axis (random-fill: one colour per unit; two-tone-trail: by the passing dot;
 // moving-rings: one colour per ring).
-const IGNORES_AXIS: readonly EffectId[] = ['random-fill', 'two-tone-trail', 'moving-rings']
+const IGNORES_AXIS: readonly EffectId[] = ['random-fill', 'two-tone-trail', 'moving-rings', 'color-alternate', 'wave-split']
 
 const AXIS_LABELS: ReadonlyArray<[GradientAxis, string]> = [
   ['radius', '頂部 → 底部'],

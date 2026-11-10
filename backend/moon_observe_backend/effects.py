@@ -34,6 +34,8 @@ EFFECT_IDS = (
     "two-tone-trail",
     "firework-rise",
     "pillar-fill",
+    "color-alternate",
+    "wave-split",
 )
 # min, max, default, integer
 PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
@@ -75,7 +77,7 @@ PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "fadeOutSeconds": (0, 10, 3, False),
         "staggerSeconds": (0, 30, 0, False),
     },
-    "full-on": {},
+    "full-on": {"holdSeconds": (0, 60, 1, False), "fadeOutSeconds": (0, 30, 0, False)},
     "unit-chase": {
         "stepSeconds": (0.1, 5, 0.5, False),
         "fadeSeconds": (0, 2, 0, False),
@@ -112,6 +114,17 @@ PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "direction": (0, 1, 0, True),
         "trailColor": (0, 1, 0, True),
     },
+    "color-alternate": {"intervalFrames": (1, 200, 8, True)},
+    "wave-split": {
+        "levelMeters": (0, 15, 6.2, False),
+        "amplitudeMeters": (0, 6, 2, False),
+        "wavelengthMeters": (2, 40, 10, False),
+        "speedMps": (0.1, 10, 1.5, False),
+        "directionDegrees": (0, 360, 0, False),
+        "chop": (0, 1, 0.4, False),
+        "foamCm": (0, 40, 6, False),
+        "softnessCm": (0, 40, 4, False),
+    },
     "pillar-fill": {
         "stepSeconds": (0.05, 5, 0.5, False),
         "acceleration": (1, 4, 1, False),
@@ -133,6 +146,7 @@ PARAMETER_STEPS: dict[str, dict[str, float]] = {
     "stardust-cloud": {"holdSeconds": 0.5},
     "color-breathing": {"breatheHz": 0.05},
     "sine-swell": {"speedHz": 0.05, "waveCount": 0.5, "depth": 0.05},
+    "full-on": {"holdSeconds": 0.5, "fadeOutSeconds": 0.25},
     "random-fill": {"fillSeconds": 5, "acceleration": 0.25, "ledFadeSeconds": 0.25, "holdSeconds": 1, "fadeOutSeconds": 0.5,
                     "staggerSeconds": 0.25},
     "two-tone-trail": {"periodSeconds": 0.5, "tailLength": 0.05},
@@ -144,6 +158,8 @@ PARAMETER_STEPS: dict[str, dict[str, float]] = {
 FIXED_PARAMETERS: dict[str, tuple[str, ...]] = {
     "sequential-center-fill": ("expansionSeconds", "holdSeconds"),
     "random-leds": ("durationMode",),
+    "wave-split": ("levelMeters", "amplitudeMeters", "wavelengthMeters", "speedMps", "directionDegrees", "chop",
+                   "foamCm", "softnessCm"),
     "pillar-fill": ("stepSeconds", "acceleration", "fadeInSeconds", "holdSeconds", "fadeOutSeconds", "endDarkSeconds"),
     # 錯落順序靠九台共用的整輪長度。 / The stagger order relies on one shared round length.
     "random-fill": ("staggerSeconds",),
@@ -155,7 +171,7 @@ FIXED_PARAMETERS: dict[str, tuple[str, ...]] = {
 }
 # 九台共用時間表、不套用天氣多雲錯開的效果（前端 ignoresWeatherTiming）；它們也沒有雨天線條版本。
 # Shared-schedule effects that skip weather cloud offsets (frontend ignoresWeatherTiming); they have no rain lines either.
-WEATHER_TIMING_FREE = ("unit-chase", "unit-random", "roulette-ring", "pillar-fill")
+WEATHER_TIMING_FREE = ("unit-chase", "unit-random", "roulette-ring", "pillar-fill", "wave-split")
 UNIT_VARIATION_DISTRIBUTIONS = ("linear", "skip", "random")
 # 不用到燈台編號／相位的效果：沒有雨、各台不錯開時，每台畫面相同，只需算一次（輸出迴圈依此共用）。
 # 其他效果依 unit_index（隨機種子、逐台排程、燈台色盤）或各台相位而不同。測試逐台比對確認。
@@ -165,6 +181,7 @@ UNIT_VARIATION_DISTRIBUTIONS = ("linear", "skip", "random")
 UNIT_INDEPENDENT_EFFECTS = (
     "spectrum-cycle", "center-out-sine", "moving-rings", "periodic-leds", "reverse-tide", "wide-rings",
     "comet-tail", "color-breathing", "sector-smear", "twenty-beat", "sine-swell", "full-on", "two-tone-trail",
+    "color-alternate",
 )
 
 
@@ -359,6 +376,14 @@ def default_preset(effect_id: str, led_count: int | None = None) -> dict[str, An
             {"r": 0.7, "g": 0.25, "b": 1},
             {"r": 1, "g": 0.55, "b": 0.2},
         ]}
+    elif effect_id == "wave-split":
+        # 海面上琥珀、浪花白、海面下藍。 / Amber above, white foam, blue below.
+        color = {"mode": "gradient", "axis": "radius", "colors": [
+            {"r": 1, "g": 0.55, "b": 0.15}, {"r": 1, "g": 1, "b": 1}, {"r": 0, "g": 0.3, "b": 1},
+        ]}
+    elif effect_id == "color-alternate":
+        # 紅、藍交替。 / Red and blue.
+        color = {"mode": "gradient", "axis": "strip", "colors": [{"r": 1, "g": 0, "b": 0}, {"r": 0, "g": 0.35, "b": 1}]}
     elif effect_id == "moving-rings":
         # 每個環一色：青、洋紅、琥珀。 / One colour per ring: cyan, magenta, amber.
         color = {"mode": "gradient", "axis": "radius", "colors": [
@@ -414,6 +439,8 @@ class EffectContext:
     unit_phase_projection: float = 1.0
     # 依柱子的順序（config.pillar_ranks）；None 時用 unit_index。 / Rank by pillar (config.pillar_ranks); None uses unit_index.
     unit_rank: int | None = None
+    # 轉燈中心的場地座標（cm，可缺軸）；wave-split 用。 / Spinner centre in the room (cm, axes may be missing); wave-split.
+    unit_position: Mapping[str, float] | None = None
 
     @property
     def strip(self) -> float:
@@ -611,11 +638,18 @@ def _brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float:
             return lit
         return lit * clamp01(1 - (elapsed - fade_start + 1) / fade_out)
     if effect == "full-on":
-        return 1.0
+        return full_on_brightness(ctx.controller_frame, ctx.controller_fps, p)
     if effect == "unit-chase":
         return _unit_chase(p, ctx)
     if effect == "pillar-fill":
         return _pillar_fill(p, ctx)
+    if effect == "wave-split":
+        # 純色：海面下亮、海面上暗，浪花全亮。 / Solid: lit below the surface, dark above, the foam fully lit.
+        top, foam = _wave_split(p, ctx)
+        return max(1 - top, foam)
+    if effect == "color-alternate":
+        # 純色：亮、暗交替。 / Solid: on, off.
+        return 1.0 if _alternate_step(p, ctx) % 2 == 0 else 0.0
     if effect == "unit-random":
         return _unit_random(p, ctx)
     if effect == "roulette-ring":
@@ -682,7 +716,8 @@ def _rain_brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float | N
     if effect == "stardust-cloud":
         return _rain_streak(ctx, RAIN_LINES["denseDensity"] * _brightness(preset, ctx))
     if effect == "full-on":
-        return _rain_streak(ctx, RAIN_LINES["sparseDensity"])
+        # 滿版雨絲，跟著淡出。 / Streaks across the disc, fading with it.
+        return _brightness(preset, ctx) * _rain_streak(ctx, RAIN_LINES["sparseDensity"])
     # 已亮的燈改閃雨絲，填滿時等於全亮的雨絲。 / Lit LEDs flash streaks; the filled disc matches full-on's rain.
     if effect == "random-fill":
         return _brightness(preset, ctx) * _rain_streak(ctx, RAIN_LINES["sparseDensity"])
@@ -723,6 +758,63 @@ def meteor_strength(p: Mapping[str, Any], ctx: EffectContext) -> float:
     trail = max(1, p["trailSeconds"] * ctx.controller_fps)
     value = math.exp(-_METEOR_TRAIL_DECAY * (since - head_frames) / (trail * scale))
     return 0.0 if value < 1 / 255 else value
+
+
+WAVE_SPINNER_RADIUS_CM = 35.0  # 轉燈半徑（前端 SPINNER_RADIUS） / rotor radius (frontend SPINNER_RADIUS)
+_WAVE_CHOP = (0.43, 35.0, 1.3)  # 碎浪：波長倍數、偏轉角度、速度倍數 / chop: wavelength, degrees off, speed
+
+
+def height_above_surface(p: Mapping[str, Any], ctx: EffectContext) -> float:
+    """wave-split: this LED's height above the sea surface in cm, positive above (frontend heightAboveSurface).
+
+    The LED sits at centre z + radius × cos(π × radius coordinate); the rotor spins about the vertical axis, so
+    the height never changes with rotation. The surface is a main wave plus a smaller chop wave."""
+    position = ctx.unit_position or {}
+    x = position.get("x", 150 * (ctx.unit_index + 1))
+    y = position.get("y", 0)
+    z = position.get("z", 500)
+    led = z + WAVE_SPINNER_RADIUS_CM * math.cos(math.pi * ctx.radius)
+    time = ctx.controller_frame / ctx.controller_fps if ctx.controller_fps > 0 else 0
+
+    def wave(wavelength: float, degrees: float, speed: float) -> float:
+        angle = degrees * math.pi / 180
+        along = (x * math.cos(angle) + y * math.sin(angle)) / 100
+        return math.sin(2 * math.pi * (along - speed * time) / wavelength)
+
+    main = wave(p["wavelengthMeters"], p["directionDegrees"], p["speedMps"])
+    chop = wave(p["wavelengthMeters"] * _WAVE_CHOP[0], p["directionDegrees"] + _WAVE_CHOP[1], p["speedMps"] * _WAVE_CHOP[2])
+    surface = 100 * (p["levelMeters"] + p["amplitudeMeters"] * (main + p["chop"] * chop) / (1 + p["chop"]))
+    return led - surface
+
+
+def _wave_split(p: Mapping[str, Any], ctx: EffectContext) -> tuple[float, float]:
+    """(share above the water 0..1, foam strength 0..1)."""
+    above = height_above_surface(p, ctx)
+    softness = p["softnessCm"]
+    top = (1.0 if above >= 0 else 0.0) if softness <= 0 else _smoothstep(above / softness + 0.5)
+    foam = 0.0 if p["foamCm"] <= 0 else 1 - _smoothstep(abs(above) / p["foamCm"])
+    return top, foam
+
+
+def _mix(start: Rgb, end: Rgb, amount: float) -> Rgb:
+    t = clamp01(amount)
+    return tuple(start[channel] + (end[channel] - start[channel]) * t for channel in range(3))  # type: ignore[return-value]
+
+
+def _alternate_step(parameters: Mapping[str, Any], ctx: EffectContext) -> int:
+    """color-alternate: interval index; whole frames, at least one Art-Net update (frontend alternateStep)."""
+    return max(0, ctx.controller_frame) // max(1, int(parameters["intervalFrames"]))
+
+
+def full_on_brightness(controller_frame: int, fps: float, parameters: Mapping[str, Any]) -> float:
+    """full-on (frontend fullOnBrightness): always 1 with no fade; otherwise full for holdSeconds, then a linear fade
+    over fadeOutSeconds, then dark (no loop). Both stages are whole frames."""
+    fade = _seconds_frames(parameters, "fadeOutSeconds", fps)
+    if fade == 0:
+        return 1.0
+    hold = _seconds_frames(parameters, "holdSeconds", fps)
+    frame = max(0, controller_frame)
+    return 1.0 if frame < hold else clamp01(1 - (frame - hold + 1) / fade)
 
 
 def ring_weights(parameters: Mapping[str, Any], ctx: EffectContext) -> list[float]:
@@ -800,6 +892,15 @@ def sample_effect(
     ``raining`` switches to the effect's rain lines."""
     rain = _rain_brightness(preset, ctx) if raining else None
     color = preset["color"]
+    if preset["effectId"] == "wave-split" and color["mode"] == "gradient" and rain is None:
+        # 第一色海面上、最後一色海面下、中間色浪花（兩色時白色）。 / Above, below, foam (white with two colours).
+        stops = color["colors"]
+        top, foam = _wave_split(preset["parameters"], ctx)
+        return _mix(_mix(stops[-1], stops[0], top), stops[1] if len(stops) >= 3 else (1.0, 1.0, 1.0), foam)
+    if preset["effectId"] == "color-alternate" and color["mode"] == "gradient" and rain is None:
+        # 第一色、最後一色交替。 / The first and last colours alternate.
+        stops = color["colors"]
+        return stops[0] if _alternate_step(preset["parameters"], ctx) % 2 == 0 else stops[-1]
     if preset["effectId"] == "moving-rings" and color["mode"] == "gradient" and rain is None:
         # 每個環一色（第 k 環取第 k 色），重疊處相加。 / Ring k takes colour k; overlaps add up.
         colors = color["colors"]
@@ -1138,6 +1239,10 @@ def completion_frames(preset: Mapping[str, Any], fps: int, unit_count: int) -> i
         return _unit_chase_timing(parameters, fps, unit_count)[-1]
     if effect == "pillar-fill":
         return _pillar_fill_timing(parameters, fps, unit_count)[-1]
+    if effect == "color-alternate":
+        return 2 * max(1, int(parameters["intervalFrames"]))
+    if effect == "wave-split":
+        return max(1, math.ceil(fps * parameters["wavelengthMeters"] / parameters["speedMps"]))
     if effect == "unit-random":
         return _unit_random_timing(parameters, fps)[-1] * max(1, unit_count)
     if effect == "roulette-ring":
