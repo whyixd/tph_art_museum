@@ -205,6 +205,36 @@ DEFAULT_RPM = 190  # 轉燈實際轉速；前端 DEFAULT_SETTINGS.rpm 相同 / s
 ARM_REACH_CM = 120  # 與前端 site/layout.ts 相同 / same as the frontend site/layout.ts
 
 
+def _nearest_pole(position: dict[str, float] | None, poles: list[dict[str, float]]) -> float:
+    """Index of the nearest pole in plan within ARM_REACH_CM, else math.inf."""
+    pole, best = math.inf, float(ARM_REACH_CM)
+    if position is not None and "x" in position and "y" in position:
+        for index, candidate in enumerate(poles):
+            distance = math.hypot(candidate["x"] - position["x"], candidate["y"] - position["y"])
+            if distance <= best:
+                pole, best = index, distance
+    return pole
+
+
+def fixture_poles(fixtures: list[dict[str, float] | None], poles: list[dict[str, float]]) -> list[tuple[int, int]]:
+    """(pole rank, order on the pole low to high) per DMX fixture for pole-rise (frontend fixturePoles).
+
+    Each fixture belongs to the nearest pole in plan within ARM_REACH_CM; poles holding fixtures are ranked in
+    layout order, and fixtures without a pole each form their own after them, by index.
+    球燈的柱子：歸屬最近的柱子，有燈具的柱子依配置順序編號；沒有柱子的各自成一根排最後。"""
+    owners = [_nearest_pole(position, poles) for position in fixtures]
+    used = sorted({owner for owner in owners if owner != math.inf})
+    result: list[tuple[int, int]] = [(0, 0)] * len(fixtures)
+    for rank, pole in enumerate(used):
+        members = sorted((((fixtures[index] or {}).get("z", 0.0), index) for index, owner in enumerate(owners) if owner == pole))
+        for step, (_, index) in enumerate(members):
+            result[index] = (rank, step)
+    loose = [index for index, owner in enumerate(owners) if owner == math.inf]
+    for order, index in enumerate(loose):
+        result[index] = (len(used) + order, 0)
+    return result
+
+
 def pillar_ranks(spinners: list[dict[str, float] | None], poles: list[dict[str, float]]) -> list[int]:
     """Each unit's rank by pillar for pillar-fill (frontend pillarRanks).
 
@@ -214,12 +244,7 @@ def pillar_ranks(spinners: list[dict[str, float] | None], poles: list[dict[str, 
     """
     keys = []
     for unit, position in enumerate(spinners):
-        pole, best = math.inf, float(ARM_REACH_CM)
-        if position is not None and "x" in position and "y" in position:
-            for index, candidate in enumerate(poles):
-                distance = math.hypot(candidate["x"] - position["x"], candidate["y"] - position["y"])
-                if distance <= best:
-                    pole, best = index, distance
+        pole = _nearest_pole(position, poles)
         z = 0.0 if pole == math.inf or position is None else position.get("z", 0.0)
         keys.append((pole, z, unit))
     ranks = [0] * len(spinners)
@@ -359,6 +384,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         dmx["positions"] = fixture_positions
         # 每顆的 (高度, x, y)，群組內 0..1；給球燈／洗牆燈效果。 / Per-fixture (height, x, y) within the group, 0..1.
         dmx["geometry"] = {group: fixture_geometry(positions) for group, positions in dmx["positions"].items()}
+        dmx["poles"] = {group: fixture_poles(positions, poles) for group, positions in dmx["positions"].items()}
 
     weather = None
     if "weather" in raw:

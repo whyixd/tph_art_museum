@@ -94,6 +94,8 @@ export function sceneBounds(points: readonly ScenePoint[]): SceneBounds {
 export const ARM_REACH_CM = 120
 
 export type PoleArm = { from: ScenePoint; to: ScenePoint }
+/** 燈具在第幾根柱子（0 起）、該柱子上第幾顆（由低到高，0 起）。 / Pole rank and order on it (low to high). */
+export type FixturePole = { rank: number; step: number }
 
 /**
  * 依柱子的順序（效果 pillar-fill 用；與後端 config.pillar_ranks 相同）：每台轉燈歸屬平面上最近、距離在 ARM_REACH_CM
@@ -102,19 +104,25 @@ export type PoleArm = { from: ScenePoint; to: ScenePoint }
  * within ARM_REACH_CM; sorted by (pole order in the layout, height z, unit); spinners without a pole or position come
  * last, by unit. Returns each unit's rank.
  */
+/** 平面上最近、距離在 ARM_REACH_CM 內的柱子編號；沒有時 Infinity。 / Nearest pole in plan within ARM_REACH_CM, else Infinity. */
+function nearestPole(position: LayoutPosition | null, poles: readonly LayoutPosition[]): number {
+  let pole = Infinity
+  let bestDistance = ARM_REACH_CM
+  if (position?.x !== undefined && position.y !== undefined) {
+    poles.forEach((candidate, index) => {
+      const distance = Math.hypot(candidate.x! - position.x!, candidate.y! - position.y!)
+      if (distance <= bestDistance) {
+        pole = index
+        bestDistance = distance
+      }
+    })
+  }
+  return pole
+}
+
 export function pillarRanks(spinners: readonly (LayoutPosition | null)[], poles: readonly LayoutPosition[]): number[] {
   const keys = spinners.map((position, unit) => {
-    let pole = Infinity
-    let bestDistance = ARM_REACH_CM
-    if (position?.x !== undefined && position.y !== undefined) {
-      poles.forEach((candidate, index) => {
-        const distance = Math.hypot(candidate.x! - position.x!, candidate.y! - position.y!)
-        if (distance <= bestDistance) {
-          pole = index
-          bestDistance = distance
-        }
-      })
-    }
+    const pole = nearestPole(position, poles)
     return { unit, pole, z: pole === Infinity ? 0 : position?.z ?? 0 }
   })
   const sorted = [...keys].sort((a, b) => a.pole - b.pole || a.z - b.z || a.unit - b.unit)
@@ -127,6 +135,28 @@ export function pillarRanks(spinners: readonly (LayoutPosition | null)[], poles:
  * A horizontal arm from the nearest pole (in plan, within ARM_REACH_CM) to each placed light, at the light's
  * attachment height: spinners hang from their top (centre + `spinnerRadiusCm`), fixtures from their centre.
  */
+/**
+ * 球燈／洗牆燈的柱子（球燈 pole-rise 用；與後端 config.fixture_poles 相同）：每顆歸屬平面上最近、ARM_REACH_CM 內的柱子；
+ * 有燈具的柱子依配置順序編為第 0、1、2… 根，沒有柱子的燈具各自成一根排在最後（依編號）。step 是在該柱子上由低到高的順序。
+ * Poles for DMX fixtures (pole-rise; same as backend config.fixture_poles): each fixture belongs to the nearest pole
+ * in plan within ARM_REACH_CM; poles holding fixtures are numbered 0, 1, 2… in layout order, and fixtures without a
+ * pole each form their own after them (by index). step is the order on that pole, low to high.
+ */
+export function fixturePoles(fixtures: readonly (LayoutPosition | null)[], poles: readonly LayoutPosition[]): FixturePole[] {
+  const owners = fixtures.map((position) => nearestPole(position, poles))
+  const used = [...new Set(owners.filter((pole) => pole !== Infinity))].sort((a, b) => a - b)
+  const loose = owners.map((pole, index) => (pole === Infinity ? index : -1)).filter((index) => index >= 0)
+  const result = new Array<FixturePole>(fixtures.length)
+  used.forEach((pole, rank) => {
+    owners.map((owner, index) => ({ owner, index, z: fixtures[index]?.z ?? 0 }))
+      .filter((entry) => entry.owner === pole)
+      .sort((a, b) => a.z - b.z || a.index - b.index)
+      .forEach((entry, step) => { result[entry.index] = { rank, step } })
+  })
+  loose.forEach((index, order) => { result[index] = { rank: used.length + order, step: 0 } })
+  return result
+}
+
 export function poleArms(layout: SiteLayout, spinnerRadiusCm: number): PoleArm[] {
   const lights: LayoutPosition[] = [
     ...layout.spinners.filter((position): position is LayoutPosition => position !== null && position.z !== undefined)

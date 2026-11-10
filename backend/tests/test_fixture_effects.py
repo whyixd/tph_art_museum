@@ -3,6 +3,7 @@ import json
 import unittest
 from pathlib import Path
 
+from moon_observe_backend.config import fixture_poles
 from moon_observe_backend.fixture_effects import (
     FIXTURE_EFFECT_IDS,
     FixtureContext,
@@ -115,6 +116,66 @@ class FixturePresetTests(unittest.TestCase):
         self.assertEqual([0, 1, 2], [peak(frame) for frame in (20, 80, 140)])  # 160-frame cycle, bottom to top
         down = validate_fixture_preset({**default_fixture_preset("height-sweep"), "parameters": {"direction": 1}})
         self.assertEqual(2, max(range(3), key=lambda index: render_fixture_frame(down, geometry, 20)[index][0]))
+
+    def test_pole_rise_matches_frontend_with_layout_poles(self):
+        data = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["poleRise"]
+        poles = fixture_poles(data["positions"], data["poles"])
+        self.assertEqual([(entry["rank"], entry["step"]) for entry in data["expectedPoles"]], poles)
+        self.assertEqual(14, max(rank for rank, _ in poles) + 1)
+        geometry = fixture_geometry(data["positions"])
+        for case in data["cases"]:
+            preset = validate_fixture_preset(case["preset"])
+            frames = b"".join(to_bytes(render_fixture_frame(preset, geometry, frame, fps=40, poles=poles)) for frame in range(700))
+            self.assertEqual(case["sha256"], hashlib.sha256(frames).hexdigest(), case["preset"]["parameters"])
+
+    def test_base_wave_keeps_base_and_adds_sine(self):
+        preset = validate_fixture_preset(default_fixture_preset("base-wave"))
+        self.assertEqual(134, fixture_completion_frames(preset, 40, 3))
+        geometry = fixture_geometry([{"z": z} for z in (0, 500, 1000)])
+        levels = [color[0] for frame in range(134) for color in render_fixture_frame(preset, geometry, frame)]
+        self.assertGreaterEqual(min(levels), 0.3 - 1e-12)
+        self.assertLessEqual(max(levels), 0.79 + 1e-12)
+        first = render_fixture_frame(preset, geometry, 0)
+        self.assertAlmostEqual(0.79, first[0][0], places=12)
+        self.assertAlmostEqual(0.3, first[1][0], places=12)
+
+    def test_pole_rise_lights_each_pole_bottom_up_then_fades(self):
+        preset = validate_fixture_preset(default_fixture_preset("pole-rise"))
+        self.assertEqual(320, fixture_completion_frames(preset, 40, 6))
+        # Two poles: fixtures 0, 1 (low, high) on pole 0 and 2, 3 on pole 1.
+        geometry = fixture_geometry([{"z": z} for z in (100, 300, 100, 300)])
+        poles = [(0, 0), (0, 1), (1, 0), (1, 1)]
+
+        def levels(frame):
+            return [color[0] for color in render_fixture_frame(preset, geometry, frame, poles=poles)]
+
+        # Step 0.2 s (8 frames), attack 0.1 s (4), pole stagger 0.3 s (12), decay 2.5 s (100).
+        self.assertEqual([0.25, 0.0, 0.0, 0.0], levels(0))
+        # Frame 8: the low ball is 5 frames into its decay ((1 - 5/100)^2); the one above it starts.
+        self.assertAlmostEqual(0.9025, levels(8)[0], places=12)
+        self.assertEqual([0.25, 0.0, 0.0], levels(8)[1:])
+        self.assertEqual(0.25, levels(12)[2])
+        self.assertTrue(0 < levels(60)[0] < levels(60)[1] < 1)
+        self.assertEqual([0.0] * 4, levels(319))
+
+    def test_rise_lights_from_lowest_and_stays_lit(self):
+        preset = validate_fixture_preset(default_fixture_preset("fixture-rise"))
+        geometry = fixture_geometry([{"z": z} for z in (1000, 0, 500)])
+        self.assertIsNone(fixture_completion_frames(preset, 40, 3))
+
+        def levels(target, frame):
+            return [color[0] for color in render_fixture_frame(target, geometry, frame)]
+
+        self.assertTrue(0 < levels(preset, 0)[1] < 0.01)
+        self.assertEqual(0.0, levels(preset, 199)[2])
+        self.assertEqual(0.0, levels(preset, 399)[0])
+        self.assertEqual([1.0, 1.0, 1.0], levels(preset, 519))
+        self.assertEqual([1.0, 1.0, 1.0], levels(preset, 40000))
+        looping = validate_fixture_preset({**default_fixture_preset("fixture-rise"),
+                                           "parameters": {**default_fixture_preset("fixture-rise")["parameters"], "repeat": 1}})
+        cycle = (10 + 3 + 5 + 3 + 1) * 40
+        self.assertEqual(cycle, fixture_completion_frames(looping, 40, 3))
+        self.assertEqual([0.0, 0.0, 0.0], levels(looping, cycle - 1))
 
     def test_firework_bursts_from_lowest_to_highest(self):
         preset = validate_fixture_preset(default_fixture_preset("fixture-firework"))

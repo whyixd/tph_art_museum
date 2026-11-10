@@ -72,6 +72,9 @@ class VersionTests(unittest.TestCase):
         self.assertEqual({"x": 961.0, "y": 118.0, "z": 565.0}, config["spinner_positions"][0])
         self.assertEqual(15, len(config["poles"]))
         self.assertEqual(190, config["rpm"])  # 範例設定的轉速 / the example config's speed
+        # pole-rise：37 顆球燈分在 14 根柱子，第 1–4 顆在第一根由低到高。 / 37 balls on 14 poles, balls 1–4 on the first.
+        self.assertEqual([(0, 0), (0, 1), (0, 2), (0, 3)], config["dmx"]["poles"]["ball"][:4])
+        self.assertEqual(14, max(rank for rank, _ in config["dmx"]["poles"]["ball"]) + 1)
         # pillar-fill：柱子依配置順序、每根由低到高（與前端 site.test.ts 相同）。 / Same order as the frontend test.
         self.assertEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 12, 14, 15, 19, 17, 18, 16, 20, 21, 22, 23],
                          config["pillar_ranks"])

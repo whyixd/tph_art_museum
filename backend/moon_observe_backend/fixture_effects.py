@@ -27,6 +27,9 @@ FIXTURE_EFFECT_IDS = (
     "fixture-twinkle",
     "fixture-chase",
     "fixture-firework",
+    "fixture-rise",
+    "pole-rise",
+    "base-wave",
 )
 # min, max, default, integer
 FIXTURE_PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
@@ -43,6 +46,30 @@ FIXTURE_PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "gapSeconds": (0, 10, 0.5, False),
         "density": (0.05, 1, 0.6, False),
         "flickerFrames": (1, 20, 2, True),
+    },
+    "fixture-rise": {
+        "riseSeconds": (0, 60, 10, False),
+        "fadeInSeconds": (0, 20, 3, False),
+        "repeat": (0, 1, 0, True),
+        "holdSeconds": (0, 60, 5, False),
+        "fadeOutSeconds": (0, 20, 3, False),
+        "endDarkSeconds": (0, 20, 1, False),
+    },
+    "pole-rise": {
+        "stepSeconds": (0, 5, 0.2, False),
+        "attackSeconds": (0, 2, 0.1, False),
+        "decaySeconds": (0.1, 20, 2.5, False),
+        "staggerSeconds": (0, 10, 0.3, False),
+        "order": (0, 1, 0, True),
+        "periodSeconds": (1, 120, 8, False),
+    },
+    "base-wave": {
+        "baseLevel": (0, 1, 0.3, False),
+        "depth": (0, 1, 0.7, False),
+        "speedHz": (0.05, 4, 0.3, False),
+        "waveCount": (0.5, 6, 1, False),
+        "waveAxis": (0, 3, 0, True),
+        "direction": (0, 1, 0, True),
     },
 }
 # 雨天：每顆各自隨機相位、短暫閃亮後衰減，其餘時間保留 RAIN_FLOOR 的亮度。
@@ -64,6 +91,11 @@ class FixtureContext:
     normalized_height: float = 0.5
     normalized_x: float = 0.5
     normalized_y: float = 0.5
+    # 第幾根柱子、柱子總數、在柱子上由低到高第幾顆（pole-rise；None 時每顆自成一根）。
+    # Pole rank, pole count and order on the pole, low to high (pole-rise; None: each fixture alone).
+    pole_rank: int | None = None
+    pole_count: int | None = None
+    pole_step: int | None = None
 
     @property
     def normalized_index(self) -> float:
@@ -148,6 +180,16 @@ def fixture_firework_timing(parameters: Mapping[str, Any], fps: float) -> tuple[
             max(0, _round_half_up(parameters["gapSeconds"] * fps)))
 
 
+def fixture_rise_timing(parameters: Mapping[str, Any], fps: float) -> tuple[int, int, int, int, int]:
+    """(rise, fade in, fade start, fade out, cycle) frames (frontend fixtureRiseTiming)."""
+    def frames(key: str) -> int:
+        return max(0, _round_half_up(parameters[key] * fps))
+    rise, fade_in = frames("riseSeconds"), frames("fadeInSeconds")
+    fade_start = rise + fade_in + frames("holdSeconds")
+    fade_out = frames("fadeOutSeconds")
+    return rise, fade_in, fade_start, fade_out, max(1, fade_start + fade_out + frames("endDarkSeconds"))
+
+
 def fixture_completion_frames(preset: Mapping[str, Any], fps: int, fixture_count: int) -> int | None:
     """Frames for one natural cycle, or None when the effect has no boundary."""
     effect = preset["effectId"]
@@ -160,6 +202,12 @@ def fixture_completion_frames(preset: Mapping[str, Any], fps: int, fixture_count
         return _frames(p["stepSeconds"], fps) * max(1, fixture_count)
     if effect == "fixture-firework":
         return sum(fixture_firework_timing(p, fps))
+    if effect == "fixture-rise":
+        return fixture_rise_timing(p, fps)[-1] if p["repeat"] == 1 else None
+    if effect == "pole-rise":
+        return _frames(p["periodSeconds"], fps)
+    if effect == "base-wave":
+        return max(1, math.ceil(fps / p["speedHz"]))
     return None
 
 
@@ -205,6 +253,27 @@ def fixture_brightness(preset: Mapping[str, Any], ctx: FixtureContext) -> float:
         behind = (head - order) % count
         tail = int(p["tailCount"])
         return 1 - behind / (tail + 1) if behind <= tail else 0.0
+    if effect == "pole-rise":
+        return _pole_rise(p, ctx)
+    if effect == "base-wave":
+        # 基本亮度＋正弦波：波峰在 base + (1 - base) × depth。 / Base plus a sine: the crest reaches base + (1 - base) × depth.
+        axis = FIXTURE_AXES[min(3, max(0, int(p["waveAxis"])))]
+        along = _gradient_position(axis, ctx)
+        position = along if p["direction"] == 0 else 1 - along
+        wave = 0.5 + 0.5 * math.cos(TAU * (p["waveCount"] * position - p["speedHz"] * time))
+        return p["baseLevel"] + (1 - p["baseLevel"]) * p["depth"] * wave
+    if effect == "fixture-rise":
+        # 依高度晚開始：最低一顆先亮；淡入用 smoothstep。 / Delay by height, lowest first; smoothstep fade-in.
+        rise, fade_in, fade_start, fade_out, cycle = fixture_rise_timing(p, ctx.controller_fps)
+        repeat = p["repeat"] == 1
+        local = frame - (frame // cycle) * cycle if repeat else max(0, frame)
+        delay = _round_half_up(ctx.normalized_height * rise)
+        if local < delay:
+            return 0.0
+        lit = 1.0 if fade_in == 0 else _smoothstep((local - delay + 1) / fade_in)
+        if not repeat or local < fade_start:
+            return lit
+        return 0.0 if fade_out == 0 else lit * max(0.0, 1 - (local - fade_start + 1) / fade_out)
     if effect == "fixture-firework":
         # 依高度晚開始：最低一顆先炸開。 / Delay by height: the lowest bursts first.
         spread, burst, gap = fixture_firework_timing(p, ctx.controller_fps)
@@ -221,6 +290,39 @@ def fixture_brightness(preset: Mapping[str, Any], ctx: FixtureContext) -> float:
         remaining = 1 - local / burst
         return remaining * remaining
     raise ValueError(f"unknown fixture effectId: {effect!r}")
+
+
+def _pole_rise(p: Mapping[str, Any], ctx: FixtureContext) -> float:
+    """Each pole lights its fixtures bottom to top, fast attack and slow quadratic decay; poles start
+    staggerSeconds apart in pole order or a fixed-seed shuffle per round (frontend pole-rise)."""
+    fps = ctx.controller_fps
+    period = _frames(p["periodSeconds"], fps)
+    frame = max(0, ctx.controller_frame)
+    loop = frame // period
+    local = frame - loop * period
+    rank = ctx.fixture_index if ctx.pole_rank is None else ctx.pole_rank
+    count = ctx.fixture_count if ctx.pole_count is None else ctx.pole_count
+    order = rank
+    if p["order"] == 1:
+        mine = hash01(loop, rank, 43)
+        order = 0
+        for other in range(count):
+            theirs = hash01(loop, other, 43)
+            if theirs < mine or (theirs == mine and other < rank):
+                order += 1
+
+    def frames_or_zero(key: str) -> int:
+        return max(0, _round_half_up(p[key] * fps))
+
+    start = order * frames_or_zero("staggerSeconds") + (ctx.pole_step or 0) * frames_or_zero("stepSeconds")
+    elapsed = local - start
+    if elapsed < 0:
+        return 0.0
+    attack = frames_or_zero("attackSeconds")
+    if elapsed < attack:
+        return (elapsed + 1) / attack
+    remaining = max(0.0, 1 - (elapsed - attack + 1) / _frames(p["decaySeconds"], fps))
+    return remaining * remaining
 
 
 def _rain(ctx: FixtureContext) -> float:
@@ -292,8 +394,11 @@ def render_fixture_frame(
     color_override: Mapping[str, Any] | None = None,
     frame_step: int = 0,
     cycle_frames: int | None = None,
+    poles: Sequence[tuple[int, int]] | None = None,
 ) -> list[Rgb]:
     """One group's colours for a frame counted from playback (or step) start.
+
+    ``poles`` gives each fixture's (pole rank, order on the pole) for pole-rise (config.fixture_poles).
 
     ``frame_step`` (cloudy) offsets each fixture by its x position; ``cycle_frames`` wraps the frame
     for count-based sequence steps.
@@ -303,11 +408,14 @@ def render_fixture_frame(
     effect_frame = frame % cycle_frames if cycle_frames else frame
     preset = weather_fixture_preset(preset, color_override)
     count = len(geometry)
+    pole_count = max((rank + 1 for rank, _ in poles), default=0) if poles else None
     return [
         sample_fixture(preset, FixtureContext(
             controller_frame=effect_frame + _round_half_up(x * CLOUD_SPREAD_STEPS * frame_step),
             controller_fps=fps, fixture_index=index, fixture_count=count,
             normalized_height=height, normalized_x=x, normalized_y=y,
+            pole_rank=poles[index][0] if poles else None, pole_count=pole_count,
+            pole_step=poles[index][1] if poles else None,
         ), raining)
         for index, (height, x, y) in enumerate(geometry)
     ]

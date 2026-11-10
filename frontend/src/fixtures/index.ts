@@ -20,6 +20,9 @@ export type FixtureEffectId =
   | 'fixture-twinkle'
   | 'fixture-chase'
   | 'fixture-firework'
+  | 'fixture-rise'
+  | 'pole-rise'
+  | 'base-wave'
 
 export type FixtureAxis = 'height' | 'x' | 'y' | 'index'
 
@@ -46,6 +49,11 @@ export type FixtureContext = {
   normalizedHeight: number
   normalizedX: number
   normalizedY: number
+  /** 第幾根柱子（0 起）與柱子總數；沒有時每顆自成一根（依編號）。 / Pole rank and count; each fixture alone when missing. */
+  poleRank?: number
+  poleCount?: number
+  /** 在柱子上由低到高第幾顆（0 起）。 / Order on its pole, low to high. */
+  poleStep?: number
 }
 
 export type FixtureParameterDefinition = {
@@ -104,6 +112,42 @@ export const FIXTURE_MANIFEST: readonly FixtureManifestEntry[] = [
       parameter('flickerFrames', '閃爍間隔', '影格', 1, 20, 1, 2),
     ],
   },
+  {
+    id: 'fixture-rise', label: '由低往高點亮',
+    description: '依高度由最低的球燈開始往上逐顆緩慢點亮（最高一顆晚 riseSeconds 秒開始），每顆在 fadeInSeconds 內柔和地淡入。循環為 0 時亮完就保持全亮；為 1 時全亮停留後一起淡出、全暗，再重新開始。',
+    parameters: [
+      parameter('riseSeconds', '蔓延時間', 's', 0, 60, 0.5, 10),
+      parameter('fadeInSeconds', '每顆淡入', 's', 0, 20, 0.25, 3),
+      parameter('repeat', '循環', '0 亮完保持／1 循環', 0, 1, 1, 0),
+      parameter('holdSeconds', '全亮停留', 's', 0, 60, 0.5, 5),
+      parameter('fadeOutSeconds', '淡出時間', 's', 0, 20, 0.25, 3),
+      parameter('endDarkSeconds', '全暗時間', 's', 0, 20, 0.25, 1),
+    ],
+  },
+  {
+    id: 'pole-rise', label: '每根柱子由下往上',
+    description: '每根柱子上的球燈由下往上逐顆快速亮起、再慢慢淡出。柱子之間可以錯開（柱子錯開 0 = 全部一起），順序依場地配置的柱子順序或每輪隨機。每輪時間到就重新開始；柱子多、錯開大時要把每輪時間加長，最後幾根才來得及亮。球燈歸屬最近的柱子；沒有場地配置時每顆自成一根（依編號）。',
+    parameters: [
+      parameter('stepSeconds', '每顆間隔', 's', 0, 5, 0.05, 0.2),
+      parameter('attackSeconds', '亮起時間', 's', 0, 2, 0.05, 0.1),
+      parameter('decaySeconds', '淡出時間', 's', 0.1, 20, 0.1, 2.5),
+      parameter('staggerSeconds', '柱子錯開', 's', 0, 10, 0.05, 0.3),
+      parameter('order', '錯開順序', '0 依柱子順序／1 隨機', 0, 1, 1, 0),
+      parameter('periodSeconds', '每輪時間', 's', 1, 120, 0.5, 8),
+    ],
+  },
+  {
+    id: 'base-wave', label: '基本亮度＋正弦波',
+    description: '每顆先亮基本亮度，再疊一道沿高度／x／y／編號前進的正弦波，把同一個顏色加亮。波動幅度 0 = 只有基本亮度；1 = 波峰到全亮。',
+    parameters: [
+      parameter('baseLevel', '基本亮度', '', 0, 1, 0.05, 0.3),
+      parameter('depth', '波動幅度', '', 0, 1, 0.05, 0.7),
+      parameter('speedHz', '頻率', 'Hz', 0.05, 4, 0.05, 0.3),
+      parameter('waveCount', '波數', '', 0.5, 6, 0.5, 1),
+      parameter('waveAxis', '前進方向', '0 高度／1 x／2 y／3 編號', 0, 3, 1, 0),
+      direction,
+    ],
+  },
 ]
 
 /** 雨天：每顆各自隨機相位閃亮後衰減。 / Rain: each fixture flashes at its own random phase, then decays. */
@@ -135,6 +179,15 @@ function frames(seconds: number, fps: number): number {
 /** 可為 0 的整數影格。 / Whole frames, zero allowed. */
 function framesOrZero(seconds: number, fps: number): number {
   return Math.max(0, Math.round(seconds * fps))
+}
+
+/** 由低往高點亮：各段影格；循環時一輪 = 蔓延 + 淡入 + 停留 + 淡出 + 全暗。 / fixture-rise stages in frames. */
+export function fixtureRiseTiming(p: Readonly<Record<string, number>>, fps: number) {
+  const rise = framesOrZero(p.riseSeconds, fps)
+  const fadeIn = framesOrZero(p.fadeInSeconds, fps)
+  const fadeStart = rise + fadeIn + framesOrZero(p.holdSeconds, fps)
+  const fadeOut = framesOrZero(p.fadeOutSeconds, fps)
+  return { rise, fadeIn, fadeStart, fadeOut, cycle: Math.max(1, fadeStart + fadeOut + framesOrZero(p.endDarkSeconds, fps)) }
 }
 
 /** 煙火蔓延：(蔓延, 每顆持續, 全暗, 一輪) 影格。 / fixture-firework: (spread, burst, gap, cycle) frames. */
@@ -171,6 +224,12 @@ export function getFixtureCompletion(preset: FixturePreset, fps: number, fixture
       return frames(p.stepSeconds, fps) * Math.max(1, fixtureCount)
     case 'fixture-firework':
       return fixtureFireworkTiming(p, fps).cycle
+    case 'fixture-rise':
+      return p.repeat === 1 ? fixtureRiseTiming(p, fps).cycle : null
+    case 'pole-rise':
+      return frames(p.periodSeconds, fps)
+    case 'base-wave':
+      return Math.max(1, Math.ceil(fps / p.speedHz))
     default:
       return null
   }
@@ -212,6 +271,52 @@ export function fixtureBrightness(preset: FixturePreset, context: FixtureContext
       const behind = mod(head - order, count)
       const tail = Math.trunc(p.tailCount)
       return behind <= tail ? 1 - behind / (tail + 1) : 0
+    }
+    case 'base-wave': {
+      // 基本亮度＋正弦波：波峰在 base + (1 - base) × depth。 / Base plus a sine: the crest reaches base + (1 - base) × depth.
+      const axis = (['height', 'x', 'y', 'index'] as const)[Math.min(3, Math.max(0, Math.round(p.waveAxis)))]
+      const along = gradientPosition(axis, context)
+      const position = p.direction === 0 ? along : 1 - along
+      const wave = 0.5 + 0.5 * Math.cos(2 * Math.PI * (p.waveCount * position - p.speedHz * time))
+      return p.baseLevel + (1 - p.baseLevel) * p.depth * wave
+    }
+    case 'pole-rise': {
+      const period = frames(p.periodSeconds, context.controllerFps)
+      const round = Math.floor(Math.max(0, frame) / period)
+      const local = Math.max(0, frame) - round * period
+      const rank = context.poleRank ?? context.fixtureIndex
+      const count = context.poleCount ?? context.fixtureCount
+      // 錯開順序：依柱子順序，或每輪以固定種子隨機排列。 / Order by pole, or a fixed-seed shuffle per round.
+      let order = rank
+      if (p.order === 1) {
+        const mine = hash01(round, rank, 43)
+        order = 0
+        for (let other = 0; other < count; other += 1) {
+          const theirs = hash01(round, other, 43)
+          if (theirs < mine || (theirs === mine && other < rank)) order += 1
+        }
+      }
+      const start = order * framesOrZero(p.staggerSeconds, context.controllerFps)
+        + (context.poleStep ?? 0) * framesOrZero(p.stepSeconds, context.controllerFps)
+      const elapsed = local - start
+      if (elapsed < 0) return 0
+      // 快速亮起、慢慢淡出（平方曲線）。 / Fast attack, slow quadratic decay.
+      const attack = framesOrZero(p.attackSeconds, context.controllerFps)
+      if (elapsed < attack) return (elapsed + 1) / attack
+      const remaining = Math.max(0, 1 - (elapsed - attack + 1) / frames(p.decaySeconds, context.controllerFps))
+      return remaining * remaining
+    }
+    case 'fixture-rise': {
+      // 依高度晚開始：最低一顆先亮，最高一顆晚 rise 影格；淡入用 smoothstep，比線性柔和。
+      // Delay by height: the lowest first, the highest rise frames later; the fade-in uses smoothstep, softer than linear.
+      const { rise, fadeIn, fadeStart, fadeOut, cycle: round } = fixtureRiseTiming(p, context.controllerFps)
+      const repeat = p.repeat === 1
+      const local = repeat ? frame - Math.floor(frame / round) * round : Math.max(0, frame)
+      const delay = Math.round(context.normalizedHeight * rise)
+      if (local < delay) return 0
+      const lit = fadeIn === 0 ? 1 : smoothstep((local - delay + 1) / fadeIn)
+      if (!repeat || local < fadeStart) return lit
+      return fadeOut === 0 ? 0 : lit * Math.max(0, 1 - (local - fadeStart + 1) / fadeOut)
     }
     case 'fixture-firework': {
       // 依高度晚開始：最低一顆先炸開，最高一顆晚 spread 影格。 / Delay by height: lowest first, highest spread frames later.
@@ -291,13 +396,20 @@ export function renderFixtureFrame(
   preset: FixturePreset,
   geometry: readonly [number, number, number][],
   frame: number,
-  options: { fps?: number; raining?: boolean; palette?: WeatherPalette | null; frameStep?: number; cycleFrames?: number | null } = {},
+  options: {
+    fps?: number; raining?: boolean; palette?: WeatherPalette | null; frameStep?: number; cycleFrames?: number | null
+    /** 每顆的柱子（fixturePoles）。 / Each fixture's pole (fixturePoles). */
+    poles?: readonly { rank: number; step: number }[] | null
+  } = {},
 ): RgbColor[] {
   const fps = options.fps ?? 40
   const frameStep = options.frameStep ?? 0
   const effectFrame = options.cycleFrames ? frame % options.cycleFrames : frame
   const active = withFixtureWeatherPalette(preset, options.palette ?? null)
+  const poles = options.poles ?? null
+  const poleCount = poles ? poles.reduce((most, pole) => Math.max(most, pole.rank + 1), 0) : undefined
   return geometry.map(([height, x, y], index) => sampleFixture(active, {
+    ...(poles ? { poleRank: poles[index].rank, poleStep: poles[index].step, poleCount } : {}),
     controllerFrame: effectFrame + Math.round(x * CLOUD_SPREAD_STEPS * frameStep),
     controllerFps: fps,
     fixtureIndex: index,

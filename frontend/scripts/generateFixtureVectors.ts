@@ -6,6 +6,7 @@
  */
 import { createHash } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
+import { exampleSiteLayout, fixturePoles } from '../src/site/layout'
 import {
   FIXTURE_MANIFEST,
   createDefaultFixturePreset,
@@ -95,6 +96,27 @@ const groupFrames = presets.flatMap((preset, presetIndex) => (Object.keys(geomet
     }
   }))))
 
+// 每根柱子由下往上：範例場地配置的球燈位置與柱子，依柱子順序與隨機順序，連續影格取 sha256。
+// pole-rise with the example layout's balls and poles, in pole order and shuffled, consecutive frames hashed.
+const poleLayout = exampleSiteLayout()
+const ballPositions = poleLayout.ball.map((fixture) => fixture.position)
+const ballPoles = fixturePoles(ballPositions, poleLayout.poles)
+const poleGeometry = fixtureGeometry(ballPositions)
+const poleRise = {
+  positions: ballPositions,
+  poles: poleLayout.poles,
+  expectedPoles: ballPoles,
+  cases: [0, 1].map((order) => {
+    const preset = createDefaultFixturePreset('pole-rise')
+    preset.parameters = { ...preset.parameters, order }
+    const bytes: number[] = []
+    for (let frame = 0; frame < 700; frame += 1) {
+      bytes.push(...toBytes(renderFixtureFrame(preset, poleGeometry, frame, { fps: 40, poles: ballPoles })))
+    }
+    return { preset, sha256: createHash('sha256').update(Buffer.from(bytes)).digest('hex') }
+  }),
+}
+
 const output = JSON.stringify({
   source: 'frontend/src/fixtures',
   schemaVersion: 1,
@@ -106,6 +128,7 @@ const output = JSON.stringify({
   presets,
   samples,
   groupFrames,
+  poleRise,
 }, null, 2)
 
 if (process.argv.includes('--write')) {

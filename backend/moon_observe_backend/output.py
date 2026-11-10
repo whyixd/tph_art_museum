@@ -173,6 +173,8 @@ def stream(
         group: (dmx.get("geometry") or {}).get(group) or fixture_geometry([None] * len(dmx["fixtures"][group]))
         for group in groups
     } if dmx else {}
+    # 每顆燈具的柱子（球燈 pole-rise 用）。 / Each fixture's pole (pole-rise).
+    fixture_poles = (dmx.get("poles") or {}) if dmx else {}
     dmx_clients: list[Any] = []
     last_pixels: dict[int, Sequence[Rgb]] = {}
     last_motor_value = 0
@@ -326,11 +328,13 @@ def stream(
                         group_colors = render_sequence_fixtures(
                             schedule, group, geometry[group], playback_frame, fps=fps,
                             rain=category == "rain", color_override=color_override, frame_step=frame_step,
+                            poles=fixture_poles.get(group),
                         )
                     elif fixture_presets.get(group) is not None:
                         group_colors = render_fixture_frame(
                             fixture_presets[group], geometry[group], playback_frame, fps=fps,
                             raining=category == "rain", color_override=color_override, frame_step=frame_step,
+                            poles=fixture_poles.get(group),
                         )
                     else:
                         group_colors = [BLACK] * len(geometry[group])
