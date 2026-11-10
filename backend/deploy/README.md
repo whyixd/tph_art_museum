@@ -31,6 +31,8 @@ Backend 與 build 好的前端以同一個「版本化、不可變 release」部
 └── preset/                            tph-art-museum 擁有；service 唯一可寫位置
     ├── preset.json
     ├── sequence.json                  UI「儲存串接」時建立
+    ├── shows.json                     UI「演出」分頁儲存演出時建立（與 sequence.json 同目錄）
+    ├── beat-edits/                    時間軸「拍點修正」儲存時建立；優先於 release 內建的拍點檔
     ├── palette.json                   啟用 [weather] 且在色盤頁儲存時建立
     └── audio-calibration.json         「後端」分頁儲存延遲補償時建立
 /etc/systemd/system/tph-art-museum.service
@@ -60,6 +62,8 @@ Backend 與 build 好的前端以同一個「版本化、不可變 release」部
 
 - 音量用音效卡的混音器調（`alsamixer -c <卡號>`，`sudo alsactl store` 保存），程式不調音量。
 - 延遲補償在控制頁面「後端」分頁〈音樂播放 · 延遲校準〉調整並儲存（`preset/audio-calibration.json`）。
+- 服務啟動時把所有音檔預載進記憶體（讀大檔時輸出迴圈會停頓一下，所以不在播放時才讀）；「後端」分頁的曲目清單可看是否載入完成。記憶體約等於 WAV 大小總和（目前兩首約 74 MB）。
+- 演出（M12）在控制頁面「演出」分頁編輯、儲存（`preset/shows.json`）並在 Pi 上播放：音樂從音效卡出聲，燈光影格由音樂時間決定；演出播放時取代串接／單一效果、不套用天氣；套用效果、串接或手動播放音樂會停止演出。沒有音效卡（音訊停用）時演出以系統時鐘無聲播放。
 
 ## 網路
 

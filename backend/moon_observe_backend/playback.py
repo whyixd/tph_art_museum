@@ -38,10 +38,14 @@ class PlaybackMonitor:
             "active": True, "mode": mode, "restart": restart, "fps": self.fps,
             "ageMs": max(0, round((self.clock() - sampled_at) * 1000)),
         }
-        if mode == "sequence":
+        if mode in ("sequence", "show"):
             result.update(sequence_position(schedule, frame))
         else:
             result.update(_single_position(schedule, frame, self.fps, self.unit_count))
+        if mode == "show":
+            # 演出：曲目資訊；前端以 frame / fps 換算音樂時間。 / Show: track info; the frontend derives music time from frame / fps.
+            info = schedule[0]["show"]
+            result["show"] = {key: info[key] for key in ("id", "title", "trackId", "durationSeconds", "totalFrames", "loop")}
         return result
 
 

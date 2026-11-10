@@ -219,19 +219,37 @@ class AudioPlayer:
     """Thread-safe player: the API starts and stops tracks, the output loop reads the music time every frame."""
 
     def __init__(self, audio_config: Mapping[str, Any] | None, *, tracks_dir: str | Path,
+                 edits_dir: str | Path | None = None,
                  sounddevice: Any = None, clock: Callable[[], float] = time.monotonic) -> None:
+        """``tracks_dir``: the beat maps shipped with the release (read-only on the Pi). ``edits_dir``: beat maps
+        corrected in the frontend (M14), which replace the shipped ones with the same id.
+        ``tracks_dir`` 是 release 內建的拍點檔；``edits_dir`` 是前端修正後的拍點檔，同 id 時優先使用。"""
         self.config = audio_config
         self.clock = clock
         self.lock = Lock()
         self.error: str | None = None
         self._sd = sounddevice
         self._playback: _Playback | None = None
-        self._cache: tuple[str, tuple[int, int, int, bytes]] | None = None
+        # 已載入的音檔（全部常駐記憶體）。 / Loaded tracks, all kept in memory.
+        self._cache: dict[str, tuple[int, int, int, bytes]] = {}
+        self._cache_lock = Lock()
         click_map, click_pcm = click_track()
         self._click_pcm = click_pcm
         self.beat_maps: dict[str, Mapping[str, Any]] = {CLICK_TRACK_ID: click_map}
         for entry in load_beat_maps(tracks_dir):
             self.beat_maps[entry["id"]] = entry
+        # 內建版本，還原修正時用。 / The shipped versions, for reverting a correction.
+        self._shipped: dict[str, Mapping[str, Any]] = dict(self.beat_maps)
+        self.edits_dir = Path(edits_dir) if edits_dir is not None else None
+        if self.edits_dir is not None and self.edits_dir.resolve() == Path(tracks_dir).resolve():
+            raise ValueError("the corrected beat map directory must differ from the shipped tracks directory")
+        self.edited: set[str] = set()
+        for entry in load_beat_maps(self.edits_dir) if self.edits_dir is not None else []:
+            shipped = self._shipped.get(entry["id"])
+            if shipped is None or entry["id"] == CLICK_TRACK_ID:
+                continue  # 曲目已不在 release 內：忽略。 / The track left the release: ignored.
+            self.beat_maps[entry["id"]] = entry
+            self.edited.add(entry["id"])
         self.calibration_path = Path(audio_config["calibration_path"]) if audio_config else None
         self.saved_offset = _load_offset(self.calibration_path) if self.calibration_path else 0
         self.offset = self.saved_offset
@@ -261,7 +279,61 @@ class AudioPlayer:
             "durationSeconds": beat_map["durationSeconds"], "tempo": beat_map["tempo"],
             "beatCount": len(beat_map["beats"]), "beatsPerBar": beat_map["beatsPerBar"],
             "available": beat_map["file"] is None or (path is not None and path.is_file()),
+            "loaded": beat_map["file"] is None or beat_map["id"] in self._cache,
+            "edited": beat_map["id"] in self.edited,
         }
+
+    def beat_map(self, track_id: str) -> Mapping[str, Any] | None:
+        return self.beat_maps.get(track_id)
+
+    def save_beat_map(self, track_id: str, raw: Any) -> Mapping[str, Any]:
+        """Store a corrected beat map (same track: id, file and duration unchanged) in ``edits_dir``."""
+        shipped = self._shipped.get(track_id)
+        if shipped is None or track_id == CLICK_TRACK_ID:
+            raise ValueError("unknown or built-in track")
+        if self.edits_dir is None:
+            raise ValueError("no directory for corrected beat maps")
+        beat_map = validate_beat_map(raw)
+        for key in ("id", "file", "durationSeconds"):
+            if beat_map[key] != shipped[key]:
+                raise ValueError(f"beat map {key} must stay {shipped[key]!r}")
+        self.edits_dir.mkdir(parents=True, exist_ok=True)
+        encoded = (json.dumps(beat_map, ensure_ascii=False, indent=1) + "\n").encode("utf-8")
+        target = self.edits_dir / f"{track_id}.json"
+        temporary: str | None = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="wb", prefix=".beats-", suffix=".tmp", dir=self.edits_dir, delete=False) as stream:
+                temporary = stream.name
+                stream.write(encoded)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, target)
+            temporary = None
+        finally:
+            if temporary is not None:
+                Path(temporary).unlink(missing_ok=True)
+        with self.lock:
+            self.beat_maps[track_id] = beat_map
+            self.edited.add(track_id)
+        return beat_map
+
+    def revert_beat_map(self, track_id: str) -> Mapping[str, Any]:
+        """Drop the correction and use the shipped beat map again."""
+        shipped = self._shipped.get(track_id)
+        if shipped is None or track_id == CLICK_TRACK_ID:
+            raise ValueError("unknown or built-in track")
+        if self.edits_dir is not None:
+            (self.edits_dir / f"{track_id}.json").unlink(missing_ok=True)
+        with self.lock:
+            self.beat_maps[track_id] = shipped
+            self.edited.discard(track_id)
+        return shipped
+
+    def wav_file(self, track_id: str) -> Path | None:
+        """The track's WAV on the host, for the browser preview; None for the metronome or a missing file."""
+        beat_map = self.beat_maps.get(track_id)
+        path = self._wav_path(beat_map) if beat_map is not None else None
+        return path if path is not None and path.is_file() else None
 
     def _device_name(self) -> str | None:
         if self._sd is None or self.config is None:
@@ -307,17 +379,38 @@ class AudioPlayer:
     def _load(self, beat_map: Mapping[str, Any]) -> tuple[int, int, int, bytes]:
         if beat_map["id"] == CLICK_TRACK_ID:
             return CLICK_SAMPLE_RATE, 2, 2, self._click_pcm
-        if self._cache is not None and self._cache[0] == beat_map["id"]:
-            return self._cache[1]
-        path = self._wav_path(beat_map)
-        if path is None or not path.is_file():
-            raise ValueError(f"音檔不存在：{beat_map['file']}")
-        try:
-            loaded = read_wav(path)
-        except (wave.Error, EOFError, OSError) as failure:
-            raise ValueError(f"無法讀取 {beat_map['file']}：{failure}") from None
-        self._cache = (beat_map["id"], loaded)
-        return loaded
+        # 同一時間只讀一個檔，預載與播放請求不會重複讀同一首。 / One file at a time, so preload and play never read twice.
+        with self._cache_lock:
+            cached = self._cache.get(beat_map["id"])
+            if cached is not None:
+                return cached
+            path = self._wav_path(beat_map)
+            if path is None or not path.is_file():
+                raise ValueError(f"音檔不存在：{beat_map['file']}")
+            try:
+                loaded = read_wav(path)
+            except (wave.Error, EOFError, OSError) as failure:
+                raise ValueError(f"無法讀取 {beat_map['file']}：{failure}") from None
+            self._cache[beat_map["id"]] = loaded
+            return loaded
+
+    def preload(self) -> list[str]:
+        """Read every track's WAV that is on the host into memory; returns warnings for the ones that fail.
+
+        Reading a large WAV stalls the output loop for a moment (about 160 ms for 22 MB on the Pi 5), so the
+        service does it once at startup instead of on the first play.
+        讀大型 WAV 會讓輸出迴圈停頓一下，所以服務啟動時先全部讀進來，而不是第一次播放時才讀。
+        """
+        warnings = []
+        for beat_map in list(self.beat_maps.values()):
+            path = self._wav_path(beat_map)
+            if path is None or not path.is_file():
+                continue
+            try:
+                self._load(beat_map)
+            except ValueError as failure:
+                warnings.append(str(failure))
+        return warnings
 
     def play(self, raw: Any) -> dict[str, Any]:
         if not isinstance(raw, dict) or "trackId" not in raw or set(raw) - {"trackId", "startSeconds", "loop", "flash"}:

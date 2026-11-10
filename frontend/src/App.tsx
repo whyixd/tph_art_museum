@@ -22,6 +22,9 @@ import {
 import { liveBackendFrame } from './playbackProgress'
 import { compileSequence, createSequenceStep, defaultPlaybackRule, resolveSequenceFrame, sequenceSeekFrame, type SequenceSeek, type PlaybackRule, type SequenceDocument, type SequenceEnding, type SequenceStep, type TransitionKind } from './simulation/sequence'
 import { SimulationCanvas } from './simulation/scene/SimulationCanvas'
+import { compileShow } from './simulation/show'
+import { useShowEditor } from './useShowEditor'
+import { ShowTimeline } from './components/ShowTimeline'
 import type { Diagnostics, FixturePresets, FixtureSelection, GroupVisibility, SceneView } from './simulation/scene/SiteScene'
 
 const VIEW_LABELS: [SceneView, string][] = [['single', '單台'], ['site', '全場'], ['top', '上視']]
@@ -115,7 +118,28 @@ export function App() {
     sequenceEdited.current = true
     sequenceEditRevision.current += 1
   }
-  const inSequence = controlMode === 'simulation' && sequenceEnabled
+  // 重新預覽時跳到的位置：修改哪一段就從那一段（或它的銜接）開始。
+  // Where a preview restart jumps to: the edited step (or its transition) instead of the beginning.
+  const seekTarget = useRef<SequenceSeek>({ kind: 'start' })
+  const resetSequencePreview = useCallback((seek: SequenceSeek = { kind: 'start' }) => {
+    seekTarget.current = seek
+    setSequenceRevision((current) => current + 1)
+    setDiagnostics(INITIAL_DIAGNOSTICS)
+  }, [])
+
+  // 演出（M12）：在模擬中預覽時，效果與顏色分頁改的是選取的段落。 / Show preview: the effect tabs edit the selected section.
+  const [showEnabled, setShowEnabled] = useState(false)
+  const showEditor = useShowEditor(settings.controllerFps, (sectionId) => {
+    resetSequencePreview(sectionId === null ? { kind: 'start' } : { kind: 'step', id: sectionId })
+  }, (seconds) => resetSequencePreview({ kind: 'frame', frame: seconds * settings.controllerFps }))
+  const selectedSection = showEditor.draft?.sections.find((section) => section.id === showEditor.selectedId)
+    ?? showEditor.draft?.sections[0]
+  const inShow = controlMode === 'simulation' && showEnabled && selectedSection !== undefined
+  const previewShow = inShow ? showEditor.compiled.show : null
+  const inSequence = controlMode === 'simulation' && sequenceEnabled && !inShow
+  const { stopPreview } = showEditor
+  // 暫停畫面或離開模擬時停止瀏覽器音樂。 / Pausing the view or leaving the simulator stops the browser music.
+  useEffect(() => { if (paused || controlMode !== 'simulation') stopPreview() }, [paused, controlMode, stopPreview])
   const savedDocument = useMemo(
     () => savedSequence === null ? null : JSON.parse(savedSequence) as SequenceDocument,
     [savedSequence],
@@ -125,10 +149,12 @@ export function App() {
   // 只在編輯器內容與後端已儲存的串接一致時標示播放段落。 / Mark the playing step only when the editor matches the saved sequence.
   const playingStepId = sequenceEnabled && !sequenceDirty ? backendPlayingStepId : null
   const selectedStep = sequenceSteps.find((step) => step.id === selectedStepId) ?? sequenceSteps[0]
-  const effectPreset = inSequence ? selectedStep.preset : effectPresets[effectId]
-  const editedFixtures: FixturePresets = inSequence
-    ? { ball: selectedStep.fixtures?.ball ?? null, wash: selectedStep.fixtures?.wash ?? null }
-    : fixturePresets
+  const effectPreset = inShow ? selectedSection!.preset : inSequence ? selectedStep.preset : effectPresets[effectId]
+  const editedFixtures: FixturePresets = inShow
+    ? { ball: selectedSection!.fixtures?.ball ?? null, wash: selectedSection!.fixtures?.wash ?? null }
+    : inSequence
+      ? { ball: selectedStep.fixtures?.ball ?? null, wash: selectedStep.fixtures?.wash ?? null }
+      : fixturePresets
   const sequenceSchedule = useMemo(
     () => compileSequence(sequenceSteps, settings.controllerFps, unitCount, sequenceEnding, fixtureCounts),
     [sequenceSteps, settings.controllerFps, unitCount, sequenceEnding, fixtureCounts.ball, fixtureCounts.wash],
@@ -145,9 +171,20 @@ export function App() {
     ),
     [savedDocument, settings.controllerFps, unitCount, fixtureCounts.ball, fixtureCounts.wash],
   )
+  // 後端播放演出時，以已儲存的演出與拍點檔編出同一張影格表。 / A backend show is mirrored from the saved show and beat map.
+  const liveShowId = playback.state?.active && playback.state.mode === 'show' ? playback.state.show.id : null
+  const liveShowTrack = playback.state?.active && playback.state.mode === 'show' ? playback.state.show.trackId : null
+  const liveShowDocument = liveShowId ? showEditor.shows?.shows.find((show) => show.id === liveShowId) ?? null : null
+  const liveShowBeatMap = liveShowTrack ? showEditor.beatMaps[liveShowTrack] : undefined
+  const { loadBeatMap } = showEditor
+  useEffect(() => { if (inBackend && liveShowTrack) loadBeatMap(liveShowTrack) }, [inBackend, liveShowTrack, loadBeatMap])
+  const backendShowSchedule = useMemo(() => {
+    if (!liveShowDocument || !liveShowBeatMap) return null
+    try { return compileShow(liveShowDocument, liveShowBeatMap, settings.controllerFps) } catch { return null }
+  }, [liveShowDocument, liveShowBeatMap, settings.controllerFps])
   const viewSequence = inBackend
-    ? liveMode === 'sequence' ? backendSchedule : null
-    : inSequence ? sequenceSchedule : null
+    ? liveMode === 'sequence' ? backendSchedule : liveMode === 'show' ? backendShowSchedule : null
+    : previewShow ?? (inSequence ? sequenceSchedule : null)
   const viewPreset = inBackend && backendState ? backendState.preset : effectPreset
   const backendFixtures: FixturePresets | null = backendState?.fixtures
     ? { ball: backendState.fixtures.ball.preset, wash: backendState.fixtures.wash.preset } : null
@@ -176,17 +213,9 @@ export function App() {
       setSavedSequence(JSON.stringify({ ...data.sequence, ending: data.sequence.ending ?? { kind: 'hold' } }))
       setSequencePlaybackMode(data.playbackMode)
     }).catch(() => {})
+    showEditor.reload()
     return () => { active = false }
   }, [liveRestart])
-
-  // 重新預覽時跳到的位置：修改哪一段就從那一段（或它的銜接）開始。
-  // Where a preview restart jumps to: the edited step (or its transition) instead of the beginning.
-  const seekTarget = useRef<SequenceSeek>({ kind: 'start' })
-  const resetSequencePreview = useCallback((seek: SequenceSeek = { kind: 'start' }) => {
-    seekTarget.current = seek
-    setSequenceRevision((current) => current + 1)
-    setDiagnostics(INITIAL_DIAGNOSTICS)
-  }, [])
 
   // 場景配置：後端的 LED 數、旋轉、燈具數與座標（沒有後端時用範例）。
   // Site setup: the backend's LED count, rotation, fixture counts and positions (the example without a backend).
@@ -407,7 +436,9 @@ export function App() {
   const activeEffect = getEffectManifest(displayedPreset.effectId)
 
   const selectEffect = useCallback((nextEffectId: EffectId) => {
-    if (inSequence) {
+    if (inShow) {
+      showEditor.updateSelectedPresets((holder) => ({ ...holder, preset: createDefaultEffectPreset(nextEffectId, settings.ledCount) }))
+    } else if (inSequence) {
       updateSelectedStep((step) => {
         const preset = createDefaultEffectPreset(nextEffectId, settings.ledCount)
         return { ...step, preset, playback: defaultPlaybackRule(preset) }
@@ -415,7 +446,7 @@ export function App() {
     } else {
       setEffectId(nextEffectId)
     }
-  }, [inSequence, updateSelectedStep, settings.ledCount])
+  }, [inShow, showEditor, inSequence, updateSelectedStep, settings.ledCount])
 
   const updateEffectParameter = useCallback((key: string, value: number) => {
     const updatePreset = (preset: EffectPreset): EffectPreset => {
@@ -425,41 +456,53 @@ export function App() {
       }
       return { ...preset, parameters }
     }
-    if (inSequence) {
+    if (inShow) {
+      showEditor.updateSelectedPresets((holder) => ({ ...holder, preset: updatePreset(holder.preset) }))
+    } else if (inSequence) {
       updateSelectedStep((step) => ({ ...step, preset: updatePreset(step.preset) }))
     } else {
       setEffectPresets((current) => ({
         ...current, [effectId]: updatePreset(current[effectId]),
       }))
     }
-  }, [effectId, inSequence, updateSelectedStep])
+  }, [effectId, inShow, showEditor, inSequence, updateSelectedStep])
 
   const updateEffectColor = useCallback((color: EffectColor) => {
-    if (inSequence) {
+    if (inShow) {
+      showEditor.updateSelectedPresets((holder) => ({ ...holder, preset: { ...holder.preset, color } }))
+    } else if (inSequence) {
       updateSelectedStep((step) => ({ ...step, preset: { ...step.preset, color } }))
     } else {
       setEffectPresets((current) => ({
         ...current, [effectId]: { ...current[effectId], color },
       }))
     }
-  }, [effectId, inSequence, updateSelectedStep])
+  }, [effectId, inShow, showEditor, inSequence, updateSelectedStep])
 
   const updateUnitVariation = useCallback((unitVariation: UnitVariation | null) => {
     const updatePreset = (preset: EffectPreset): EffectPreset => {
       const { unitVariation: _, ...base } = preset
       return unitVariation ? { ...base, unitVariation } : base
     }
-    if (inSequence) {
+    if (inShow) {
+      showEditor.updateSelectedPresets((holder) => ({ ...holder, preset: updatePreset(holder.preset) }))
+    } else if (inSequence) {
       updateSelectedStep((step) => ({ ...step, preset: updatePreset(step.preset) }))
     } else {
       setEffectPresets((current) => ({
         ...current, [effectId]: updatePreset(current[effectId]),
       }))
     }
-  }, [effectId, inSequence, updateSelectedStep])
+  }, [effectId, inShow, showEditor, inSequence, updateSelectedStep])
 
   const updateFixturePreset = useCallback((group: FixtureGroup, preset: FixturePreset | null) => {
-    if (inSequence) {
+    if (inShow) {
+      showEditor.updateSelectedPresets((holder) => {
+        const { [group]: _omit, ...others } = holder.fixtures ?? {}
+        const fixtures = preset ? { ...others, [group]: preset } : others
+        return { preset: holder.preset, ...(Object.keys(fixtures).length ? { fixtures } : {}) }
+      })
+    } else if (inSequence) {
       updateSelectedStep((step) => {
         const { [group]: _omit, ...others } = step.fixtures ?? {}
         const fixtures = preset ? { ...others, [group]: preset } : others
@@ -469,7 +512,7 @@ export function App() {
     } else {
       setFixturePresets((current) => ({ ...current, [group]: preset }))
     }
-  }, [inSequence, updateSelectedStep])
+  }, [inShow, showEditor, inSequence, updateSelectedStep])
 
   const addStep = () => {
     markSequenceEdited()
@@ -535,6 +578,15 @@ export function App() {
     updateSelectedStep((step) => ({ ...step, transition: { kind, seconds } }), { kind: 'transition', id: selectedStepId })
   }
 
+  const showPlaying = showEditor.preview === 'playing' || showEditor.preview === 'silent'
+  // 演出預覽時，畫面跟著播放／停止；停止時停在目前位置。 / In a show preview the view runs only while playing.
+  const scenePaused = paused || (previewShow !== null && !showPlaying)
+  // 模擬中演出的音樂位置（秒）。 / The simulator's position in the show's track, in seconds.
+  const showPreviewSeconds = previewShow
+    ? (previewShow.loop ? diagnostics.globalFrame % previewShow.totalFrames
+      : Math.min(diagnostics.globalFrame, previewShow.totalFrames)) / settings.controllerFps
+    : null
+
   const backendDirty = backendState !== null && (
     JSON.stringify(effectPreset) !== JSON.stringify(backendState.preset)
     || (backendFixtures !== null && JSON.stringify(fixturePresets) !== JSON.stringify(backendFixtures))
@@ -556,9 +608,18 @@ export function App() {
         <div className="viewport-panel">
           <div className="viewport-toolbar">
             <div className="button-row">
-              <button type="button" onClick={() => setPaused((current) => !current)}>
-                {paused ? '繼續' : '暫停'}
-              </button>
+              {previewShow ? (
+                // 演出預覽：畫面只在播放時前進（像剪輯軟體），這顆按鈕即播放／停止。
+                // Show preview: the view only advances while playing (like an editor); this button plays / stops.
+                <button type="button" onClick={() => {
+                  if (showPlaying) showEditor.stopPreview()
+                  else void showEditor.playPreview(showPreviewSeconds ?? 0)
+                }}>{showPlaying ? '停止' : '播放'}</button>
+              ) : (
+                <button type="button" onClick={() => setPaused((current) => !current)}>
+                  {paused ? '繼續' : '暫停'}
+                </button>
+              )}
               <button type="button" className="secondary" onClick={() => {
                 seekTarget.current = { kind: 'start' }
                 setResetToken((current) => current + 1)
@@ -598,9 +659,11 @@ export function App() {
               fixturePresets={viewSequence ? NO_FIXTURES : viewFixtures}
               sequence={viewSequence}
               sequenceRevision={sequenceRevision}
-              syncFrame={inBackend ? backendFrame : null}
-              startFrame={inSequence ? sequenceSeekFrame(sequenceSchedule, seekTarget.current, settings.controllerFps) : 0}
-              paused={paused}
+              syncFrame={inBackend ? backendFrame : previewShow && showEditor.preview === 'playing' ? showEditor.previewFrame : null}
+              syncTolerance={!inBackend && previewShow && showEditor.preview === 'playing' ? 0 : 2}
+              startFrame={previewShow ? sequenceSeekFrame(previewShow, seekTarget.current, settings.controllerFps)
+                : inSequence ? sequenceSeekFrame(sequenceSchedule, seekTarget.current, settings.controllerFps) : 0}
+              paused={scenePaused}
               resetToken={resetToken}
               view={view}
               layout={layout}
@@ -620,9 +683,10 @@ export function App() {
               <span>{settings.controllerFps} FPS · {settings.rpm} RPM</span>
               {inBackend && (
                 <span>{following
-                  ? `後端輸出 · ${liveMode === 'sequence' ? '串接' : '單一效果'}`
+                  ? `後端輸出 · ${liveMode === 'show' ? '演出' : liveMode === 'sequence' ? '串接' : '單一效果'}`
                   : '後端未播放 · 本地模擬'}</span>
               )}
+              {previewShow && <span>演出預覽{showEditor.preview === 'playing' ? ' · 跟隨音樂' : ''}</span>}
               {(unitTestColors || fixtureTestColors) && <span className="viewport-test">單色測試中</span>}
               {selectedFixture && (
                 <span>選取：{selectedFixture.group === 'ball' ? '球燈' : '洗牆燈'} {selectedFixture.id}</span>
@@ -637,6 +701,7 @@ export function App() {
               <div><span>Time</span><strong>{diagnostics.simulationTime.toFixed(1)} s</strong></div>
             </div>
           </div>
+          {inShow && <ShowTimeline editor={showEditor} fallbackSeconds={showPreviewSeconds} />}
         </div>
 
         <ControlPanel
@@ -662,7 +727,7 @@ export function App() {
           playbackSupported={!playback.unsupported}
           playbackReceivedAt={playback.receivedAt}
           playbackError={playbackError}
-          playbackStepCount={savedDocument?.steps.length ?? null}
+          playbackStepCount={liveShowId ? liveShowDocument?.sections.length ?? null : savedDocument?.steps.length ?? null}
           savedSequence={savedDocument}
           backendPlayingStepId={backendPlayingStepId}
           playingStepId={playingStepId}
@@ -700,6 +765,14 @@ export function App() {
           onEffectParameter={updateEffectParameter}
           onEffectColor={updateEffectColor}
           onUnitVariation={updateUnitVariation}
+          showEditor={showEditor}
+          showEnabled={inShow}
+          onShowEnabled={(enabled) => { setShowEnabled(enabled); if (!enabled) showEditor.stopPreview(); resetSequencePreview() }}
+          currentShowIndex={previewShow ? resolveSequenceFrame(previewShow, diagnostics.globalFrame)?.stepIndex ?? null : null}
+          showPreviewSeconds={showPreviewSeconds}
+          backendShowPlaying={liveShowId && playback.state?.active && playback.state.mode === 'show'
+            ? { showId: liveShowId, sectionId: playback.state.step.id } : null}
+          onShowPlayFrom={(id) => resetSequencePreview({ kind: 'step', id })}
         />
       </section>
 

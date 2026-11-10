@@ -75,6 +75,8 @@ export type SiteSceneProps = {
   onDiagnostics: (diagnostics: Diagnostics) => void
   /** Live output frame to follow (fractional), or null to run the local clock. */
   syncFrame?: (() => number | null) | null
+  /** 與 syncFrame 差超過幾格才對齊（預設 2）；0 = 每格直接採用（跟隨音樂）。 / Frames of drift before snapping; 0 = always (music). */
+  syncTolerance?: number
   startFrame?: number
   /** Backend colour tests: one colour or null per spinner / fixture. */
   unitColors?: (RgbColor | null)[] | null
@@ -259,7 +261,7 @@ function ClockDriver(props: SiteSceneProps & { clock: Clock; unknownPhases: numb
     const liveFrame = props.paused ? null : props.syncFrame?.() ?? null
     if (liveFrame !== null) {
       const liveTime = liveFrame / settings.controllerFps
-      if (Math.abs(clock.current - liveTime) > 2 / settings.controllerFps) clock.current = liveTime
+      if (Math.abs(clock.current - liveTime) > (props.syncTolerance ?? 2) / settings.controllerFps) clock.current = liveTime
     }
     diagnosticAccumulator.current += delta
     if (diagnosticAccumulator.current < 0.1) return

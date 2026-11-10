@@ -24,6 +24,8 @@ import { SequenceEditor } from './SequenceEditor'
 import { UnitColorTestPanel } from './UnitColorTestPanel'
 import { OutputStatsLine } from './OutputStatsLine'
 import { AudioPanel } from './AudioPanel'
+import { ShowEditor } from './ShowEditor'
+import type { ShowEditorState } from '../useShowEditor'
 import { FixtureEditor, GROUP_LABELS, type FixtureGroup } from './FixtureEditor'
 import { FixtureTestPanel, type FixtureSelection } from './FixtureTestPanel'
 import { CATEGORY_LABELS, WeatherPanel } from './WeatherPanel'
@@ -32,7 +34,7 @@ import type { SimulationSettings } from '../simulation/model'
 export type EditGroup = 'spinner' | FixtureGroup
 
 type NumericSetting = Exclude<keyof SimulationSettings, 'ledCount'>
-type ControlTab = 'effect' | 'color' | 'sequence' | 'backend' | 'weather' | 'physics'
+type ControlTab = 'effect' | 'color' | 'sequence' | 'show' | 'backend' | 'weather' | 'physics'
 
 type ControlPanelProps = {
   settings: SimulationSettings
@@ -96,6 +98,13 @@ type ControlPanelProps = {
   onEffectParameter: (key: string, value: number) => void
   onEffectColor: (color: EffectColor) => void
   onUnitVariation: (variation: UnitVariation | null) => void
+  showEditor: ShowEditorState
+  showEnabled: boolean
+  onShowEnabled: (enabled: boolean) => void
+  currentShowIndex: number | null
+  showPreviewSeconds: number | null
+  backendShowPlaying: { showId: string; sectionId: number } | null
+  onShowPlayFrom: (sectionId: number) => void
 }
 
 
@@ -314,8 +323,16 @@ export function ControlPanel({
   onEffectParameter,
   onEffectColor,
   onUnitVariation,
+  showEditor,
+  showEnabled,
+  onShowEnabled,
+  currentShowIndex,
+  showPreviewSeconds,
+  backendShowPlaying,
+  onShowPlayFrom,
 }: ControlPanelProps) {
   const [tab, setTab] = useState<ControlTab>('effect')
+  const [sectionTab, setSectionTab] = useState<'effect' | 'color'>('effect')
   const activeEffect = getEffectManifest(effectPreset.effectId)
   const colorConfig = effectPreset.color
 
@@ -401,6 +418,7 @@ export function ControlPanel({
     { id: 'effect', label: '效果' },
     { id: 'color', label: '色彩' },
     { id: 'sequence', label: '串接' },
+    { id: 'show', label: '演出' },
     { id: 'backend', label: '後端' },
     ...(weather ? [{ id: 'weather' as const, label: '天氣' }] : []),
     { id: 'physics', label: '物理' },
@@ -421,24 +439,12 @@ export function ControlPanel({
       weatherEnabled={weather?.enabled ?? false} onChange={(preset) => onFixturePreset(editGroup, preset)} />
   )
 
-  return (
-    <section className="controls" aria-label="控制面板">
-      <div className="control-tabs" role="tablist" aria-label="控制分頁">
-        {tabs.map(({ id, label }) => (
-          <button type="button" role="tab" key={id} id={`control-tab-${id}`}
-            aria-selected={shownTab === id} aria-controls="control-tabpanel"
-            className={shownTab === id ? 'active' : 'secondary'} onClick={() => setTab(id)}>{label}</button>
-        ))}
-      </div>
-
-      <div className="control-tabpanel" id="control-tabpanel" role="tabpanel" aria-labelledby={`control-tab-${shownTab}`}>
-        {(shownTab === 'effect' || shownTab === 'color') && groupSwitch}
-        {shownTab === 'effect' && editGroup !== 'spinner' && fixtureEditor('effect')}
-        {shownTab === 'color' && editGroup !== 'spinner' && fixtureEditor('color')}
-        {shownTab === 'effect' && editGroup === 'spinner' && (
+  // 轉燈效果與顏色的編輯內容；「效果」「顏色」分頁與「演出」分頁的段落效果共用。
+  // Spinner effect and colour editors, shared by the effect / colour tabs and the show tab's section editor.
+  const spinnerEffectPanel = () => (
           <>
             <label className="control-field effect-picker">
-              <span>{sequenceEnabled && controlMode === 'simulation' ? '編輯段落效果' : 'Effect'}</span>
+              <span>{(sequenceEnabled || showEnabled) && controlMode === 'simulation' ? '編輯段落效果' : 'Effect'}</span>
               <select
                 value={effectPreset.effectId}
                 onChange={(event) => onEffectChange(event.target.value as EffectId)}
@@ -495,9 +501,8 @@ export function ControlPanel({
 
             <p className="effect-description">{activeEffect.description}</p>
           </>
-        )}
-
-        {shownTab === 'color' && editGroup === 'spinner' && (
+  )
+  const spinnerColorPanel = () => (
           <div className="color-controls">
             {weather?.enabled && (
               <>
@@ -540,7 +545,38 @@ export function ControlPanel({
               </>
             )}
           </div>
-        )}
+          )
+  // 演出分頁裡編輯選取段落的效果（群組＋效果／顏色）。 / Section effects inside the show tab (group + effect / colour).
+  const sectionEditor = (
+    <div className="show-section-effects">
+      <div className="segmented-control" aria-label="段落編輯項目">
+        <button type="button" className={sectionTab === 'effect' ? 'active' : 'secondary'} aria-pressed={sectionTab === 'effect'}
+          onClick={() => setSectionTab('effect')}>效果</button>
+        <button type="button" className={sectionTab === 'color' ? 'active' : 'secondary'} aria-pressed={sectionTab === 'color'}
+          onClick={() => setSectionTab('color')}>顏色</button>
+      </div>
+      {groupSwitch}
+      {editGroup !== 'spinner' ? fixtureEditor(sectionTab) : sectionTab === 'effect' ? spinnerEffectPanel() : spinnerColorPanel()}
+    </div>
+  )
+
+  return (
+    <section className="controls" aria-label="控制面板">
+      <div className="control-tabs" role="tablist" aria-label="控制分頁">
+        {tabs.map(({ id, label }) => (
+          <button type="button" role="tab" key={id} id={`control-tab-${id}`}
+            aria-selected={shownTab === id} aria-controls="control-tabpanel"
+            className={shownTab === id ? 'active' : 'secondary'} onClick={() => setTab(id)}>{label}</button>
+        ))}
+      </div>
+
+      <div className="control-tabpanel" id="control-tabpanel" role="tabpanel" aria-labelledby={`control-tab-${shownTab}`}>
+        {(shownTab === 'effect' || shownTab === 'color') && groupSwitch}
+        {shownTab === 'effect' && editGroup !== 'spinner' && fixtureEditor('effect')}
+        {shownTab === 'color' && editGroup !== 'spinner' && fixtureEditor('color')}
+        {shownTab === 'effect' && editGroup === 'spinner' && spinnerEffectPanel()}
+
+        {shownTab === 'color' && editGroup === 'spinner' && spinnerColorPanel()}
 
         {shownTab === 'sequence' && (controlMode === 'simulation' ? (
           <SequenceEditor
@@ -588,6 +624,12 @@ export function ControlPanel({
             onRestart={() => onRestartBackend('sequence')}
           />
         ))}
+
+        {shownTab === 'show' && (
+          <ShowEditor editor={showEditor} controlMode={controlMode} enabled={showEnabled} onEnabled={onShowEnabled}
+            currentIndex={currentShowIndex} previewSeconds={showPreviewSeconds} backendPlaying={backendShowPlaying} fps={settings.controllerFps}
+            onPlayFrom={onShowPlayFrom} sectionEditor={sectionEditor} />
+        )}
 
         {shownTab === 'backend' && playbackSupported && (
           <PlaybackProgress playback={playback} receivedAt={playbackReceivedAt}

@@ -52,21 +52,22 @@ export function PlaybackProgress({ playback, receivedAt, error, stepCount }: Pla
     const progress = projectSequence(playback, Math.max(0, now - receivedAt))
     const { step, fps } = playback
     const label = getEffectManifest(step.effectId).label
-    const status = playback.ended
+    const show = playback.mode === 'show' ? playback.show : null
+    const status = (show ? `演出「${show.title}」· ` : '') + (playback.ended
       ? playback.ending === 'fade-black'
         ? progress.fadeElapsed !== null && playback.endFade && progress.fadeElapsed < playback.endFade.frames ? '播放完成 · 淡出中' : '播放完成 · 已淡出至黑'
         : '播放完成 · 維持最後畫面'
       : '第 ' + (step.index + 1) + (stepCount ? ' / ' + stepCount : '') + ' 段 · ' + label
-        + (progress.repeat ? ' · 第 ' + progress.repeat.current + ' / ' + progress.repeat.total + ' 次' : '')
+        + (progress.repeat ? ' · 第 ' + progress.repeat.current + ' / ' + progress.repeat.total + ' 次' : ''))
     body = (
       <>
         <p role="status">{status}
           {progress.transitionActive && playback.transition && <em>{TRANSITION_LABELS[playback.transition.kind]}</em>}
           <span>{seconds(progress.stepElapsed, fps)} / {seconds(progress.stepDuration, fps)} 秒</span></p>
         <Bar value={progress.stepElapsed} max={progress.stepDuration} label="段落進度" />
-        <p className="playback-total">{playback.ending === 'loop' ? '第 ' + playback.loopIteration + ' 輪' : '整體'}
+        <p className="playback-total">{(show ? '音樂 · ' : '') + (playback.ending === 'loop' ? '第 ' + playback.loopIteration + ' 輪' : '整體')}
           <span>{seconds(progress.sequenceFrame, fps)} / {seconds(progress.totalFrames, fps)} 秒</span></p>
-        <Bar value={progress.sequenceFrame} max={progress.totalFrames} label="串接整體進度" />
+        <Bar value={progress.sequenceFrame} max={progress.totalFrames} label={show ? '演出整體進度' : '串接整體進度'} />
       </>
     )
   }

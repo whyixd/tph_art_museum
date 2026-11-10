@@ -1,6 +1,7 @@
 import type { EffectPreset, RgbColor } from './effects'
 import type { FixturePreset } from './fixtures'
 import type { SequenceDocument, SequenceStep } from './simulation/sequence'
+import type { BeatMap, ShowDocument, ShowStart, ShowTransition } from './simulation/show'
 
 /**
  * 後端 Sequence v2：每段 spinner（轉燈）＋選填 ball／wash（球燈／洗牆燈，省略 = 全暗）。
@@ -344,7 +345,13 @@ export type SinglePlayback = ActivePlaybackBase & {
   cycle: { current: number; elapsed: number; frames: number } | null
 }
 
-export type BackendPlayback = { active: false } | SequencePlayback | SinglePlayback
+/** 演出播放中：位置欄位同串接，另附曲目資訊。 / A show playing: sequence-style position plus the track. */
+export type ShowPlayback = Omit<SequencePlayback, 'mode'> & {
+  mode: 'show'
+  show: { id: string; title: string; trackId: string; durationSeconds: number; totalFrames: number; loop: boolean }
+}
+
+export type BackendPlayback = { active: false } | SequencePlayback | SinglePlayback | ShowPlayback
 
 // null：後端版本沒有此 API（v0.1.1 以前）。 / null: the backend predates this API.
 export async function getBackendPlayback(): Promise<BackendPlayback | null> {
@@ -364,6 +371,10 @@ export type AudioTrack = {
   beatsPerBar: number
   /** 音檔是否在 Pi 上。 / Whether the WAV file is on the host. */
   available: boolean
+  /** 是否已預載進記憶體（舊版後端沒有）。 / Whether it is preloaded into memory (absent on older backends). */
+  loaded?: boolean
+  /** 拍點是否經前端修正（M14）。 / Whether the beats were corrected in the frontend (M14). */
+  edited?: boolean
 }
 
 export type AudioState = {
@@ -409,4 +420,114 @@ export async function setAudioCalibration(offsetMs: number, save: boolean): Prom
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ offsetMs, save }),
   }))
+}
+
+// ── 演出（M12） / Shows (M12) ──
+
+export type BackendShowSection = {
+  id: number
+  start: ShowStart
+  spinner: EffectPreset
+  ball?: FixturePreset
+  wash?: FixturePreset
+  transition: ShowTransition
+}
+
+export type BackendShowDocument = Omit<ShowDocument, 'sections'> & { sections: BackendShowSection[] }
+
+export function fromBackendShow(document: BackendShowDocument): ShowDocument {
+  return {
+    ...document,
+    sections: document.sections.map(({ id, start, spinner, ball, wash, transition }) => ({
+      id, start, preset: spinner, transition,
+      ...(ball || wash ? { fixtures: { ...(ball ? { ball } : {}), ...(wash ? { wash } : {}) } } : {}),
+    })),
+  }
+}
+
+export function toBackendShow(document: ShowDocument): BackendShowDocument {
+  return {
+    ...document,
+    sections: document.sections.map(({ id, start, preset, fixtures, transition }) => ({
+      id, start, spinner: preset, ...fixtures, transition,
+    })),
+  }
+}
+
+export type ShowsState = {
+  revision: number
+  shows: ShowDocument[]
+  /** 無法編譯的演出（例如拍點檔不見了）。 / Shows that do not compile (e.g. a missing beat map). */
+  errors: Record<string, string>
+  playing: {
+    showId: string
+    trackId: string
+    /** 沒有音效卡時以系統時鐘無聲播放。 / Without a sound card the show runs silently on the system clock. */
+    silent: boolean
+    positionSeconds: number
+    durationSeconds: number
+    loop: boolean
+  } | null
+}
+
+async function readShows(response: Response): Promise<ShowsState> {
+  const state = await readState<Omit<ShowsState, 'shows'> & { shows: BackendShowDocument[] }>(response)
+  return { ...state, shows: state.shows.map(fromBackendShow) }
+}
+
+// 舊版後端沒有演出 API，回 null。 / Older backends lack the show API; returns null.
+export async function getShows(): Promise<ShowsState | null> {
+  const response = await fetch('/api/shows', { cache: 'no-store' })
+  if (response.status === 404) return null
+  return readShows(response)
+}
+
+export async function saveShow(show: ShowDocument): Promise<ShowsState> {
+  return readShows(await fetch(`/api/shows/${encodeURIComponent(show.id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(toBackendShow(show)),
+  }))
+}
+
+export async function deleteShow(id: string): Promise<ShowsState> {
+  return readShows(await fetch(`/api/shows/${encodeURIComponent(id)}`, { method: 'DELETE' }))
+}
+
+export async function playShow(showId: string, startSeconds = 0): Promise<ShowsState> {
+  return readShows(await fetch('/api/show/play', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ showId, startSeconds }),
+  }))
+}
+
+export async function stopShow(): Promise<ShowsState> {
+  return readShows(await fetch('/api/show/play', { method: 'DELETE' }))
+}
+
+export async function getBeatMap(trackId: string): Promise<BeatMap> {
+  return readState<BeatMap>(await fetch(`/api/audio/tracks/${encodeURIComponent(trackId)}`, { cache: 'no-store' }))
+}
+
+/** 曲目的 WAV（給瀏覽器預覽）；不在主機上時回 null。 / The track's WAV for the browser preview; null when not on the host. */
+export async function getTrackAudio(trackId: string): Promise<ArrayBuffer | null> {
+  const response = await fetch(`/api/audio/tracks/${encodeURIComponent(trackId)}/wav`)
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error('無法下載音檔（HTTP ' + response.status + '）')
+  return response.arrayBuffer()
+}
+
+/** 儲存修正後的拍點（存在 Pi 的 preset/beat-edits/，優先於內建版本）。 / Save corrected beats (they override the shipped map). */
+export async function saveBeatMap(beatMap: BeatMap): Promise<BeatMap> {
+  return readState<BeatMap>(await fetch(`/api/audio/tracks/${encodeURIComponent(beatMap.id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(beatMap),
+  }))
+}
+
+/** 刪除修正、回到內建拍點。 / Drop the correction and use the shipped beat map again. */
+export async function revertBeatMap(trackId: string): Promise<BeatMap> {
+  return readState<BeatMap>(await fetch(`/api/audio/tracks/${encodeURIComponent(trackId)}`, { method: 'DELETE' }))
 }

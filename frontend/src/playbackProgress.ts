@@ -22,7 +22,7 @@ export function advancedFrames(fps: number, ageMs: number, sinceReceivedMs: numb
   return Math.max(0, Math.floor(((ageMs + sinceReceivedMs) / 1000) * fps))
 }
 
-export function projectSequence(playback: SequencePlayback, sinceReceivedMs: number): SequenceProgress {
+export function projectSequence(playback: Omit<SequencePlayback, 'mode'>, sinceReceivedMs: number): SequenceProgress {
   const { step, transition, endFade } = playback
   if (playback.ended) {
     const fadeElapsed = endFade === null

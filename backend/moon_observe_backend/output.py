@@ -23,6 +23,7 @@ from .fixture_effects import fixture_geometry, render_fixture_frame
 from .hardware import build_packets, default_motor_channel, packet_sizes
 from .renderer import render_frame
 from .sequence import SequenceStore, render_sequence_fixtures, render_sequence_frame, validate_sequence
+from .show import ShowPlayer, ShowStore
 from .palette import PaletteStore
 from .playback import PlaybackMonitor
 from .unit_colors import FixtureColorStore, UnitColorStore
@@ -137,6 +138,7 @@ def stream(
     fixture_preset_provider: Callable[[], Mapping[str, Mapping[str, Any] | None]] | None = None,
     fixture_colors_provider: Callable[[], Mapping[str, Sequence[Rgb | None]]] | None = None,
     beat_flash_provider: Callable[[], float | None] | None = None,
+    show_provider: Callable[[], tuple[tuple[dict[str, Any], ...], int, int] | None] | None = None,
     stats: OutputStats | None = None,
     clock: Callable[[], float] = time.perf_counter,
     sleep: Callable[[float], None] = time.sleep,
@@ -148,6 +150,11 @@ def stream(
     fixture presets), with the same weather, and a fixture colour test overrides them. On exit every DMX
     universe gets all-zero frames. While a beat-flash test plays (``beat_flash_provider`` returns a level),
     every spinner and fixture shows that white level instead; motors are unaffected.
+
+    While a show plays (``show_provider`` returns its schedule, frame and generation), the show replaces the
+    sequence / single effect and its frame comes from the music time; weather does not apply. When it ends,
+    the standby output restarts from its first frame.
+    演出播放時取代串接／單一效果，影格由音樂時間決定，不套用天氣；演出結束後待機輸出從頭播放。
     """
     if seconds is not None and (not math.isfinite(seconds) or seconds <= 0):
         raise ValueError("seconds must be positive and finite")
@@ -170,6 +177,7 @@ def stream(
     last_pixels: dict[int, Sequence[Rgb]] = {}
     last_motor_value = 0
     last_sequence_generation: int | None = None
+    last_show_generation: int | None = None
     last_weather_generation: int | None = None
     playback_start_frame = 0
     restarts = 0
@@ -212,42 +220,55 @@ def stream(
             skipped = due - frame
             frame = due
             frame_started = clock()
-            sequence_state = sequence_provider() if sequence_provider is not None else None
-            sequence_generation = sequence_state[2] if sequence_state is not None else None
-            restarted = sequence_generation != last_sequence_generation
-            if restarted:
-                playback_start_frame = frame
-                last_sequence_generation = sequence_generation
+            show_state = show_provider() if show_provider is not None else None
+            show_generation = show_state[2] if show_state is not None else None
+            if show_generation != last_show_generation:
+                restarts += 1
+                last_show_generation = show_generation
+                if show_state is None:
+                    # 演出結束：待機輸出從頭開始。 / Show over: the standby output starts from its first frame.
+                    playback_start_frame = frame
+                    last_frame = None
             active_preset = preset_provider() if preset_provider is not None else preset
-            sequence_mode = sequence_state is not None and sequence_state[0] == "sequence"
-            schedule = sequence_state[1] if sequence_mode else None
-            if playback_advance is not None:
-                # 讀取天氣前先回報進度，讓造訪結束與延後的天氣時間效果從這一格生效。
-                # Report progress before reading the weather so visit ends and deferred timing apply from this frame.
-                key = boundary_key(schedule, active_preset, frame - playback_start_frame, fps, config["unit_count"])
-                playback_advance(
-                    0 if last_frame is None else frame - last_frame,
-                    round_length(schedule, active_preset, fps, config["unit_count"])[0],
-                    key is None or key != last_boundary,
-                    not sequence_mode,
-                )
-            weather = weather_provider() if weather_provider is not None else None
-            weather_generation = weather.get("generation") if weather is not None else None
-            if weather_generation != last_weather_generation:
-                playback_start_frame = frame
-                restarted = True
-                last_weather_generation = weather_generation
-            restarts += restarted
-            playback_frame = frame - playback_start_frame
-            last_frame = frame
-            last_boundary = boundary_key(schedule, active_preset, playback_frame, fps, config["unit_count"])
+            if show_state is not None:
+                schedule, playback_frame = show_state[0], show_state[1]
+                sequence_mode, weather, mode = True, None, "show"
+            else:
+                sequence_state = sequence_provider() if sequence_provider is not None else None
+                sequence_generation = sequence_state[2] if sequence_state is not None else None
+                restarted = sequence_generation != last_sequence_generation
+                if restarted:
+                    playback_start_frame = frame
+                    last_sequence_generation = sequence_generation
+                sequence_mode = sequence_state is not None and sequence_state[0] == "sequence"
+                schedule = sequence_state[1] if sequence_mode else None
+                if playback_advance is not None:
+                    # 讀取天氣前先回報進度，讓造訪結束與延後的天氣時間效果從這一格生效。
+                    # Report progress before reading the weather so visit ends and deferred timing apply from this frame.
+                    key = boundary_key(schedule, active_preset, frame - playback_start_frame, fps, config["unit_count"])
+                    playback_advance(
+                        0 if last_frame is None else frame - last_frame,
+                        round_length(schedule, active_preset, fps, config["unit_count"])[0],
+                        key is None or key != last_boundary,
+                        not sequence_mode,
+                    )
+                weather = weather_provider() if weather_provider is not None else None
+                weather_generation = weather.get("generation") if weather is not None else None
+                if weather_generation != last_weather_generation:
+                    playback_start_frame = frame
+                    restarted = True
+                    last_weather_generation = weather_generation
+                restarts += restarted
+                playback_frame = frame - playback_start_frame
+                last_frame = frame
+                mode = "sequence" if sequence_mode else "single"
+                last_boundary = boundary_key(schedule, active_preset, playback_frame, fps, config["unit_count"])
             motor_value = motor_provider() if motor_provider is not None else 0
             if motor_value not in (0, 255):
                 raise ValueError("motor value must be 0 or 255")
             last_motor_value = motor_value
             if playback_reporter is not None:
-                playback_reporter(*(("sequence", sequence_state[1]) if sequence_mode else ("single", active_preset)),
-                                  restarts, playback_frame)
+                playback_reporter(mode, schedule if sequence_mode else active_preset, restarts, playback_frame)
             # 測試單色時，被指定的燈台整條填色；底下的播放照常前進。
             # A unit colour test fills the chosen units; playback underneath keeps advancing.
             unit_colors = unit_colors_provider() if unit_colors_provider is not None else None
@@ -273,7 +294,7 @@ def stream(
                     pixels = [test_color] * config["pixels"]
                 elif sequence_mode:
                     pixels = render_sequence_frame(
-                        sequence_state[1], unit, playback_frame,
+                        schedule, unit, playback_frame,
                         unit_count=config["unit_count"], fps=fps, rpm=config["rpm"],
                         rain=category == "rain", color_override=color_override, shared=shared,
                     )
@@ -299,7 +320,7 @@ def stream(
                 for group in groups:
                     if sequence_mode:
                         group_colors = render_sequence_fixtures(
-                            sequence_state[1], group, geometry[group], playback_frame, fps=fps,
+                            schedule, group, geometry[group], playback_frame, fps=fps,
                             rain=category == "rain", color_override=color_override, frame_step=frame_step,
                         )
                     elif fixture_presets.get(group) is not None:
@@ -396,14 +417,26 @@ def main(argv: list[str] | None = None) -> int:
         unit_color_store = UnitColorStore(config["unit_count"])
         fixture_color_store = FixtureColorStore(counts)
         output_stats = OutputStats(config["fps"])
-        audio_player = AudioPlayer(config["audio"], tracks_dir=Path(__file__).resolve().parents[1] / "tracks")
+        # 前端修正過的拍點檔存在串接檔旁的 beat-edits/（Pi：preset/beat-edits/）。 / Corrected beat maps live beside the sequence.
+        audio_player = AudioPlayer(config["audio"], tracks_dir=Path(__file__).resolve().parents[1] / "tracks",
+                                   edits_dir=sequence_path.parent / "beat-edits")
         if config["audio"] is not None and not audio_player.available:
             print(f"warning: audio disabled: {audio_player.error}", file=sys.stderr, flush=True)
+        # 演出存在串接檔旁邊（Pi：preset/shows.json）。 / Shows are saved beside the sequence (preset/shows.json on the Pi).
+        show_store = ShowStore(sequence_path.parent / "shows.json", beat_maps=audio_player.beat_maps,
+                               fps=config["fps"], pixels=config["pixels"])
+        show_player = ShowPlayer(show_store, audio_player, config["fps"])
+        if audio_player.available:
+            def preload() -> None:
+                for warning in audio_player.preload():
+                    print(f"warning: {warning}", file=sys.stderr, flush=True)
+            Thread(target=preload, name="audio-preload", daemon=True).start()
         with make_server(store, config, args.api_port, host=args.api_host,
                          sequence_store=sequence_store, frontend_dir=frontend_dir,
                          weather_store=weather_store, playback_monitor=playback_monitor,
                          unit_color_store=unit_color_store, fixture_color_store=fixture_color_store,
-                         output_stats=output_stats, audio_player=audio_player) as server:
+                         output_stats=output_stats, audio_player=audio_player,
+                         show_store=show_store, show_player=show_player) as server:
             if weather_store is not None:
                 weather_store.start()
             try:
@@ -425,12 +458,14 @@ def main(argv: list[str] | None = None) -> int:
                                   fixture_preset_provider=store.fixture_snapshot,
                                   fixture_colors_provider=fixture_color_store.current,
                                   beat_flash_provider=audio_player.flash,
+                                  show_provider=show_player.current,
                                   stats=output_stats)
                 finally:
                     playback_monitor.stop()
                     server.shutdown()
                     worker.join(timeout=2)
             finally:
+                show_player.stop()
                 audio_player.stop()
                 if weather_store is not None:
                     weather_store.stop()

@@ -162,6 +162,8 @@ def make_server(
     fixture_color_store: Any = None,
     output_stats: Any = None,
     audio_player: Any = None,
+    show_store: Any = None,
+    show_player: Any = None,
 ) -> ThreadingHTTPServer:
     if not 0 <= port <= 65535:
         raise ValueError("api port must be 0..65535")
@@ -195,6 +197,66 @@ def make_server(
             }
             return result
 
+        def _audio_track(self, rest: str) -> None:
+            """``<id>``: the beat map; ``<id>/wav``: the WAV file, streamed, for the browser preview."""
+            track_id, _, kind = rest.partition("/")
+            beat_map = audio_player.beat_map(track_id)
+            if beat_map is None or kind not in ("", "wav"):
+                self._respond(404, {"error": "unknown track"})
+                return
+            if kind == "":
+                self._respond(200, beat_map)
+                return
+            path = audio_player.wav_file(track_id)
+            if path is None:
+                self._respond(404, {"error": "audio file is not on the host"})
+                return
+            with path.open("rb") as source:
+                size = os.fstat(source.fileno()).st_size
+                self.send_response(200)
+                self.send_header("Content-Type", "audio/wav")
+                self.send_header("Content-Length", str(size))
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                try:
+                    while chunk := source.read(1 << 16):
+                        self.wfile.write(chunk)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+
+        def _shows_state(self) -> dict[str, Any]:
+            return {**show_store.state(), **show_player.state()}
+
+        def _stop_show(self) -> None:
+            # 手動播放、套用效果或串接時先停止演出。 / Manual playback, presets and sequences stop the show first.
+            if show_player is not None:
+                show_player.stop()
+
+        def _track_id(self) -> str | None:
+            """The track id of /api/audio/tracks/<id> (not .../wav), or None for other paths."""
+            prefix = "/api/audio/tracks/"
+            if audio_player is None or not self.path.startswith(prefix) or "/" in self.path[len(prefix):]:
+                return None
+            return self.path[len(prefix):]
+
+        def _refresh_show(self, track_id: str) -> None:
+            # 修正拍點後，播放中的演出（同一首）改用新拍點。 / A playing show on the corrected track picks up the new beats.
+            if show_player is None:
+                return
+            playing = show_player.state()["playing"]
+            if playing is not None and playing["trackId"] == track_id:
+                try:
+                    show_player.replace(show_store.compiled(playing["showId"]))
+                except ValueError:
+                    show_player.stop()
+
+        def _show_id(self) -> str | None:
+            """The show id of /api/shows/<id>, or None for other paths."""
+            prefix = "/api/shows/"
+            if show_store is None or not self.path.startswith(prefix):
+                return None
+            return self.path[len(prefix):]
+
         def do_GET(self) -> None:
             if self.path == "/api/weather":
                 self._respond(200, weather_store.snapshot() if weather_store is not None else {"enabled": False})
@@ -225,6 +287,10 @@ def make_server(
                 self._respond(200, output_stats.snapshot() if output_stats is not None else {"active": False})
             elif self.path == "/api/audio" and audio_player is not None:
                 self._respond(200, audio_player.state())
+            elif self.path == "/api/shows" and show_store is not None:
+                self._respond(200, self._shows_state())
+            elif self.path.startswith("/api/audio/tracks/") and audio_player is not None:
+                self._audio_track(self.path[len("/api/audio/tracks/"):])
             elif self.path.startswith("/api/") or static_dir is None:
                 self._respond(404, {"error": "not found"})
             else:
@@ -246,7 +312,36 @@ def make_server(
             elif self.path == "/api/test/fixtures" and fixture_color_store is not None:
                 self._respond(200, fixture_color_store.clear())
             elif self.path == "/api/audio/play" and audio_player is not None:
+                self._stop_show()
                 self._respond(200, audio_player.stop())
+            elif self.path == "/api/show/play" and show_player is not None:
+                show_player.stop()
+                self._respond(200, self._shows_state())
+            elif self._track_id() is not None:
+                try:
+                    beat_map = audio_player.revert_beat_map(self._track_id())
+                except ValueError as error:
+                    self._respond(422, {"error": str(error)})
+                    return
+                except OSError:
+                    self._respond(500, {"error": "data could not be saved"})
+                    return
+                self._refresh_show(beat_map["id"])
+                self._respond(200, beat_map)
+            elif self._show_id() is not None:
+                show_id = self._show_id()
+                try:
+                    show_store.delete(show_id)
+                except KeyError:
+                    self._respond(404, {"error": "unknown show"})
+                    return
+                except OSError:
+                    self._respond(500, {"error": "data could not be saved"})
+                    return
+                playing = show_player.state()["playing"]
+                if playing is not None and playing["showId"] == show_id:
+                    show_player.stop()
+                self._respond(200, self._shows_state())
             else:
                 self._respond(404, {"error": "not found"})
 
@@ -256,14 +351,19 @@ def make_server(
                 "/api/weather/override": 256, "/api/weather/palette": 16384,
                 "/api/playback/restart": 64, "/api/weather/visit": 64, "/api/test/units": 4096,
                 "/api/test/fixtures": 8192, "/api/audio/play": 512, "/api/audio/calibration": 128,
+                "/api/show/play": 256, "/api/shows/": 262144, "/api/audio/tracks/": 524288,
             }
-            if (self.path not in limits
+            show_id = self._show_id()
+            track_id = self._track_id()
+            route = "/api/shows/" if show_id is not None else "/api/audio/tracks/" if track_id is not None else self.path
+            if (route not in limits
                     or (self.path in ("/api/sequence", "/api/playback/restart") and sequence_store is None)
                     or (self.path in ("/api/weather/override", "/api/weather/visit") and weather_store is None)
                     or (self.path == "/api/weather/palette" and palette_store is None)
                     or (self.path == "/api/test/units" and unit_color_store is None)
                     or (self.path == "/api/test/fixtures" and fixture_color_store is None)
-                    or (self.path.startswith("/api/audio/") and audio_player is None)):
+                    or (route.startswith("/api/audio/") and audio_player is None)
+                    or (self.path == "/api/show/play" and show_player is None)):
                 self._respond(404, {"error": "not found"})
                 return
             if self.headers.get_content_type() != "application/json":
@@ -273,20 +373,33 @@ def make_server(
                 length = int(self.headers.get("Content-Length", ""))
             except ValueError:
                 length = 0
-            limit = limits[self.path]
+            limit = limits[route]
             if not 0 < length <= limit:
                 self._respond(413, {"error": f"JSON must be 1..{limit} bytes"})
                 return
             try:
                 raw = json.loads(self.rfile.read(length))
-                if self.path == "/api/sequence":
+                if track_id is not None:
+                    result = dict(audio_player.save_beat_map(track_id, raw))
+                    self._refresh_show(track_id)
+                elif show_id is not None:
+                    _, compiled = show_store.save(show_id, raw)
+                    show_player.replace(compiled)
+                    result = self._shows_state()
+                elif self.path == "/api/show/play":
+                    show_player.play(raw)
+                    result = self._shows_state()
+                elif self.path == "/api/sequence":
                     sequence_store.apply(raw)
+                    self._stop_show()
                     result = self._sequence_state()
                 elif self.path == "/api/playback/restart":
                     sequence_store.restart(raw)
+                    self._stop_show()
                     result = self._sequence_state()
                 elif self.path == "/api/preset":
                     result = store.apply(raw, config)
+                    self._stop_show()
                     if sequence_store is not None:
                         sequence_store.use_single_preset()
                 elif self.path == "/api/weather/override":
@@ -300,6 +413,7 @@ def make_server(
                 elif self.path == "/api/test/fixtures":
                     result = fixture_color_store.apply(raw)
                 elif self.path == "/api/audio/play":
+                    self._stop_show()
                     result = audio_player.play(raw)
                 elif self.path == "/api/audio/calibration":
                     result = audio_player.set_calibration(raw)

@@ -252,6 +252,8 @@ export type SequenceSeek =
   | { kind: 'start' }
   | { kind: 'step'; id: number }
   | { kind: 'transition'; id: number }
+  /** 指定影格（演出時間軸點選跳轉）。 / A given frame (seeking on the show timeline). */
+  | { kind: 'frame'; frame: number }
 
 // 預覽銜接從切換前這麼多秒開始。 / Transition previews start this many seconds before the switch.
 export const TRANSITION_PREVIEW_LEAD_SECONDS = 2
@@ -262,6 +264,7 @@ export const TRANSITION_PREVIEW_LEAD_SECONDS = 2
  */
 export function sequenceSeekFrame(sequence: CompiledSequence, seek: SequenceSeek, fps: number): number {
   if (seek.kind === 'start') return 0
+  if (seek.kind === 'frame') return Math.max(0, seek.frame)
   const step = sequence.steps.find((item) => item.id === seek.id)
   if (!step) return 0
   if (seek.kind === 'step') return step.startFrame
