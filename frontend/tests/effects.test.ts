@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fitParametersToLedCount } from '../src/effects'
 import { centerOutSine } from '../src/effects/centerOutSine'
+import { ringWeights } from '../src/effects/movingRings'
 import { unitPalettePosition } from '../src/effects/randomFill'
 import { rouletteRing, rouletteTiming } from '../src/effects/rouletteRing'
 import { spectrumCycle } from '../src/effects/spectrumCycle'
@@ -17,6 +18,7 @@ import {
   axisChangeWeight,
   sampleEffect,
   withWeatherPalette,
+  type EffectPreset,
 } from '../src/effects'
 
 function energy(color: { r: number; g: number; b: number }): number {
@@ -55,6 +57,9 @@ describe('effect synchronization contract', () => {
       'unit-chase',
       'unit-random',
       'roulette-ring',
+      'two-tone-trail',
+      'firework-rise',
+      'pillar-fill',
     ])
     expect(decoded.every(
       (effect) => effect.schemaVersion === EFFECT_SCHEMA_VERSION,
@@ -315,146 +320,66 @@ describe('spectrum compatibility effect', () => {
 })
 
 describe('moving rings effect', () => {
-  it('crossfades all default rings on the simulator 48-LED strip', () => {
-    const preset = createDefaultEffectPreset('moving-rings')
-    const pixels = Array.from({ length: 48 }, (_, ledIndex) => ({
-      ledIndex,
-      color: sampleEffect(
-        preset,
-        createEffectContext(0, 40, ledIndex, 48),
-      ),
-    }))
-    const litPixels = pixels.filter(({ color }) => energy(color) > 0)
-    const litRadii = [...new Set(litPixels.map(({ ledIndex }) => (
-      createEffectContext(0, 40, ledIndex, 48).normalizedRadius
-    )))].sort((a, b) => a - b)
-    const radialStep = 2 / 47
-    const ringGroups = litRadii.reduce<number[][]>((groups, radius) => {
-      const current = groups.at(-1)
-      if (!current || radius - current.at(-1)! > radialStep * 1.1) {
-        groups.push([radius])
-      } else {
-        current.push(radius)
-      }
-      return groups
-    }, [])
+  const RED = { r: 1, g: 0, b: 0 }
+  const BLUE = { r: 0, g: 0, b: 1 }
+  const rings = (ringCount: number, colors = [RED, BLUE]) => ({
+    ...createDefaultEffectPreset('moving-rings'),
+    parameters: { speedHz: 0.25, ringCount },
+    color: { mode: 'gradient' as const, axis: 'radius' as const, colors },
+  })
+  const strip = (preset: EffectPreset, frame: number) =>
+    Array.from({ length: 101 }, (_, led) => sampleEffect(preset, createEffectContext(frame, 40, led, 101)))
+  // Weighted radius of one ring on the left half: where its centre is.
+  const centreOf = (ring: number, ringCount: number, frame: number) => {
+    let sum = 0
+    let weighted = 0
+    for (let led = 0; led <= 50; led += 1) {
+      const context = createEffectContext(frame, 40, led, 101)
+      const weight = ringWeights(context, { speedHz: 0.25, ringCount })[ring]
+      sum += weight
+      weighted += weight * context.normalizedRadius
+    }
+    return weighted / sum
+  }
 
-    expect(ringGroups).toHaveLength(3)
-    expect(litPixels.every(({ color }) => (
-      color.r === color.g && color.g === color.b
-    ))).toBe(true)
-    expect(litPixels.reduce((sum, { color }) => sum + color.r, 0)).toBeCloseTo(
-      6,
-      10,
-    )
+  it('gives each default ring its own colour, one LED of energy on each side', () => {
+    const preset = createDefaultEffectPreset('moving-rings')
+    expect(preset.color.mode).toBe('gradient')
+    const pixels = Array.from({ length: 129 }, (_, led) => sampleEffect(preset, createEffectContext(0, 40, led, 129)))
+    const lit = pixels.filter((color) => energy(color) > 0)
+    expect(new Set(lit.map((color) => JSON.stringify(color))).size).toBeGreaterThan(2)
+    const weights = Array.from({ length: 129 }, (_, led) =>
+      ringWeights(createEffectContext(0, 40, led, 129), preset.parameters).reduce((sum, weight) => sum + weight, 0))
+    expect(weights.reduce((sum, weight) => sum + weight, 0)).toBeCloseTo(6, 10)
   })
 
-  it('renders one pure-white LED on each side of a diameter', () => {
-    const preset = createDefaultEffectPreset('moving-rings')
-    preset.parameters.speedHz = 0.25
-    preset.parameters.ringCount = 1
-
-    const pixels = Array.from({ length: 101 }, (_, ledIndex) => ({
-      ledIndex,
-      color: sampleEffect(
-        preset,
-        createEffectContext(0, 40, ledIndex, 101),
-      ),
-    }))
-    const litPixels = pixels.filter(({ color }) => energy(color) > 0)
-
-    expect(litPixels.map(({ ledIndex }) => ledIndex)).toEqual([25, 75])
-    expect(litPixels.every(({ color }) => (
-      color.r === 1 && color.g === 1 && color.b === 1
-    ))).toBe(true)
+  it('moves every ring across the whole half, top to bottom', () => {
+    // One ring: centre 0.5 + 0.5 sin(2π · 0.25 t): the bottom ends at 1 s, the top at 3 s.
+    expect(centreOf(0, 1, 40)).toBeCloseTo(1, 6)
+    expect(centreOf(0, 1, 120)).toBeCloseTo(0, 6)
+    const top = strip(rings(1), 120)
+    expect(top[50]).toEqual(RED)
   })
 
-  it('moves a single ring from the center to the circumference', () => {
-    const preset = createDefaultEffectPreset('moving-rings')
-    preset.parameters.speedHz = 0.25
-    preset.parameters.ringCount = 1
-
-    const initialCenter = sampleEffect(
-      preset,
-      createEffectContext(0, 40, 75, 101),
-    )
-    const oldCenterAfterQuarterCycle = sampleEffect(
-      preset,
-      createEffectContext(40, 40, 75, 101),
-    )
-    const newCenterAfterQuarterCycle = sampleEffect(
-      preset,
-      createEffectContext(40, 40, 100, 101),
-    )
-
-    expect(initialCenter).toEqual({ r: 1, g: 1, b: 1 })
-    expect(oldCenterAfterQuarterCycle).toEqual({ r: 0, g: 0, b: 0 })
-    expect(newCenterAfterQuarterCycle).toEqual({ r: 1, g: 1, b: 1 })
+  it('lets neighbouring rings pass through each other', () => {
+    const order = Array.from({ length: 160 }, (_, frame) => Math.sign(centreOf(0, 2, frame) - centreOf(1, 2, frame)))
+    expect(order).toContain(1)
+    expect(order).toContain(-1)
+    // At 1.5 s both centres meet at 0.854: the LEDs there show red and blue added together.
+    const meeting = strip(rings(2), 60)
+    const both = meeting.filter((color) => color.r > 0 && color.b > 0)
+    expect(both.length).toBeGreaterThan(0)
   })
 
-  it('lets the innermost ring reach center and outermost reach circumference', () => {
-    const preset = createDefaultEffectPreset('moving-rings')
-    preset.parameters.speedHz = 0.25
-    preset.parameters.ringCount = 3
-
-    const outerAtPositiveLimit = sampleEffect(
-      preset,
-      createEffectContext(40, 40, 100, 101),
-    )
-    const innerAtNegativeLimit = sampleEffect(
-      preset,
-      createEffectContext(120, 40, 50, 101),
-    )
-
-    expect(outerAtPositiveLimit).toEqual({ r: 1, g: 1, b: 1 })
-    expect(innerAtNegativeLimit).toEqual({ r: 1, g: 1, b: 1 })
-  })
-
-  it('moves adjacent rings in opposite directions without collision', () => {
-    const preset = createDefaultEffectPreset('moving-rings')
-    preset.parameters.speedHz = 0.25
-    preset.parameters.ringCount = 2
-
-    const litRadii = (frame: number) => [...new Set(
-      Array.from({ length: 101 }, (_, ledIndex) => ({
-        radius: createEffectContext(frame, 40, ledIndex, 101).normalizedRadius,
-        color: sampleEffect(
-          preset,
-          createEffectContext(frame, 40, ledIndex, 101),
-        ),
-      }))
-        .filter(({ color }) => energy(color) > 2.9)
-        .map(({ radius }) => radius),
-    )].sort((a, b) => a - b)
-
-    expect(litRadii(0)).toEqual([0.24, 0.76])
-    expect(litRadii(40)).toEqual([0.48, 0.52])
-    expect(litRadii(40)[0]).toBeLessThan(litRadii(40)[1])
-  })
-
-  it('splits one LED of white energy between adjacent radial pixels', () => {
-    const preset = createDefaultEffectPreset('moving-rings')
-    preset.parameters.speedHz = 0.25
-    preset.parameters.ringCount = 1
-
-    const pixels = Array.from({ length: 101 }, (_, ledIndex) => ({
-      ledIndex,
-      color: sampleEffect(
-        preset,
-        createEffectContext(1, 40, ledIndex, 101),
-      ),
-    }))
-    const litPixels = pixels.filter(({ color }) => energy(color) > 0)
-
-    expect(litPixels.map(({ ledIndex }) => ledIndex)).toEqual([24, 25, 75, 76])
-    expect(litPixels.every(({ color }) => (
-      color.r > 0 && color.r < 1 &&
-      color.r === color.g && color.g === color.b
-    ))).toBe(true)
-    expect(litPixels.reduce((sum, { color }) => sum + color.r, 0)).toBeCloseTo(
-      2,
-      10,
-    )
+  it('cycles the colours when there are more rings than colours, and uses one colour when solid', () => {
+    // Frame 0, three rings: centres 0.5, 0.067 and 0.933; ring 3 takes colour 1 again (red), ring 2 blue.
+    const three = strip(rings(3), 0)
+    const near = (radius: number) => three.filter((_, led) => Math.abs(Math.abs(led / 50 - 1) - radius) < 0.025 && energy(three[led]) > 0)
+    expect(near(0.933).every((color) => color.b === 0 && color.r > 0)).toBe(true)
+    expect(near(0.067).every((color) => color.r === 0 && color.b > 0)).toBe(true)
+    const solid = { ...rings(3), color: { mode: 'solid' as const, color: { r: 0, g: 1, b: 0 } } }
+    const green = strip(solid, 0).filter((color) => energy(color) > 0)
+    expect(green.every((color) => color.r === 0 && color.b === 0 && color.g <= 1)).toBe(true)
   })
 })
 
@@ -594,9 +519,155 @@ describe('random-fill', () => {
     }
   })
 
+  it('staggers the units\' starts in a fresh random order each round', () => {
+    const staggered = { ...preset, parameters: { ...preset.parameters, fillSeconds: 5, acceleration: 1, holdSeconds: 1, fadeOutSeconds: 0, staggerSeconds: 2 } }
+    const unitLit = (frame: number, unit: number) => Array.from({ length: 156 }, (_, led) => {
+      const color = sampleEffect(staggered, createEffectContext(frame, fps, led, 156, unit, 9))
+      return Math.max(color.r, color.g, color.b)
+    }).filter((value) => value > 0).length
+    // One unit runs 6 s; the whole round adds the 2 s stagger.
+    expect(getEffectCompletion(staggered, fps, 9)?.frames).toBe(8 * fps)
+    const startOf = (round: number, unit: number) => {
+      const base = round * 8 * fps
+      let frame = base
+      while (unitLit(frame, unit) === 0) frame += 1
+      return frame - base
+    }
+    const firstLit = Math.floor(5 * fps / 156) // the first LED lights this many frames after a unit's start
+    const delays = (round: number) => Array.from({ length: 9 }, (_, unit) => startOf(round, unit) - firstLit)
+    const first = delays(0)
+    // Evenly spread over the 2 s (every 10 frames), one unit per slot.
+    expect([...first].sort((a, b) => a - b)).toEqual([0, 10, 20, 30, 40, 50, 60, 70, 80])
+    expect(delays(1)).not.toEqual(first)
+    // Each unit goes dark after its own round (fade out 0 would otherwise stay lit) and waits for the round to end.
+    const last = first.indexOf(0)
+    expect(unitLit(6 * fps - 1, last)).toBe(156)
+    expect(unitLit(6 * fps, last)).toBe(0)
+    expect(unitLit(8 * fps - 1, last)).toBe(0)
+    // The stagger is the same for every unit.
+    expect(getVariableParameters('random-fill').map((parameter) => parameter.key)).not.toContain('staggerSeconds')
+  })
+
   function createEffectCompletionFrames() {
     return getEffectCompletion(preset, fps, 9)?.frames
   }
+})
+
+describe('pillar-fill', () => {
+  const fps = 40
+  const preset = createDefaultEffectPreset('pillar-fill')
+  const level = (frame: number, unit: number, rank?: number) => {
+    const context = createEffectContext(frame, fps, 10, 129, unit, 9)
+    if (rank !== undefined) context.unitRank = rank
+    return sampleEffect(preset, context).r
+  }
+
+  it('lights whole units one by one in pillar order, holds, then fades out together', () => {
+    // Step 0.5 s, fade in 0.3 s, hold 2 s, fade out 1 s, dark 0.5 s: 8 × 20 + 12 + 80 + 40 + 20 frames.
+    expect(getEffectCompletion(preset, fps, 9)?.frames).toBe(312)
+    expect(level(0, 0)).toBeCloseTo(1 / 12, 12)
+    expect(level(11, 0)).toBe(1)
+    expect(level(19, 1)).toBe(0)
+    expect(level(20, 1)).toBeCloseTo(1 / 12, 12)
+    // The rank, not the unit number, sets the order.
+    expect(level(20, 1, 5)).toBe(0)
+    expect(level(111, 1, 5)).toBe(1)
+    expect(level(250, 4)).toBe(1)
+    expect(level(260, 4)).toBeGreaterThan(0)
+    expect(level(260, 4)).toBeLessThan(1)
+    expect(level(300, 4)).toBe(0)
+    expect(level(312, 0)).toBeCloseTo(1 / 12, 12)
+  })
+
+  it('starts slow and speeds up with acceleration, over the same total time', () => {
+    const fast = { ...preset, parameters: { ...preset.parameters, acceleration: 2 } }
+    const starts = Array.from({ length: 9 }, (_, rank) => {
+      let frame = 0
+      while (sampleEffect(fast, Object.assign(createEffectContext(frame, fps, 10, 129, 0, 9), { unitRank: rank })).r === 0) frame += 1
+      return frame
+    })
+    // 160 frames from the first start to the last: round(160 · sqrt(r / 8)).
+    expect(starts).toEqual([0, 57, 80, 98, 113, 126, 139, 150, 160])
+    const gaps = starts.slice(1).map((start, index) => start - starts[index])
+    gaps.slice(1).forEach((gap, index) => expect(gap).toBeLessThanOrEqual(gaps[index]))
+    expect(getEffectCompletion(fast, fps, 9)?.frames).toBe(312)
+  })
+})
+
+describe('firework-rise', () => {
+  const fps = 40
+  const preset = createDefaultEffectPreset('firework-rise')
+  const levels = (frame: number, parameters: Record<string, number> = {}) =>
+    Array.from({ length: 129 }, (_, led) => sampleEffect(
+      { ...preset, parameters: { ...preset.parameters, ...parameters } },
+      createEffectContext(frame, fps, led, 129, 0, 9),
+    ).r)
+
+  it('shoots a meteor up both halves with a tail that breaks up as it fades', () => {
+    // Rise 1.5 s (60 frames) plus a 1 s gap.
+    expect(getEffectCompletion(preset, fps, 9)?.frames).toBe(100)
+    const start = levels(0)
+    expect([start[0], start[128], start[64]]).toEqual([1, 1, 0])
+    const mid = levels(30)
+    expect([mid[32], mid[96]]).toEqual([1, 1]) // the head is halfway up
+    expect(mid.slice(36, 93).every((value) => value === 0)).toBe(true) // nothing above it yet
+    expect(mid[20]).toBeGreaterThan(0)
+    expect(mid[20]).toBeLessThan(1)
+    expect(mid[31]).toBeGreaterThan(mid[5])
+    // After reaching the top the tail keeps fading through the gap; the next meteor starts at frame 100.
+    expect(levels(70)[64]).toBeGreaterThan(0)
+    expect(levels(70)[64]).toBeLessThan(1)
+    expect(levels(100)[0]).toBe(1)
+  })
+
+  it('breaks the tail up with per-LED rates, or fades evenly without randomness', () => {
+    const tail = (parameters: Record<string, number>) => levels(55, parameters).slice(0, 52)
+    const even = tail({ randomness: 0 })
+    even.slice(1).forEach((value, index) => expect(value).toBeGreaterThanOrEqual(even[index]))
+    const broken = tail({ randomness: 1 })
+    expect(broken.slice(1).some((value, index) => value < broken[index])).toBe(true)
+  })
+
+  it('falls from the top with direction 1 and colours by the trail when asked', () => {
+    const down = levels(0, { direction: 1 })
+    expect([down[64], down[0]]).toEqual([1, 0])
+    const coloured = {
+      ...preset,
+      parameters: { ...preset.parameters, trailColor: 1, randomness: 0 },
+      color: { mode: 'gradient' as const, axis: 'strip' as const, colors: [{ r: 1, g: 1, b: 1 }, { r: 1, g: 0, b: 0 }] },
+    }
+    const at = (led: number) => sampleEffect(coloured, createEffectContext(30, fps, led, 129, 0, 9))
+    expect(at(32)).toEqual({ r: 1, g: 1, b: 1 })
+    expect(at(20).g).toBeLessThan(at(20).r)
+  })
+})
+
+describe('two-tone-trail', () => {
+  const fps = 40
+  const preset = createDefaultEffectPreset('two-tone-trail')
+  const colours = (frame: number) =>
+    Array.from({ length: 129 }, (_, led) => sampleEffect(preset, createEffectContext(frame, fps, led, 129, 0, 9)))
+
+  it('keeps a red base while a green dot runs up and down both halves with a trail', () => {
+    expect(getEffectCompletion(preset, fps, 9)?.frames).toBe(160)
+    const start = colours(0)
+    expect(start[0]).toEqual({ r: 0, g: 1, b: 0 })
+    expect(start[128]).toEqual({ r: 0, g: 1, b: 0 })
+    expect(start[64]).toEqual({ r: 1, g: 0, b: 0 })
+    const quarter = colours(40)
+    expect(quarter[32]).toEqual(quarter[96])
+    expect(quarter[31].g).toBeGreaterThan(0.99)
+    expect(quarter[26].g).toBeGreaterThan(quarter[22].g)
+    expect(quarter[40]).toEqual({ r: 1, g: 0, b: 0 })
+    expect(quarter[10]).toEqual({ r: 1, g: 0, b: 0 })
+    expect(colours(80)[64]).toEqual({ r: 0, g: 1, b: 0 })
+  })
+
+  it('shows only the dot and trail with a solid colour', () => {
+    const solid = { ...preset, color: { mode: 'solid' as const, color: { r: 0, g: 0, b: 1 } } }
+    expect(sampleEffect(solid, createEffectContext(0, fps, 64, 129, 0, 9))).toEqual({ r: 0, g: 0, b: 0 })
+    expect(sampleEffect(solid, createEffectContext(0, fps, 0, 129, 0, 9))).toEqual({ r: 0, g: 0, b: 1 })
+  })
 })
 
 describe('weather palette', () => {

@@ -35,7 +35,7 @@ MAX_TRANSITION_BEATS = 32
 MAX_TRANSITION_SECONDS = 10
 MAX_END_FADE_SECONDS = 10
 SHOW_ID = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
-TRANSITIONS = ("cut", "fade-black", "crossfade", "unit-fade-black")
+TRANSITIONS = ("cut", "fade-black", "crossfade", "unit-fade-black", "unit-breathe-black")
 
 
 def _number(value: Any, name: str, low: float, high: float) -> float:

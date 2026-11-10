@@ -21,6 +21,9 @@ export type EffectId =
   | 'unit-chase'
   | 'unit-random'
   | 'roulette-ring'
+  | 'two-tone-trail'
+  | 'firework-rise'
+  | 'pillar-fill'
 
 export type RgbColor = {
   r: number
@@ -96,6 +99,11 @@ export type EffectSampleContext = {
   normalizedRadius: number
   unitRelativeY: number
   unitPhaseProjection: number
+  /**
+   * 依柱子的順序（0 起；pillarRanks）：柱子依場地配置順序、每根柱子上由低到高。沒有時用 unitIndex。
+   * Order by pillar (from 0; pillarRanks): pillars in layout order, low to high on each. Falls back to unitIndex.
+   */
+  unitRank?: number
 }
 
 export type EffectModule = {
@@ -108,10 +116,28 @@ export type EffectModule = {
     context: EffectSampleContext,
     parameters: Readonly<Record<string, number>>,
   ) => RgbColor
-  brightness?: (context: EffectSampleContext, colorMode: EffectColor['mode']) => number
-  gradientPosition?: (context: EffectSampleContext, axis: 'strip' | 'radius', colorCount: number) => number
+  brightness?: (
+    context: EffectSampleContext,
+    colorMode: EffectColor['mode'],
+    parameters?: Readonly<Record<string, number>>,
+  ) => number
+  gradientPosition?: (
+    context: EffectSampleContext,
+    axis: 'strip' | 'radius',
+    colorCount: number,
+    parameters?: Readonly<Record<string, number>>,
+  ) => number
+  /**
+   * 漸層模式時直接給出最終顏色（取代「亮度 × 漸層取色」，不看方向與中途切換）。
+   * In gradient mode, the final colour directly (replaces brightness × gradient; ignores the axis and axis change).
+   */
+  gradientColor?: (
+    context: EffectSampleContext,
+    parameters: Readonly<Record<string, number>>,
+    colors: readonly RgbColor[],
+  ) => RgbColor
   /** Overrides the 'unit' axis position (default unitIndex / (unitCount - 1)). */
-  unitGradientPosition?: (context: EffectSampleContext) => number
+  unitGradientPosition?: (context: EffectSampleContext, parameters?: Readonly<Record<string, number>>) => number
   loopGradient?: boolean
   /**
    * 雨天亮度：效果趨近線條的版本，base 是晴天亮度；沒有時雨天不變。

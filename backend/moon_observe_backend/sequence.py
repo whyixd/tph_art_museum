@@ -15,6 +15,8 @@ from .effects import Rgb, completion_frames as _completion_frames, preset_to_jso
 from .fixture_effects import fixture_completion_frames, fixture_preset_to_json, render_fixture_frame, validate_fixture_preset
 from .renderer import render_frame
 
+TRANSITION_KINDS = ("cut", "fade-black", "crossfade", "unit-fade-black", "unit-breathe-black")
+
 # v2：每段同時指定轉燈（spinner，必填）、球燈（ball）、洗牆燈（wash）；省略 ball／wash = 全暗。v1 讀入時自動升級。
 # v2: each step sets the spinner preset (required) and optional ball / wash fixture presets (omitted = off).
 # v1 documents ({"preset": ...} per step) are upgraded on read.
@@ -110,7 +112,7 @@ def validate_sequence(
         transition = step["transition"]
         if not isinstance(transition, dict) or set(transition) != {"kind", "seconds"}:
             raise ValueError("invalid sequence transition")
-        if transition["kind"] not in ("cut", "fade-black", "crossfade", "unit-fade-black"):
+        if transition["kind"] not in TRANSITION_KINDS:
             raise ValueError("unknown sequence transition")
         seconds = transition["seconds"]
         if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or not math.isfinite(seconds) or not 0 <= seconds <= 10:
@@ -168,19 +170,28 @@ def compile_sequence(
     return tuple(compiled)
 
 
-UnitFade = tuple[int, int] | None
+# (elapsed, frames of the fade-out half, breathe) on the outgoing layer of unit-fade-black / unit-breathe-black.
+UnitFade = tuple[int, int, bool] | None
+BREATH_DEPTH = 0.85
 
 
-def unit_fade_weight(fade: tuple[int, int], unit_index: int, unit_count: int) -> float:
-    """Per-unit fade-out of unit-fade-black, identical to the frontend's unitFadeWeight.
+def unit_fade_weight(fade: tuple[int, int, bool], unit_index: int, unit_count: int) -> float:
+    """Per-unit weight of unit-fade-black / unit-breathe-black, identical to the frontend's unitFadeWeight.
 
-    Each unit fades over a third of the first half (the whole half for one unit); start
+    unit-fade-black: each unit fades over a third of the first half (the whole half for one unit); start
     times spread evenly from unit 1 to the last, which reaches black at the midpoint.
+    unit-breathe-black: each unit takes half of the first half, spread the same way; its first 2/3 is one
+    breath (down to 1 - BREATH_DEPTH and back), the last 1/3 fades out.
     """
-    elapsed, frames = fade
-    fade_frames = frames / min(3, max(1, unit_count))
+    elapsed, frames, breathe = fade
+    fade_frames = frames / min(2 if breathe else 3, max(1, unit_count))
     start = 0 if unit_count <= 1 else (frames - fade_frames) * unit_index / (unit_count - 1)
-    return 1 - min(1.0, max(0.0, (elapsed + 1 - start) / fade_frames))
+    progress = min(1.0, max(0.0, (elapsed + 1 - start) / fade_frames))
+    if not breathe:
+        return 1 - progress
+    if progress < 2 / 3:
+        return 1 - BREATH_DEPTH * (0.5 - 0.5 * math.cos(2 * math.pi * progress * 1.5))
+    return min(1.0, (1 - progress) * 3)
 
 
 def _layer_details(
@@ -230,11 +241,11 @@ def _step_layers(
     else:
         midpoint = (frames - 1) // 2
         current_weight = (elapsed - midpoint) / (frames - 1 - midpoint) if elapsed > midpoint else 0.0
-        if previous["transition_kind"] == "unit-fade-black":
+        if previous["transition_kind"] in ("unit-fade-black", "unit-breathe-black"):
             # 前半逐台淡出（各台權重見 unit_fade_weight），後半同 fade-black 一起淡入。
             # First half fades units out one by one (see unit_fade_weight); the second half fades in like fade-black.
             outgoing_weight = 1.0 if elapsed <= midpoint else 0.0
-            unit_fade = (elapsed, midpoint + 1)
+            unit_fade = (elapsed, midpoint + 1, previous["transition_kind"] == "unit-breathe-black")
         else:
             outgoing_weight = 1 - (elapsed + 1) / (midpoint + 1) if elapsed < midpoint else 0.0
     prior_elapsed = previous["duration"] - 1

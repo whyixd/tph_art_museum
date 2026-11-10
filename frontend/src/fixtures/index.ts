@@ -19,6 +19,7 @@ export type FixtureEffectId =
   | 'space-wave'
   | 'fixture-twinkle'
   | 'fixture-chase'
+  | 'fixture-firework'
 
 export type FixtureAxis = 'height' | 'x' | 'y' | 'index'
 
@@ -92,6 +93,17 @@ export const FIXTURE_MANIFEST: readonly FixtureManifestEntry[] = [
     id: 'fixture-chase', label: '巡行', description: '依編號（DMX 鏈順序）逐顆巡行，後面拖 tailCount 顆漸暗。',
     parameters: [parameter('stepSeconds', '每步時間', 's', 0.05, 5, 0.05, 0.3), parameter('tailCount', '尾巴顆數', '', 0, 10, 1, 2), direction],
   },
+  {
+    id: 'fixture-firework', label: '煙火蔓延',
+    description: '像煙火：從最低的球燈開始，依高度往高處一顆接一顆炸開（最高一顆晚 spreadSeconds 秒）；每顆先全亮，再隨機閃爍並漸暗，持續 burstSeconds 秒。全部結束後全暗 gapSeconds 秒再重新開始。預設一輪 5 秒，剛好是轉燈「煙火上升」兩顆流星。',
+    parameters: [
+      parameter('spreadSeconds', '蔓延時間', 's', 0, 10, 0.25, 2),
+      parameter('burstSeconds', '每顆持續', 's', 0.25, 10, 0.25, 2.5),
+      parameter('gapSeconds', '全暗時間', 's', 0, 10, 0.25, 0.5),
+      parameter('density', '亮起比例', '', 0.05, 1, 0.05, 0.6),
+      parameter('flickerFrames', '閃爍間隔', '影格', 1, 20, 1, 2),
+    ],
+  },
 ]
 
 /** 雨天：每顆各自隨機相位閃亮後衰減。 / Rain: each fixture flashes at its own random phase, then decays. */
@@ -120,6 +132,19 @@ function frames(seconds: number, fps: number): number {
   return Math.max(1, Math.round(seconds * fps))
 }
 
+/** 可為 0 的整數影格。 / Whole frames, zero allowed. */
+function framesOrZero(seconds: number, fps: number): number {
+  return Math.max(0, Math.round(seconds * fps))
+}
+
+/** 煙火蔓延：(蔓延, 每顆持續, 全暗, 一輪) 影格。 / fixture-firework: (spread, burst, gap, cycle) frames. */
+export function fixtureFireworkTiming(p: Readonly<Record<string, number>>, fps: number) {
+  const spread = framesOrZero(p.spreadSeconds, fps)
+  const burst = frames(p.burstSeconds, fps)
+  const gap = framesOrZero(p.gapSeconds, fps)
+  return { spread, burst, gap, cycle: spread + burst + gap }
+}
+
 function cycle(value: number): number {
   return value - Math.floor(value)
 }
@@ -144,6 +169,8 @@ export function getFixtureCompletion(preset: FixturePreset, fps: number, fixture
       return Math.max(1, Math.ceil(fps / p.speedHz))
     case 'fixture-chase':
       return frames(p.stepSeconds, fps) * Math.max(1, fixtureCount)
+    case 'fixture-firework':
+      return fixtureFireworkTiming(p, fps).cycle
     default:
       return null
   }
@@ -185,6 +212,18 @@ export function fixtureBrightness(preset: FixturePreset, context: FixtureContext
       const behind = mod(head - order, count)
       const tail = Math.trunc(p.tailCount)
       return behind <= tail ? 1 - behind / (tail + 1) : 0
+    }
+    case 'fixture-firework': {
+      // 依高度晚開始：最低一顆先炸開，最高一顆晚 spread 影格。 / Delay by height: lowest first, highest spread frames later.
+      const { spread, burst, cycle: round } = fixtureFireworkTiming(p, context.controllerFps)
+      const local = frame - Math.floor(frame / round) * round - Math.round(context.normalizedHeight * spread)
+      if (local < 0 || local >= burst) return 0
+      // 先全亮（點燃），之後隨機閃爍並以平方漸暗。 / Fully lit when it ignites, then random flicker fading quadratically.
+      const flicker = Math.max(1, Math.round(p.flickerFrames))
+      if (local < flicker) return 1
+      const on = hash01(Math.floor(frame / flicker), context.fixtureIndex, 31) < p.density
+      const remaining = 1 - local / burst
+      return on ? remaining * remaining : 0
     }
   }
 }

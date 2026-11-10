@@ -9,6 +9,7 @@ import { EditableNumberInput } from './SequenceEditor'
 
 const TRANSITION_LABELS: Record<TransitionKind, string> = {
   cut: '直接切換', crossfade: '交叉淡化', 'fade-black': '淡出至黑再淡入', 'unit-fade-black': '逐台淡出至黑再淡入',
+  'unit-breathe-black': '逐台呼吸後淡出至黑再淡入',
 }
 
 export function formatClock(seconds: number): string {

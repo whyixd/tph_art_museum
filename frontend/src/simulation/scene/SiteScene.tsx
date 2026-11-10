@@ -26,7 +26,7 @@ import {
   type FixturePreset,
   type WeatherPalette,
 } from '../../fixtures'
-import { poleArms, ROOM_DEPTH_CM, sceneBounds, scenePositions, toScene, type LayoutPosition, type SceneBounds, type ScenePoint, type SiteLayout } from '../../site/layout'
+import { pillarRanks, poleArms, ROOM_DEPTH_CM, sceneBounds, scenePositions, toScene, type LayoutPosition, type SceneBounds, type ScenePoint, type SiteLayout } from '../../site/layout'
 import { buildLoopLeds, SPINNER_RADIUS, STRIP_COUNT } from '../../site/spinnerGeometry'
 import {
   angleAtTime,
@@ -122,8 +122,9 @@ type UnitPlacement = { index: number; position: ScenePoint }
 
 /** Spinner colours by effect pixel, cached per (unit, controller frame): effects only change at frame boundaries. */
 function useSpinnerColors(props: SiteSceneProps, unitCount: number) {
-  const { settings, weather, effectPreset, sequence, unitColors } = props
+  const { settings, weather, effectPreset, sequence, unitColors, layout } = props
   const ledCount = settings.ledCount
+  const ranks = useMemo(() => pillarRanks(layout.spinners, layout.poles), [layout])
   const weatherPreset = useMemo(() => {
     const cache = new WeakMap<EffectPreset, EffectPreset>()
     return (preset: EffectPreset): EffectPreset => {
@@ -137,7 +138,7 @@ function useSpinnerColors(props: SiteSceneProps, unitCount: number) {
   }, [weather?.color, weather?.category])
   const cache = useMemo(() => new Map<string, Float32Array>(), [
     weatherPreset, effectPreset, sequence, ledCount, unitCount, unitColors, settings.controllerFps,
-    settings.unitFrameOffsetStep, weather?.frameStep,
+    settings.unitFrameOffsetStep, weather?.frameStep, ranks,
   ])
   const frameStep = spinnerFrameStep(props)
   return (unit: number, globalFrame: number): Float32Array => {
@@ -161,9 +162,11 @@ function useSpinnerColors(props: SiteSceneProps, unitCount: number) {
         const offset = ignoresWeatherTiming(layer.preset.effectId) ? 0 : unit * frameStep
         const frame = layerControllerFrame(layer, unitPreset, settings.controllerFps, unitCount, offset)
         for (let led = 0; led < ledCount; led += 1) {
-          const color = sampleEffect(preset, createEffectContext(
+          const context = createEffectContext(
             frame, settings.controllerFps, led, ledCount, unit, unitCount, layer.localFrame,
-          ), layer.elapsedFrame, raining)
+          )
+          context.unitRank = ranks[unit]
+          const color = sampleEffect(preset, context, layer.elapsedFrame, raining)
           colors[led * 3] += color.r * weight
           colors[led * 3 + 1] += color.g * weight
           colors[led * 3 + 2] += color.b * weight

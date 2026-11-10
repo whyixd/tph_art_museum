@@ -181,6 +181,11 @@ function UnitVariationEditor({
   )
 }
 
+// 這些效果的顏色不看漸層方向（隨機填滿每台一色、雙色拖尾依亮點經過取色、往返光環每環一色）。
+// These effects ignore the gradient axis (random-fill: one colour per unit; two-tone-trail: by the passing dot;
+// moving-rings: one colour per ring).
+const IGNORES_AXIS: readonly EffectId[] = ['random-fill', 'two-tone-trail', 'moving-rings']
+
 const AXIS_LABELS: ReadonlyArray<[GradientAxis, string]> = [
   ['radius', '頂部 → 底部'],
   ['strip', '底部一側 → 頂部 → 另一側'],
@@ -372,8 +377,8 @@ export function ControlPanel({
     </label>
   )
 
-  // 隨機填滿不論方向都是每台一個純色，不提供切換。 / random-fill ignores the axis, so it has no axis change.
-  const axisChangeEditor = () => colorConfig.mode === 'gradient' && effectPreset.effectId !== 'random-fill' && (
+  // 隨機填滿、雙色拖尾不論方向都一樣，不提供切換。 / random-fill and two-tone-trail ignore the axis, so no axis change.
+  const axisChangeEditor = () => colorConfig.mode === 'gradient' && !IGNORES_AXIS.includes(effectPreset.effectId) && (
     <AxisChangeEditor axis={colorConfig.axis} change={colorConfig.axisChange} onChange={(axisChange) => {
       const { axisChange: _omit, ...color } = colorConfig
       onEffectColor(axisChange ? { ...color, axisChange } : color)
@@ -398,7 +403,7 @@ export function ControlPanel({
         />
       ) : (
         <>
-          {showAxis && axisSelect(colorConfig.axis)}
+          {showAxis && !IGNORES_AXIS.includes(effectPreset.effectId) && axisSelect(colorConfig.axis)}
           {showAxis && axisChangeEditor()}
           <GradientEditor
             colors={colorConfig.colors}

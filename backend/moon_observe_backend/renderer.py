@@ -93,6 +93,7 @@ def render_frame(
                 global_controller_frame=global_frame,
                 unit_relative_y=_virtual_height(index, count, phase_frame, fps, rpm, phase) if upper_half else 0.0,
                 unit_phase_projection=projection,
+                unit_rank=unit.get("pillarRank"),
             ),
             global_frame,
             raining,

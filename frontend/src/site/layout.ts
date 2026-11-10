@@ -96,6 +96,34 @@ export const ARM_REACH_CM = 120
 export type PoleArm = { from: ScenePoint; to: ScenePoint }
 
 /**
+ * 依柱子的順序（效果 pillar-fill 用；與後端 config.pillar_ranks 相同）：每台轉燈歸屬平面上最近、距離在 ARM_REACH_CM
+ * 內的柱子，依（柱子在配置中的順序、高度 z、燈台編號）排序；沒有柱子或位置的轉燈排在最後（依編號）。回傳每台的名次。
+ * Order by pillar (pillar-fill; same as backend config.pillar_ranks): each spinner belongs to the nearest pole in plan
+ * within ARM_REACH_CM; sorted by (pole order in the layout, height z, unit); spinners without a pole or position come
+ * last, by unit. Returns each unit's rank.
+ */
+export function pillarRanks(spinners: readonly (LayoutPosition | null)[], poles: readonly LayoutPosition[]): number[] {
+  const keys = spinners.map((position, unit) => {
+    let pole = Infinity
+    let bestDistance = ARM_REACH_CM
+    if (position?.x !== undefined && position.y !== undefined) {
+      poles.forEach((candidate, index) => {
+        const distance = Math.hypot(candidate.x! - position.x!, candidate.y! - position.y!)
+        if (distance <= bestDistance) {
+          pole = index
+          bestDistance = distance
+        }
+      })
+    }
+    return { unit, pole, z: pole === Infinity ? 0 : position?.z ?? 0 }
+  })
+  const sorted = [...keys].sort((a, b) => a.pole - b.pole || a.z - b.z || a.unit - b.unit)
+  const ranks = new Array<number>(spinners.length)
+  sorted.forEach((key, rank) => { ranks[key.unit] = rank })
+  return ranks
+}
+
+/**
  * A horizontal arm from the nearest pole (in plan, within ARM_REACH_CM) to each placed light, at the light's
  * attachment height: spinners hang from their top (centre + `spinnerRadiusCm`), fixtures from their centre.
  */

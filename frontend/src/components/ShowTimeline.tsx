@@ -382,7 +382,7 @@ export function ShowTimeline({ editor, fallbackSeconds }: ShowTimelineProps) {
       </div>
 
       {mode === 'sections' ? (
-        <p className="control-note">
+        <p className="control-note timeline-help">
           點時間軸跳到該位置；點段落選取（右側「演出」分頁可改細節）；拖曳段落開頭改開始位置，會吸附到拍點（按住 Option 不吸附）。
           空白鍵播放／停止。
         </p>

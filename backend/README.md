@@ -16,7 +16,7 @@ Backend 持續將與 frontend `EffectPreset v2` 一致的效果輸出為 Art-Net
 
 - `config.toml`：本機 Art-Net 目的 IP、universe（從 **0** 開始）或多個 target、可選來源 IP、FPS、RPM、燈組索引、天氣座標，以及 preset／sequence JSON 路徑。此本機檔不進版控；新機器可複製 `config.example.toml` 為 `config.toml`，再填入實際 IP。
 - `preset.example.json`：前端同版的效果、顏色與參數範例。實際運行建議複製為不進版控的 `preset.json`，並在 TOML 的 `render.preset` 指定它；控制模式會保存到此檔。路徑相對於 TOML 檔案。
-- `sequence.example.json`：版本化串接範例。實際播放與 UI 儲存只使用 `render.sequence` 指向的一份 `sequence.json`，不進版控；若檔案不存在，後端首次啟動會以目前 preset 建立單段串接。若想以範例串接啟動，先複製範例為 `sequence.json`。檔案中的每段含 EffectPreset、播放次數或時間、轉場（`cut`、`fade-black`、`crossfade`，或逐台淡出的 `unit-fade-black`，v0.1.6 以前的後端不接受）；根層 `ending` 可選維持最後畫面、循環播放或指定秒數淡出至黑。舊檔若沒有 `ending`，會依維持最後畫面讀取。前後端透過同一個 API 存取，瀏覽器不直接讀寫 Raspberry Pi 檔案。
+- `sequence.example.json`：版本化串接範例。實際播放與 UI 儲存只使用 `render.sequence` 指向的一份 `sequence.json`，不進版控；若檔案不存在，後端首次啟動會以目前 preset 建立單段串接。若想以範例串接啟動，先複製範例為 `sequence.json`。檔案中的每段含 EffectPreset、播放次數或時間、轉場（`cut`、`fade-black`、`crossfade`，或逐台淡出的 `unit-fade-black`，v0.1.6 以前的後端不接受；逐台呼吸後淡出的 `unit-breathe-black` 需要本版以後的後端）；根層 `ending` 可選維持最後畫面、循環播放或指定秒數淡出至黑。舊檔若沒有 `ending`，會依維持最後畫面讀取。前後端透過同一個 API 存取，瀏覽器不直接讀寫 Raspberry Pi 檔案。
 - `unit_id`／`unit_count` 影響部分效果的燈組時序；要與前端畫面一致，需填入相同的值。目前固定每組 156 個邏輯像素。
 
 舊的 `config.live.json` 若存在，只是未使用的本機備份；新程式不會讀取它。

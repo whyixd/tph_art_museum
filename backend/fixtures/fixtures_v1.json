@@ -1520,6 +1520,202 @@
           "b": 1
         }
       }
+    },
+    {
+      "schemaVersion": 1,
+      "effectId": "fixture-firework",
+      "parameters": {
+        "spreadSeconds": 2,
+        "burstSeconds": 2.5,
+        "gapSeconds": 0.5,
+        "density": 0.6,
+        "flickerFrames": 2
+      },
+      "color": {
+        "mode": "solid",
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1
+        }
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "effectId": "fixture-firework",
+      "parameters": {
+        "spreadSeconds": 2,
+        "burstSeconds": 2.5,
+        "gapSeconds": 0.5,
+        "density": 0.6,
+        "flickerFrames": 2
+      },
+      "color": {
+        "mode": "solid",
+        "color": {
+          "r": 0.2,
+          "g": 0.75,
+          "b": 0.1
+        }
+      },
+      "maxLevel": 0.6
+    },
+    {
+      "schemaVersion": 1,
+      "effectId": "fixture-firework",
+      "parameters": {
+        "spreadSeconds": 2,
+        "burstSeconds": 2.5,
+        "gapSeconds": 0.5,
+        "density": 0.6,
+        "flickerFrames": 2
+      },
+      "color": {
+        "mode": "gradient",
+        "axis": "height",
+        "colors": [
+          {
+            "r": 1,
+            "g": 0.1,
+            "b": 0
+          },
+          {
+            "r": 0.1,
+            "g": 0.9,
+            "b": 0.3
+          },
+          {
+            "r": 0,
+            "g": 0.2,
+            "b": 1
+          },
+          {
+            "r": 0.9,
+            "g": 0.8,
+            "b": 0.1
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "effectId": "fixture-firework",
+      "parameters": {
+        "spreadSeconds": 2,
+        "burstSeconds": 2.5,
+        "gapSeconds": 0.5,
+        "density": 0.6,
+        "flickerFrames": 2
+      },
+      "color": {
+        "mode": "gradient",
+        "axis": "x",
+        "colors": [
+          {
+            "r": 1,
+            "g": 0.1,
+            "b": 0
+          },
+          {
+            "r": 0.1,
+            "g": 0.9,
+            "b": 0.3
+          },
+          {
+            "r": 0,
+            "g": 0.2,
+            "b": 1
+          },
+          {
+            "r": 0.9,
+            "g": 0.8,
+            "b": 0.1
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "effectId": "fixture-firework",
+      "parameters": {
+        "spreadSeconds": 2,
+        "burstSeconds": 2.5,
+        "gapSeconds": 0.5,
+        "density": 0.6,
+        "flickerFrames": 2
+      },
+      "color": {
+        "mode": "gradient",
+        "axis": "y",
+        "colors": [
+          {
+            "r": 1,
+            "g": 0.1,
+            "b": 0
+          },
+          {
+            "r": 0.1,
+            "g": 0.9,
+            "b": 0.3
+          },
+          {
+            "r": 0,
+            "g": 0.2,
+            "b": 1
+          },
+          {
+            "r": 0.9,
+            "g": 0.8,
+            "b": 0.1
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "effectId": "fixture-firework",
+      "parameters": {
+        "spreadSeconds": 2,
+        "burstSeconds": 2.5,
+        "gapSeconds": 0.5,
+        "density": 0.6,
+        "flickerFrames": 2
+      },
+      "color": {
+        "mode": "gradient",
+        "axis": "index",
+        "colors": [
+          {
+            "r": 1,
+            "g": 0.1,
+            "b": 0
+          },
+          {
+            "r": 0.1,
+            "g": 0.9,
+            "b": 0.3
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "effectId": "fixture-firework",
+      "parameters": {
+        "spreadSeconds": 0.75,
+        "burstSeconds": 1,
+        "gapSeconds": 0.75,
+        "density": 0.2,
+        "flickerFrames": 4
+      },
+      "color": {
+        "mode": "solid",
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1
+        }
+      }
     }
   ],
   "samples": [
@@ -21826,6 +22022,3030 @@
         "g": 0,
         "b": 0
       }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.008099999999999994,
+        "g": 0.008099999999999994,
+        "b": 0.008099999999999994
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.001619999999999999,
+        "g": 0.001619999999999999,
+        "b": 0.001619999999999999
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.3481000000000001,
+        "g": 0.3481000000000001,
+        "b": 0.3481000000000001
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.06962000000000002,
+        "g": 0.06962000000000002,
+        "b": 0.06962000000000002
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.8281000000000001,
+        "g": 0.8281000000000001,
+        "b": 0.8281000000000001
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.16562000000000002,
+        "g": 0.16562000000000002,
+        "b": 0.16562000000000002
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.48999999999999994,
+        "g": 0.48999999999999994,
+        "b": 0.48999999999999994
+      }
+    },
+    {
+      "presetIndex": 47,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.09799999999999999,
+        "g": 0.09799999999999999,
+        "b": 0.09799999999999999
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.0009719999999999993,
+        "g": 0.003644999999999997,
+        "b": 0.00048599999999999967
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.00019439999999999987,
+        "g": 0.0007289999999999995,
+        "b": 0.00009719999999999994
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.04177200000000001,
+        "g": 0.15664500000000003,
+        "b": 0.020886000000000005
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.008354400000000003,
+        "g": 0.03132900000000001,
+        "b": 0.004177200000000002
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.09937200000000002,
+        "g": 0.372645,
+        "b": 0.04968600000000001
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.0198744,
+        "g": 0.074529,
+        "b": 0.0099372
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.05879999999999999,
+        "g": 0.22049999999999995,
+        "b": 0.029399999999999996
+      }
+    },
+    {
+      "presetIndex": 48,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.01176,
+        "g": 0.04409999999999999,
+        "b": 0.00588
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.0003353503184713375,
+        "g": 0.003967452229299361,
+        "b": 0.005752547770700633
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.0000670700636942675,
+        "g": 0.0007934904458598723,
+        "b": 0.0011505095541401267
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.23435777070063699,
+        "g": 0.1359142038216561,
+        "b": 0.03791407643312103
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.0468715541401274,
+        "g": 0.027182840764331216,
+        "b": 0.007582815286624206
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.034284394904458615,
+        "g": 0.4056107643312103,
+        "b": 0.5881092356687898
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.006856878980891723,
+        "g": 0.08112215286624207,
+        "b": 0.11762184713375796
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.14450318471337575,
+        "g": 0.35610828025477703,
+        "b": 0.11516560509554138
+      }
+    },
+    {
+      "presetIndex": 49,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.02890063694267515,
+        "g": 0.07122165605095541,
+        "b": 0.023033121019108278
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.00040499999999999976,
+        "g": 0.004454999999999997,
+        "b": 0.005264999999999995
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.00008099999999999996,
+        "g": 0.0008909999999999995,
+        "b": 0.0010529999999999992
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.3481000000000001,
+        "g": 0.03481000000000001,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.06962000000000002,
+        "g": 0.006962000000000002,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.041405000000000004,
+        "g": 0.45545500000000005,
+        "b": 0.538265
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.008281000000000002,
+        "g": 0.09109100000000002,
+        "b": 0.107653
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.44099999999999995,
+        "g": 0.39199999999999996,
+        "b": 0.048999999999999995
+      }
+    },
+    {
+      "presetIndex": 50,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.08819999999999999,
+        "g": 0.0784,
+        "b": 0.0098
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.00040499999999999976,
+        "g": 0.004454999999999997,
+        "b": 0.005264999999999995
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.00008099999999999996,
+        "g": 0.0008909999999999995,
+        "b": 0.0010529999999999992
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.3481000000000001,
+        "g": 0.03481000000000001,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.06962000000000002,
+        "g": 0.006962000000000002,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.041405000000000004,
+        "g": 0.45545500000000005,
+        "b": 0.538265
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.008281000000000002,
+        "g": 0.09109100000000002,
+        "b": 0.107653
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.44099999999999995,
+        "g": 0.39199999999999996,
+        "b": 0.048999999999999995
+      }
+    },
+    {
+      "presetIndex": 51,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.08819999999999999,
+        "g": 0.0784,
+        "b": 0.0098
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.004454999999999997,
+        "g": 0.004049999999999997,
+        "b": 0.001214999999999999
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.0008909999999999995,
+        "g": 0.0008099999999999995,
+        "b": 0.00024299999999999984
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.3481000000000001,
+        "g": 0.03481000000000001,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.06962000000000002,
+        "g": 0.006962000000000002,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.45545500000000005,
+        "g": 0.41405000000000003,
+        "b": 0.124215
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.09109100000000002,
+        "g": 0.08281000000000001,
+        "b": 0.024843
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.048999999999999995,
+        "g": 0.44099999999999995,
+        "b": 0.14699999999999996
+      }
+    },
+    {
+      "presetIndex": 52,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.0098,
+        "g": 0.08819999999999999,
+        "b": 0.029399999999999996
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 0,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.2,
+        "g": 0.2,
+        "b": 0.2
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 7,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.07562500000000001,
+        "g": 0.07562500000000001,
+        "b": 0.07562500000000001
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.015125000000000003,
+        "g": 0.015125000000000003,
+        "b": 0.015125000000000003
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0.140625,
+        "g": 0.140625,
+        "b": 0.140625
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 133,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0.028125,
+        "g": 0.028125,
+        "b": 0.028125
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 0,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.12101910828025478,
+        "normalizedX": 0,
+        "normalizedY": 0
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 18,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.5286624203821656,
+        "normalizedX": 0.5,
+        "normalizedY": 0.5
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": false,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 53,
+      "context": {
+        "controllerFrame": 2651,
+        "controllerFps": 40,
+        "fixtureIndex": 36,
+        "fixtureCount": 37,
+        "normalizedHeight": 0.2611464968152866,
+        "normalizedX": 1,
+        "normalizedY": 1
+      },
+      "raining": true,
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
     }
   ],
   "groupFrames": [
@@ -28596,6 +31816,1014 @@
       "weather": "rain",
       "cycleFrames": 12,
       "sha256": "8f9d6fcd525abe4c4627a4e21523b0b0fbd769928191b2ad7ead40239ca20c40"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "dd596488acc4e9d1021c938ce64a9ec0d7afd86104239f7628cb87924f0c9744"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "38a2aecd74a3ba053f6bc7524ece608ba7be200fbcaff6d82cb53949144e953f"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "15435fb3e1fe1a95d2eb6dcfdf9164ccfc350a4655b172406f1280c03116a3c0"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "2d6e1bbbeef5be65be97db3afd360221cc9d90f8f56976b238275d9961f44f5a"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "f444cc3fc5f1e2b0a19368fd6336389d9f85acc34a2703cacff07ea27c66b197"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "0432139274431109a7f63e511a60863fb307817b8edb6895b04c553761918d69"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "6dd213627c30577bea998b462ccebeaf2b61055edd216b54935d03b5f733e5a4"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "1b49e0f805ca20855430c5f300855e0afd6ec1bf4de18ef1a97bf1df6f4cde7a"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "fd4116bba6484d68cf692cc87b7c872c48fa27df486797d339bd7837ab2524c3"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "ce8af32ffe01a2eabdcfed0e4fd7a9aa5aec98ff5a8803df21c555ee9773a312"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "1bc4c30bb0bb48dfb66064472cd988f81b58deaf496b867d45a858da403e2601"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "18ba71f6d9ddfec0e0fcccabe75886acc7fb4dfab036336a5b694b9a969b9d23"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "201248843266cc18089029d6db5b462fa78f9f189502c7508b84a0c48dc31517"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "5aa6259ae25fcd7abafc36e05fe66e65ac5e95422746b44da125b2d3173f0f0a"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "d53e6c8fc50185e91f27fe96af589b287f909588a7c8fe90abb426833a343d25"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "a934e3f375c9b4738e78e9981f09615df438425e86948b5d4939378f2ee875bc"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "b0b82bbbf7b091d887386d39be59db1b8224bff8c238c56775c8cf5256292003"
+    },
+    {
+      "presetIndex": 47,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "5fa442e268d2d55a1452a11b71c8462c7e9a15a8afb612eaf8bb4c05351400af"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "868f2aa3b21b7ae6e45b72f46b4bb2785581f1b108549fe9344f6a32d1ea1f1c"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "b2c21450bfbefac9e7e54eee8a2fda84c116ce7d315c7e7e028789035eae7cfa"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "53e5568ecf6d637f4248d92e401ef7e3d0624f941719a9547418003eb14435ce"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "3f0f53405014bf80fabe8490704ce859c6b80b0459dd8983b6c527d146bd4091"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "3178df79fce25718b6cf315ab617f535b6bea06de77b1fa69635cc505abf46f9"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "fc762d19b428da057e4412f3aaad2e8f099b17c29f81b10d8b963460f069c799"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "48e61a959d4a4ff0d934c8037a7985d4b93550c3e02665b4b4b13ff1a5093dd6"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "c9bb818ffff3f54bf481463c376d3b8cdc6dd76e30893f6f98dd2a9ec271a860"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "5b632e2105906011e5de2ceb5ce327f40856f7a5c518fe423c2e76da91b700f6"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "cfc409ced7635053c50cebfa94f78e99917f592e7155357c520bc139183ce82d"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "08271a28444b44077784876551c6c0865b8a24ce16bd92cd81d1c96c5d88ab56"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "f93a4d9d78129026bd608709f7c786ba41ab47c6f78767de300d6339d62dddae"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "94fe1f4369743bfc6340c65fa378640851e8d490058e4ae0589485b791914b33"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "4801e9bac9136103fbd4d41e53ae286c82a49982a629e6547ef0da79d05d72a3"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "f68469be22d8cba358e3531d4778035e0cad9ecd68328d2c77cefed5bc2d74c5"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "5b18e82a60892a4e678753a8e794672d157a95b8eb0a17ce56a88d65730595c3"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "758d815a0fa74503b4ba142dc8edeb166c117f4d625d7bbae9cb1fd126918b6f"
+    },
+    {
+      "presetIndex": 48,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "39e5a179ca64cd9ec82152f9980e14f6e951a7902b990705fd61f5e08e55e73a"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "e6ee0543fd3f381bbd76ef5f1e73f9282918ffad12b1abd245c24310ac850f8b"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "38a2aecd74a3ba053f6bc7524ece608ba7be200fbcaff6d82cb53949144e953f"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "15435fb3e1fe1a95d2eb6dcfdf9164ccfc350a4655b172406f1280c03116a3c0"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "5088ac1a8e7cd4a1452d01dd700db133623be4437e2eee3ce8bd3b193e332650"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "f444cc3fc5f1e2b0a19368fd6336389d9f85acc34a2703cacff07ea27c66b197"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "0432139274431109a7f63e511a60863fb307817b8edb6895b04c553761918d69"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "b07b77a75ba721858b7568258f49e68e543319f43b0837fbe1e83dbde32aa66c"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "1b49e0f805ca20855430c5f300855e0afd6ec1bf4de18ef1a97bf1df6f4cde7a"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "fd4116bba6484d68cf692cc87b7c872c48fa27df486797d339bd7837ab2524c3"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "4adfd9e4007b5eba1c1652640401153976c84e18ebed3703af36874475517513"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "1bc4c30bb0bb48dfb66064472cd988f81b58deaf496b867d45a858da403e2601"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "18ba71f6d9ddfec0e0fcccabe75886acc7fb4dfab036336a5b694b9a969b9d23"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "8a05b2b44389664f165899a4f0bfbb4ceae010e1f5115fe5f5551a87bd4626d8"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "5aa6259ae25fcd7abafc36e05fe66e65ac5e95422746b44da125b2d3173f0f0a"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "d53e6c8fc50185e91f27fe96af589b287f909588a7c8fe90abb426833a343d25"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "d5b72c552c01aff5adca28070745e5b9e551e89104e27e7411f11a8bc265ad9f"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "b0b82bbbf7b091d887386d39be59db1b8224bff8c238c56775c8cf5256292003"
+    },
+    {
+      "presetIndex": 49,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "5fa442e268d2d55a1452a11b71c8462c7e9a15a8afb612eaf8bb4c05351400af"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "eb7b5de9d8ea98e39035bb16dda2f0f8b464ad92884214d48986a03f82d3aefe"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "8dd28b51a13b4bbe977c7d45b6b9d23f7de141768b60cbe1be7bcfb4b899372d"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "3d122eec932d07884eb3ad78dd9638011c419f1382ecf57ed9f204c709e26733"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "5bb8f8cbb507638267867c52046e6afed9f6f7401da5ab4f8adde15050dd19c6"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "6f855817d7fcf661a80b6deeebf6f7705574cf2706a4029df1174426ab62f183"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "16d9d9cedf0ea7c852eae697aab34bd94900abf004b4af309af2c36a6792c964"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "da1af1c7afb661d3cf0407e7a5f43d08ad53d54add22aab5ca0fb5ae311879b8"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "adabee913d79826b3a9542584896f754b5250a8611dba4584ab558ea059b7ad0"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "530827ed186d5495c544a44e30fefbc0056339032768d49500c8ebf8b0657413"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "49fc50c1bebdf04021c9a2c8c61fc72f23dfe1053a29faaf070d9306485ebf3e"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "4d08172d7dfd237c335b1c58ee1ecd784a2cc8f43214b430dc70542d26f389d4"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "9f695c619b525c1a094a17d0e8e70864e4a4ccbb53b4e193bb2ccd841cb5747f"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "8a05b2b44389664f165899a4f0bfbb4ceae010e1f5115fe5f5551a87bd4626d8"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "5aa6259ae25fcd7abafc36e05fe66e65ac5e95422746b44da125b2d3173f0f0a"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "d53e6c8fc50185e91f27fe96af589b287f909588a7c8fe90abb426833a343d25"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "d5b72c552c01aff5adca28070745e5b9e551e89104e27e7411f11a8bc265ad9f"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "b0b82bbbf7b091d887386d39be59db1b8224bff8c238c56775c8cf5256292003"
+    },
+    {
+      "presetIndex": 50,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "5fa442e268d2d55a1452a11b71c8462c7e9a15a8afb612eaf8bb4c05351400af"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "eb7b5de9d8ea98e39035bb16dda2f0f8b464ad92884214d48986a03f82d3aefe"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "8dd28b51a13b4bbe977c7d45b6b9d23f7de141768b60cbe1be7bcfb4b899372d"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "3d122eec932d07884eb3ad78dd9638011c419f1382ecf57ed9f204c709e26733"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "5bb8f8cbb507638267867c52046e6afed9f6f7401da5ab4f8adde15050dd19c6"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "6f855817d7fcf661a80b6deeebf6f7705574cf2706a4029df1174426ab62f183"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "16d9d9cedf0ea7c852eae697aab34bd94900abf004b4af309af2c36a6792c964"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "5d6a48f00ff3ae9b19e7e39da50121ea4ab33c9e0bd3ace410207141af2557c5"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "19e19bc164458614bd541496a2b6903b32e4c1dff2b1d9dc577ddcb35564de98"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "c9eb394b0460da3c2eae9558540940864960cdce5ece8808af907b357f9bc95c"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "f9483b7b3ce2b92fdcde2907208f0be9e8b798929650cbd1dfb88eac998e321b"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "f4965995689c5e7ee56ed79a0377c9457d901d0c0dbac073e71122517903f392"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "865ef123764b43579535abe317616a07defe549bcd97525bf825d64d24f8a114"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "8a05b2b44389664f165899a4f0bfbb4ceae010e1f5115fe5f5551a87bd4626d8"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "5aa6259ae25fcd7abafc36e05fe66e65ac5e95422746b44da125b2d3173f0f0a"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "d53e6c8fc50185e91f27fe96af589b287f909588a7c8fe90abb426833a343d25"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "d5b72c552c01aff5adca28070745e5b9e551e89104e27e7411f11a8bc265ad9f"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "b0b82bbbf7b091d887386d39be59db1b8224bff8c238c56775c8cf5256292003"
+    },
+    {
+      "presetIndex": 51,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "5fa442e268d2d55a1452a11b71c8462c7e9a15a8afb612eaf8bb4c05351400af"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "d8f9c152cad0ab7890855c7a905b91678c7a3be2da164dc12502d7da19839a80"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "8dd28b51a13b4bbe977c7d45b6b9d23f7de141768b60cbe1be7bcfb4b899372d"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "3d122eec932d07884eb3ad78dd9638011c419f1382ecf57ed9f204c709e26733"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "77846d4f1d5fa706280e2343c723b6643ebda9e1b6ef976d01dc269fb1da6738"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "6f855817d7fcf661a80b6deeebf6f7705574cf2706a4029df1174426ab62f183"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "16d9d9cedf0ea7c852eae697aab34bd94900abf004b4af309af2c36a6792c964"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "3f1aa54d8c44b2bd9cbd3aa84ca6085d587836d8839ebd496f165f6b5a587862"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "642559a84d278dd6ef043c8999af5b85b708d562f769be1e251153c6c93dc347"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "6a420b5d396a576127a3ba37130660ebc4e0156cb8326debb8d2410519799be8"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "228bbbbfb2967107ef30d8ad7274aa6ad396994641d11fdab31cf5a72198ccf0"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "79051f32cb682d06a22fd406c8d84f52329ea9ecb8a5b77f355e58a0b08735cc"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "c404540fc98a94d2375285806abe11a7d113e906a4f11482ac735b860755a850"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 200,
+      "sha256": "e3083d94135320c09e94c3487a208e5d548bc3e4ac55e44fea549dbff41ef5e4"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 200,
+      "sha256": "5aa6259ae25fcd7abafc36e05fe66e65ac5e95422746b44da125b2d3173f0f0a"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 200,
+      "sha256": "d53e6c8fc50185e91f27fe96af589b287f909588a7c8fe90abb426833a343d25"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 300,
+      "sha256": "4c995a969681a63c69c991facb4b23a58572b0c67ab4900cf432e2b81a8b151f"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 300,
+      "sha256": "b0b82bbbf7b091d887386d39be59db1b8224bff8c238c56775c8cf5256292003"
+    },
+    {
+      "presetIndex": 52,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 300,
+      "sha256": "5fa442e268d2d55a1452a11b71c8462c7e9a15a8afb612eaf8bb4c05351400af"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 100,
+      "sha256": "03f2d0e1a44c1946dd050ec8055c215ed473b290075bde93c8939362a94a24eb"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 100,
+      "sha256": "071665ffa6bbbddce585189aa8e3a543ddb693071f6e359a5bc84ae2c73c3b07"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "balls",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 100,
+      "sha256": "34ca0e7766523c28a1cb1231e6a8cadc0905384551503fd6b4a73f376832e15b"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 150,
+      "sha256": "46b3af404e49fa1d2dfe71da5ff3b390adaab8e39f5a850b7af095c88f8e231b"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 150,
+      "sha256": "8333d13aa3905651168143ad0819ea12d47d6c2a86667e63eeea4594633ac626"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "balls",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 150,
+      "sha256": "5fb227d42bd1aa644ae8121d199f12105e08272e1570ab1491ad5a30d9bad1c1"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 100,
+      "sha256": "d98bb12853733293bb9337b1281e14a2a4974276636b25138bc7247259b2fa17"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 100,
+      "sha256": "9aa76f23ca14e695bbdb1b1b63f61e6beae51d11f66881b15f72371efa438f2d"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "wash",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 100,
+      "sha256": "cef2891ef7e866d1b0596545dc30f9485a7e57a096b8514f8cd2955a4bd01598"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 150,
+      "sha256": "c0fabb5b36105d2a885b8488e36077cfe0ceb44d281fe3c611ef47dbb6059b8a"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 150,
+      "sha256": "5c69179099c75460093f85c7e901446615256b82353ec45d8993b76fbc0185bc"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "wash",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 150,
+      "sha256": "6d39ccf82ba9383c60aba632d98565227a4886391fbc792039c3b3dc43e7202d"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "clear",
+      "cycleFrames": 100,
+      "sha256": "932c2d2c4133dd9e996b2675033db2339ee9a1e1108c56a210f28e6d20735117"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "cloudy",
+      "cycleFrames": 100,
+      "sha256": "0ea10b54837a2f3710ef83ec13576a64adb2c95901cad73893b7738e2f591246"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "single",
+      "fps": 40,
+      "weather": "rain",
+      "cycleFrames": 100,
+      "sha256": "c58141bfbcfebd997c96651d938a5184ab5200f1000d34b2fe31865f1f346ec7"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "clear",
+      "cycleFrames": 150,
+      "sha256": "162a5c00c0b59f8db249db67e53b7b77f85cb3c420a013784b1614b7a5358a55"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "cloudy",
+      "cycleFrames": 150,
+      "sha256": "6e894938b1ccce136dc57445f421d5dd439279d64113af311e51ed92a9a668e7"
+    },
+    {
+      "presetIndex": 53,
+      "geometry": "single",
+      "fps": 60,
+      "weather": "rain",
+      "cycleFrames": 150,
+      "sha256": "2578848ff372efec610695dd80de7aa4f19067468e528a6af1ea6ac7195e4939"
     }
   ]
 }

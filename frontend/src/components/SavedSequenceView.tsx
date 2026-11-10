@@ -2,7 +2,7 @@ import { getEffectManifest } from '../effects'
 import { compileSequence, type SequenceDocument, type SequenceStep } from '../simulation/sequence'
 
 const ENDING_LABELS = { hold: '維持最後畫面', loop: '循環播放', 'fade-black': '淡出至黑' } as const
-const TRANSITION_LABELS = { cut: '直接切換', crossfade: '交叉淡化', 'fade-black': '淡出再淡入', 'unit-fade-black': '逐台淡出再淡入' } as const
+const TRANSITION_LABELS = { cut: '直接切換', crossfade: '交叉淡化', 'fade-black': '淡出再淡入', 'unit-fade-black': '逐台淡出再淡入', 'unit-breathe-black': '逐台呼吸後淡出再淡入' } as const
 
 type SavedSequenceViewProps = {
   document: SequenceDocument | null

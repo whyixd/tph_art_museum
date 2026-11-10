@@ -86,7 +86,7 @@ sampleEffect(preset, context, elapsedFrame, raining) -> RGB（各通道 0–1）
 |---|---|---|---|
 | `spectrum-cycle` | 光譜循環 | 20 影格 | – |
 | `center-out-sine` | 中心擴散 | ✓ | 只留波峰細環 |
-| `moving-rings` | 往返光環 | ✓ | – |
+| `moving-rings` | 往返光環（每環一色、互相穿過） | ✓ | – |
 | `sequential-center-fill` | 逐月（Unit 1→9 由中心填滿） | ✓ | 同心條紋 |
 | `periodic-leds` | 落雨 | ✓ | – |
 | `random-leds` | 隨機亮點 | – | – |
@@ -104,9 +104,12 @@ sampleEffect(preset, context, elapsedFrame, raining) -> RGB（各通道 0–1）
 | `unit-chase` | 逐台巡行 | ✓ | 不適用 |
 | `unit-random` | 隨機單台 | ✓ | 不適用 |
 | `roulette-ring` | 輪盤收束 | ✓ | 不適用 |
+| `two-tone-trail` | 雙色拖尾（底色＋上下來回的亮點與拖尾） | ✓ | – |
+| `firework-rise` | 煙火上升（參考 WLED Meteor：流星由底部衝上頂部，尾巴不規則碎開淡出） | ✓ | – |
+| `pillar-fill` | 依柱子逐台點亮（柱子依配置順序、每根由低到高） | ✓ | 不適用 |
 
 - 週期：前端 `getEffectCompletion`，後端 `completion_frames`（`None` = 無週期，串接只能以時間播放）。
-- `unit-chase`、`unit-random`、`roulette-ring` 是**整台為單位**的效果：`ignoresWeatherTiming` / `WEATHER_TIMING_FREE`，九台共用時間表，不套用多雲錯開、沒有雨天版本、參數不可逐台變化。
+- `unit-chase`、`unit-random`、`roulette-ring`、`pillar-fill` 是**整台為單位**的效果：`ignoresWeatherTiming` / `WEATHER_TIMING_FREE`，九台共用時間表，不套用多雲錯開、沒有雨天版本、參數不可逐台變化。
 - 各效果的詳細行為見 `frontend/src/effects/README.md`。雨天常數 `RAIN_LINES = {stripeSpacing: 6, streakFrames: 2, sparseDensity: 0.18, denseDensity: 0.45}`（`rain.ts` 與 `effects.py` 同值）。
 
 ### 1.5 後端每影格渲染流程
@@ -129,10 +132,11 @@ sampleEffect(preset, context, elapsedFrame, raining) -> RGB（各通道 0–1）
 權威來源：`backend/moon_observe_backend/sequence.py`、`frontend/src/simulation/sequence.ts`（兩者同邏輯）。
 
 - 段落 `playback`：`{"kind":"count","count":1..100}`（需有週期）或 `{"kind":"time","seconds":(0,3600]}`。
-- 段落 `transition`：`cut`／`fade-black`／`crossfade`／`unit-fade-black`，`seconds` 0–10。**第 i 段的 transition 用在「第 i 段 → 第 i+1 段」**，佔用下一段開頭的影格。
+- 段落 `transition`：`cut`／`fade-black`／`crossfade`／`unit-fade-black`／`unit-breathe-black`，`seconds` 0–10。**第 i 段的 transition 用在「第 i 段 → 第 i+1 段」**，佔用下一段開頭的影格。
   - `crossfade`：兩層權重線性交叉。
   - `fade-black`：前半淡出、後半淡入。
   - `unit-fade-black`：前半逐台淡出（`unit_fade_weight`），後半一起淡入。
+  - `unit-breathe-black`：保留前一段的畫面，前半逐台各呼吸一次（暗到 15% 再亮回）後淡出；每台佔前半的 1/2、開始時間平均錯開，後半一起淡入。呼吸要時間，建議 6–10 秒（演出可用拍數）。
 - `ending`：`hold`（停在最後畫面）、`loop`（最後一段的 transition 接回第一段）、`fade-black`（`seconds` 淡出至黑）。
 - 編譯後每段有 `start`、`duration`、`cycle`、`transition_frames`；渲染時最多兩層（outgoing + current）加權相加。最多 64 段。
 

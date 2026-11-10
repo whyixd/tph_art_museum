@@ -1,9 +1,10 @@
 import hashlib
+import math
 import json
 import unittest
 from pathlib import Path
 
-from moon_observe_backend.effects import EffectContext, axis_change_weight, completion_frames, default_preset, preset_for_unit, preset_to_json, sample_effect, unit_palette_position, validate_preset
+from moon_observe_backend.effects import EffectContext, axis_change_weight, completion_frames, default_preset, preset_for_unit, preset_to_json, sample_effect, unit_palette_position, validate_preset, variable_parameters
 from moon_observe_backend.renderer import render_frame, rgb_bytes
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "effects_v2.json"
@@ -51,8 +52,8 @@ class EffectParityTests(unittest.TestCase):
     def test_frontend_golden_vectors(self) -> None:
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
         presets = [validate_preset(preset) for preset in fixture["presets"]]
-        self.assertEqual(20, len({preset["effectId"] for preset in presets}))
-        self.assertEqual(720, len(fixture["samples"]))
+        self.assertEqual(23, len({preset["effectId"] for preset in presets}))
+        self.assertEqual(828, len(fixture["samples"]))
         for sample in fixture["samples"]:
             data = sample["context"]
             context = EffectContext(
@@ -76,7 +77,7 @@ class EffectParityTests(unittest.TestCase):
     def test_frontend_full_frame_bytes(self) -> None:
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
         presets = [validate_preset(preset) for preset in fixture["presets"]]
-        self.assertEqual(1440, len(fixture["frames"]))
+        self.assertEqual(1656, len(fixture["frames"]))
         for case in fixture["frames"]:
             preset = presets[case["presetIndex"]]
             pixels = [
@@ -214,6 +215,130 @@ class EffectParityTests(unittest.TestCase):
         # Unit 2 sits at palette position 4/8 on any axis, including the weather palette's.
         self.assertEqual({(0.5, 0.0, 0.5)}, set(render_frame(preset, unit, 61 * 40, color_override=weather)))
 
+    def test_random_fill_staggers_unit_starts(self):
+        self.assertEqual(0, validate_preset(default_preset("random-fill"))["parameters"]["staggerSeconds"])
+        preset = default_preset("random-fill")
+        preset["parameters"].update(fillSeconds=5, acceleration=1, holdSeconds=1, fadeOutSeconds=0, staggerSeconds=2)
+        preset = validate_preset(preset)
+        self.assertEqual(8 * 40, completion_frames(preset, 40, 9))
+
+        def lit(frame: int, unit: int) -> int:
+            return sum(any(sample_effect(preset, EffectContext(frame, 40, led, 156, unit, 9))) for led in range(156))
+
+        def delays(loop: int) -> list[int]:
+            result = []
+            for unit in range(9):
+                frame = loop * 320
+                while lit(frame, unit) == 0:
+                    frame += 1
+                result.append(frame - loop * 320 - 200 // 156)
+            return result
+
+        first = delays(0)
+        self.assertEqual([0, 10, 20, 30, 40, 50, 60, 70, 80], sorted(first))
+        self.assertNotEqual(first, delays(1))
+        leader = first.index(0)
+        self.assertEqual((156, 0, 0), (lit(239, leader), lit(240, leader), lit(319, leader)))
+        self.assertNotIn("staggerSeconds", variable_parameters("random-fill"))
+
+    def test_moving_rings_cross_with_their_own_colours(self):
+        raw = default_preset("moving-rings")
+        self.assertEqual("gradient", raw["color"]["mode"])
+        raw["parameters"] = {"speedHz": 0.25, "ringCount": 2}
+        raw["color"] = {"mode": "gradient", "axis": "radius", "colors": [{"r": 1, "g": 0, "b": 0}, {"r": 0, "g": 0, "b": 1}]}
+        preset = validate_preset(raw)
+
+        def strip(frame: int) -> list[tuple[float, ...]]:
+            return [sample_effect(preset, EffectContext(frame, 40, led, 101)) for led in range(101)]
+
+        # At 1.5 s both rings meet at 0.854 and their colours add; before and after they are apart.
+        self.assertTrue(any(color[0] > 0 and color[2] > 0 for color in strip(60)))
+        self.assertFalse(any(color[0] > 0 and color[2] > 0 for color in strip(20)))
+        # One ring reaches the top (LED 50) at 3 s.
+        raw["parameters"]["ringCount"] = 1
+        single = validate_preset(raw)
+        self.assertEqual((1.0, 0.0, 0.0), sample_effect(single, EffectContext(120, 40, 50, 101)))
+
+    def test_pillar_fill_lights_units_in_rank_order(self):
+        preset = validate_preset(default_preset("pillar-fill"))
+        self.assertEqual(312, completion_frames(preset, 40, 9))
+
+        def level(frame: int, unit: int, rank: int | None = None) -> float:
+            return sample_effect(preset, EffectContext(frame, 40, 10, 129, unit, 9, unit_rank=rank))[0]
+
+        self.assertAlmostEqual(1 / 12, level(0, 0), places=12)
+        self.assertEqual(1.0, level(11, 0))
+        self.assertEqual(0.0, level(19, 1))
+        self.assertEqual(0.0, level(20, 1, 5))
+        self.assertEqual(1.0, level(111, 1, 5))
+        self.assertEqual(1.0, level(250, 4))
+        self.assertTrue(0 < level(260, 4) < 1)
+        self.assertEqual(0.0, level(300, 4))
+        self.assertEqual((), variable_parameters("pillar-fill"))
+        raw = default_preset("pillar-fill")
+        raw["parameters"]["acceleration"] = 2
+        fast = validate_preset(raw)
+
+        def start(rank: int) -> int:
+            frame = 0
+            while sample_effect(fast, EffectContext(frame, 40, 10, 129, 0, 9, unit_rank=rank))[0] == 0:
+                frame += 1
+            return frame
+
+        self.assertEqual([0, 57, 80, 98, 113, 126, 139, 150, 160], [start(rank) for rank in range(9)])
+
+    def test_firework_rise_meteor(self):
+        preset = validate_preset(default_preset("firework-rise"))
+        self.assertEqual(100, completion_frames(preset, 40, 9))
+
+        def levels(frame: int, **parameters) -> list[float]:
+            raw = default_preset("firework-rise")
+            raw["parameters"].update(parameters)
+            target = validate_preset(raw)
+            return [sample_effect(target, EffectContext(frame, 40, led, 129, 0, 9))[0] for led in range(129)]
+
+        start = levels(0)
+        self.assertEqual([1.0, 1.0, 0.0], [start[0], start[128], start[64]])
+        mid = levels(30)
+        self.assertEqual([1.0, 1.0], [mid[32], mid[96]])
+        self.assertEqual({0.0}, set(mid[36:93]))
+        self.assertTrue(0 < mid[20] < 1)
+        self.assertTrue(0 < levels(70)[64] < 1)
+        self.assertEqual(1.0, levels(100)[0])
+        even = levels(55, randomness=0)[:52]
+        self.assertEqual(sorted(even), even)
+        broken = levels(55, randomness=1)[:52]
+        self.assertNotEqual(sorted(broken), broken)
+        self.assertEqual([1.0, 0.0], [levels(0, direction=1)[64], levels(0, direction=1)[0]])
+
+    def test_two_tone_trail_base_colour_and_moving_dot(self):
+        preset = validate_preset(default_preset("two-tone-trail"))
+        self.assertEqual(160, completion_frames(preset, 40, 9))
+
+        def colours(frame: int) -> list[tuple[float, ...]]:
+            return [sample_effect(preset, EffectContext(frame, 40, led, 129, 0, 9)) for led in range(129)]
+
+        # Frame 0: the dot is at the bottom of both halves (LEDs 0 and 128), green; the top is the red base.
+        start = colours(0)
+        self.assertEqual((0.0, 1.0, 0.0), start[0])
+        self.assertEqual((0.0, 1.0, 0.0), start[128])
+        self.assertEqual((1.0, 0.0, 0.0), start[64])
+        # A quarter round trip later both dots sit halfway up, mirrored; the trail is below them (red above and far below).
+        quarter = colours(40)
+        self.assertEqual(quarter[32], quarter[96])
+        self.assertGreater(quarter[31][1], 0.99)
+        self.assertGreater(quarter[26][1], quarter[22][1])
+        self.assertEqual((1.0, 0.0, 0.0), quarter[40])
+        self.assertEqual((1.0, 0.0, 0.0), quarter[10])
+        # Half way: the dot reaches the top.
+        self.assertEqual((0.0, 1.0, 0.0), colours(80)[64])
+
+        solid = default_preset("two-tone-trail")
+        solid["color"] = {"mode": "solid", "color": {"r": 0, "g": 0, "b": 1}}
+        solid = validate_preset(solid)
+        self.assertEqual((0.0, 0.0, 0.0), sample_effect(solid, EffectContext(0, 40, 64, 129, 0, 9)))
+        self.assertEqual((0.0, 0.0, 1.0), sample_effect(solid, EffectContext(0, 40, 0, 129, 0, 9)))
+
     def test_weather_palette_opt_out_keeps_own_colors(self):
         preset = default_preset("color-breathing")
         preset["color"] = {"mode": "solid", "color": {"r": 1, "g": 0, "b": 0}, "weatherPalette": False}
@@ -235,7 +360,7 @@ class EffectParityTests(unittest.TestCase):
 
     def test_frontend_unit_variation_values_and_cycles(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
-        self.assertEqual(81, len(fixture["unitVariations"]))
+        self.assertEqual(108, len(fixture["unitVariations"]))
         for case in fixture["unitVariations"]:
             preset = validate_preset(case["preset"])
             self.assertEqual(case["preset"], preset_to_json(preset))
@@ -345,7 +470,7 @@ if __name__ == "__main__":
 class UnitEffectTests(unittest.TestCase):
     def test_frontend_unit_effect_hashes(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
-        self.assertEqual(11, len(fixture["unitEffects"]))
+        self.assertEqual(16, len(fixture["unitEffects"]))
         for case in fixture["unitEffects"]:
             preset = validate_preset(case["preset"])
             unit_count = case["unitCount"]
@@ -377,7 +502,7 @@ class UnitEffectTests(unittest.TestCase):
     def test_rain_lines_match_frontend(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["rainLines"]
         frames = [frame for start, end in fixture["frameRanges"] for frame in range(start, end)]
-        self.assertEqual(40, len(fixture["cases"]))
+        self.assertEqual(46, len(fixture["cases"]))
         for case in fixture["cases"]:
             preset = validate_preset(default_preset(case["effectId"]))
             data = bytearray()

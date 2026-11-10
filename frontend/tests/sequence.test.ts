@@ -6,6 +6,7 @@ import {
   layerUnitWeight,
   resolveSequenceFrame,
   sequenceSeekFrame,
+  unitFadeWeight,
 } from '../src/simulation/sequence'
 
 describe('effect sequence boundaries', () => {
@@ -155,6 +156,24 @@ describe('unit-by-unit fade to black', () => {
   it('fades a single unit over the whole first half', () => {
     const resolved = resolveSequenceFrame(schedule(), 40 + 19)!
     expect(layerUnitWeight(resolved.layers[0], 0, 1)).toBeCloseTo(0.5)
+  })
+})
+
+describe('unit-breathe-black', () => {
+  it('breathes each unit once, one after another, then fades it out', () => {
+    const fade = (elapsed: number) => ({ elapsed, frames: 200, breathe: true as const })
+    const weights = (elapsed: number) => Array.from({ length: 9 }, (_, unit) => unitFadeWeight(fade(elapsed), unit, 9))
+    // Each unit takes 100 of the 200 fade-out frames, starting every 12.5 frames.
+    expect(weights(32)[0]).toBeLessThan(0.2)
+    expect(weights(32)[8]).toBe(1)
+    expect(weights(66)[0]).toBeGreaterThan(0.95)
+    expect(weights(99)[0]).toBe(0)
+    expect(weights(199)).toEqual(Array(9).fill(0))
+    const steps = [createSequenceStep(1, createDefaultEffectPreset('full-on')), createSequenceStep(2, createDefaultEffectPreset('full-on'))]
+    steps[0].playback = { kind: 'time', seconds: 1 }
+    steps[0].transition = { kind: 'unit-breathe-black', seconds: 2 }
+    const layer = resolveSequenceFrame(compileSequence(steps, 40, 9), 45)!.layers[0]
+    expect(layer.unitFade).toEqual({ elapsed: 5, frames: 40, breathe: true })
   })
 })
 

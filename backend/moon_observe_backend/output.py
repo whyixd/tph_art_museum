@@ -286,6 +286,8 @@ def stream(
                     "unitId": unit_id,
                     "logicalPixelCount": config["pixels"],
                     "frameOffset": (unit_id - 1) * weather["frameStep"] if category == "cloudy" else 0,
+                    # pillar-fill 依柱子的順序。 / pillar-fill's order by pillar.
+                    "pillarRank": (config.get("pillar_ranks") or [])[unit_id - 1] if unit_id <= len(config.get("pillar_ranks") or []) else None,
                 }
                 color_override = weather.get("color") if category is not None else None
                 if flash_color is not None:

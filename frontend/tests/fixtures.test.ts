@@ -44,4 +44,19 @@ describe('fixture effects', () => {
     ;[0, 1 / 3, 2 / 3, 1, 0].forEach((level, index) => expect(levels[index]).toBeCloseTo(level, 12))
     expect(getFixtureCompletion(preset, 40, 5)).toBe(12 * 5)
   })
+
+  it('bursts like fireworks from the lowest ball to the highest', () => {
+    const preset = createDefaultFixturePreset('fixture-firework')
+    const geometry = fixtureGeometry([{ z: 0 }, { z: 500 }, { z: 1000 }])
+    const levels = (frame: number) => renderFixtureFrame(preset, geometry, frame).map((color) => color.r)
+    // Spread 2 s (80 frames), burst 2.5 s, dark 0.5 s: 5 s per round.
+    expect(getFixtureCompletion(preset, 40, 3)).toBe(200)
+    expect(levels(0)).toEqual([1, 0, 0])
+    expect(levels(40)[1]).toBe(1)
+    expect(levels(40)[2]).toBe(0)
+    expect([0, 0.36]).toContainEqual(Number(levels(40)[0].toFixed(2)))
+    expect(levels(80)[2]).toBe(1)
+    expect(levels(190)).toEqual([0, 0, 0])
+    expect(levels(200)).toEqual([1, 0, 0])
+  })
 })

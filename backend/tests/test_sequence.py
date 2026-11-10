@@ -121,6 +121,33 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(1, len(set(incoming)))
         self.assertGreater(incoming[0], 0)
 
+    def test_unit_breathe_black_breathes_each_unit_then_fades(self):
+        raw = document()
+        raw["steps"][0] = {"id": 1, "preset": default_preset("full-on"),
+                           "playback": {"kind": "time", "seconds": 1},
+                           "transition": {"kind": "unit-breathe-black", "seconds": 10}}
+        raw["steps"][1] = {"id": 2, "preset": default_preset("full-on"),
+                           "playback": {"kind": "time", "seconds": 20},
+                           "transition": {"kind": "cut", "seconds": 0}}
+        self.assertEqual("unit-breathe-black", validate_sequence(raw)["steps"][0]["transition"]["kind"])
+        schedule = compile_sequence(raw, 40, 9)
+
+        def brightness(elapsed: int) -> list[float]:
+            return [render_sequence_frame(schedule, {"unitId": unit, "logicalPixelCount": 4, "frameOffset": 0},
+                                          40 + elapsed, unit_count=9, fps=40, rpm=360)[0][0] for unit in range(1, 10)]
+
+        # A 400-frame transition: 200 frames out. Each unit takes 100 frames, starting every 12.5 frames:
+        # one breath over its first 2/3, then a fade over the last 1/3.
+        deepest = brightness(32)
+        self.assertLess(deepest[0], 0.2)
+        self.assertEqual(1.0, deepest[8])
+        self.assertGreater(brightness(66)[0], 0.95)  # back up after the breath
+        self.assertEqual(0.0, brightness(99)[0])
+        self.assertEqual([0.0] * 9, brightness(199))
+        incoming = brightness(300)
+        self.assertEqual(1, len(set(incoming)))
+        self.assertGreater(incoming[0], 0)
+
     def test_validate_boundaries_and_frontend_transition_frames(self):
         raw = document()
         compiled = compile_sequence(raw, 40, 9)

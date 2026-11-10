@@ -1,4 +1,5 @@
 import { centerOutSine } from './centerOutSine'
+import { fireworkRise } from './fireworkRise'
 import { fullOn } from './fullOn'
 import { axisChangeWeight, defaultEffectColor, sampleGradient } from './color'
 import {
@@ -14,6 +15,7 @@ import {
 } from './contract'
 import { movingRings } from './movingRings'
 import { periodicLeds } from './periodicLeds'
+import { pillarFill } from './pillarFill'
 import { reverseTide, wideRings, cometTail, stardustCloud, colorBreathing, sectorSmear, twentyBeat } from './phaseFreeEffects'
 import { randomFill } from './randomFill'
 import { randomLeds } from './randomLeds'
@@ -23,6 +25,7 @@ import { sineSwell } from './sineSwell'
 import { spectrumCycle } from './spectrumCycle'
 import { unitChase } from './unitChase'
 import { unitRandom } from './unitRandom'
+import { twoToneTrail } from './twoToneTrail'
 import { unitVariationValue } from './unitVariation'
 import { worldUpperHalf } from './worldUpperHalf'
 
@@ -47,6 +50,9 @@ const EFFECTS: Record<EffectId, EffectModule> = {
   'unit-chase': unitChase,
   'unit-random': unitRandom,
   'roulette-ring': rouletteRing,
+  'two-tone-trail': twoToneTrail,
+  'firework-rise': fireworkRise,
+  'pillar-fill': pillarFill,
 }
 
 export const EFFECT_MANIFEST = Object.values(EFFECTS).map(
@@ -68,6 +74,9 @@ const FIXED_PARAMETERS: Partial<Record<EffectId, readonly string[]>> = {
     'spreadStepSeconds', 'ringHoldSeconds', 'glitchSeconds', 'glitchSpreadSeconds', 'flickerFrames', 'endDarkSeconds',
   ],
   'random-leds': ['durationMode'],
+  'pillar-fill': ['stepSeconds', 'acceleration', 'fadeInSeconds', 'holdSeconds', 'fadeOutSeconds', 'endDarkSeconds'],
+  // 錯落順序靠九台共用的整輪長度。 / The stagger order relies on one shared round length.
+  'random-fill': ['staggerSeconds'],
 }
 
 export function ignoresWeatherTiming(effectId: EffectId): boolean {
@@ -161,7 +170,7 @@ export function sampleEffect(
 ): RgbColor {
   const effect = EFFECTS[preset.effectId]
   const base = () => {
-    const brightness = effect.brightness?.(context, preset.color.mode)
+    const brightness = effect.brightness?.(context, preset.color.mode, preset.parameters)
     if (brightness !== undefined) return brightness
     const raw = effect.sample(context, preset.parameters)
     return Math.max(raw.r, raw.g, raw.b)
@@ -169,16 +178,17 @@ export function sampleEffect(
   const brightness = raining && effect.rain ? effect.rain(context, preset.parameters, base) : base()
   if (preset.color.mode === 'solid') return scaleRgb(preset.color.color, brightness)
   const { colors, axis, axisChange } = preset.color
+  if (effect.gradientColor && !(raining && effect.rain)) return effect.gradientColor(context, preset.parameters, colors)
   const color = (gradientAxis: GradientAxis) => gradientAxis === 'unit'
     ? sampleGradient(
       colors,
-      effect.unitGradientPosition?.(context)
+      effect.unitGradientPosition?.(context, preset.parameters)
         ?? (context.unitCount <= 1 ? 0 : context.unitIndex / (context.unitCount - 1)),
       false,
     )
     : sampleGradient(
       colors,
-      effect.gradientPosition?.(context, gradientAxis, colors.length)
+      effect.gradientPosition?.(context, gradientAxis, colors.length, preset.parameters)
         ?? (gradientAxis === 'radius' ? context.normalizedRadius : context.normalizedStripPosition),
       effect.loopGradient ?? false,
     )

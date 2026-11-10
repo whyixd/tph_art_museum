@@ -25,6 +25,9 @@ const ids = [
   'unit-chase',
   'unit-random',
   'roulette-ring',
+  'two-tone-trail',
+  'firework-rise',
+  'pillar-fill',
 ] as const
 
 const gradient8 = [
@@ -124,7 +127,8 @@ const fadeSteps = [createSequenceStep(1, createDefaultEffectPreset('full-on')), 
 fadeSteps[0].playback = { kind: 'time', seconds: 1 }
 fadeSteps[0].transition = { kind: 'unit-fade-black', seconds: 1.3 }
 fadeSteps[1].playback = { kind: 'time', seconds: 2 }
-fadeSteps[1].transition = { kind: 'unit-fade-black', seconds: 0.5 }
+// 接回第一段用逐台呼吸後淡出。 / The loop back uses unit-breathe-black.
+fadeSteps[1].transition = { kind: 'unit-breathe-black', seconds: 0.5 }
 const fadeSequence = { schemaVersion: 1 as const, ending: { kind: 'loop' as const }, steps: fadeSteps }
 const fadeSchedule = compileSequence(fadeSteps, 40, 9, fadeSequence.ending)
 const unitFade = {
@@ -184,6 +188,18 @@ const unitEffectCases: [EffectPreset, number][] = [
   [createDefaultEffectPreset('roulette-ring'), 24],
   [createDefaultEffectPreset('sequential-center-fill'), 24],
   [createDefaultEffectPreset('random-fill'), 24],
+  // 依柱子點亮：預設與逐漸加速。 / pillar-fill: default and accelerating.
+  [createDefaultEffectPreset('pillar-fill'), 24],
+  [{ ...createDefaultEffectPreset('pillar-fill'), parameters: { ...createDefaultEffectPreset('pillar-fill').parameters, acceleration: 2.5, fadeInSeconds: 0.15 } }, 24],
+  // 隨機填滿錯落開始。 / random-fill with a staggered start.
+  [{ ...createDefaultEffectPreset('random-fill'), parameters: {
+    fillSeconds: 5, acceleration: 3.5, ledFadeSeconds: 0.25, holdSeconds: 6, fadeOutSeconds: 0.5, staggerSeconds: 2,
+  } }, 9],
+  // 煙火上升（流星）：預設，以及由上往下、依拖尾變色、全碎裂。 / Meteor: default, and falling with trail colour and full randomness.
+  [createDefaultEffectPreset('firework-rise'), 9],
+  [{ ...createDefaultEffectPreset('firework-rise'), parameters: {
+    ...createDefaultEffectPreset('firework-rise').parameters, direction: 1, trailColor: 1, randomness: 1, gapSeconds: 0,
+  }, color: { mode: 'gradient', axis: 'radius', colors: [{ r: 1, g: 1, b: 1 }, { r: 1, g: 0.7, b: 0.1 }, { r: 0.8, g: 0, b: 0 }] } }, 9],
 ]
 const unitEffects = unitEffectCases.map(([preset, unitCount]) => {
   const totalFrames = 2 * getEffectCompletion(preset, 40, unitCount)!.frames

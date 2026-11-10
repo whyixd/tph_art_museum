@@ -1,8 +1,11 @@
 import { getEffectCompletion, type EffectPreset } from '../effects'
 import { getFixtureCompletion, type FixturePreset } from '../fixtures'
 
-/** unit-fade-black: units fade out one after another (1→9), then the next step fades in on all units. */
-export type TransitionKind = 'cut' | 'fade-black' | 'crossfade' | 'unit-fade-black'
+/**
+ * unit-fade-black: units fade out one after another (1→9), then the next step fades in on all units.
+ * unit-breathe-black: the same, but each unit breathes once (dims and comes back) before fading out.
+ */
+export type TransitionKind = 'cut' | 'fade-black' | 'crossfade' | 'unit-fade-black' | 'unit-breathe-black'
 export type SequenceEnding = { kind: 'hold' | 'loop' } | { kind: 'fade-black'; seconds: number }
 /** Which group's cycle a count step counts (backend Sequence v2); the simulator still counts the spinner. */
 export type SequenceClock = 'spinner' | 'ball' | 'wash'
@@ -64,8 +67,8 @@ export type SequenceLayer = {
   cycleFrames: number | null
   sourceFrame: number
   weight: number
-  /** Outgoing layer of unit-fade-black: frames into the fade-out half and that half's length. */
-  unitFade?: { elapsed: number; frames: number }
+  /** Outgoing layer of unit-fade-black / unit-breathe-black: frames into the fade-out half and that half's length. */
+  unitFade?: UnitFade
 }
 
 export type SequenceFrame = {
@@ -213,7 +216,7 @@ export function resolveSequenceFrame(
       ? (elapsed - midpoint) / (transitionFrames - 1 - midpoint)
       : 0
   }
-  const unitFade = previous.transition.kind === 'unit-fade-black'
+  const unitFade = previous.transition.kind === 'unit-fade-black' || previous.transition.kind === 'unit-breathe-black'
   const outgoingWeight = previous.transition.kind === 'crossfade'
     ? 1 - current.weight
     : unitFade
@@ -228,7 +231,9 @@ export function resolveSequenceFrame(
     sourceFrame: cycleStart + previous.startFrame + previous.durationFrames - 1
       - (stepIndex === 0 ? sequence.totalFrames : 0),
     weight: outgoingWeight,
-    ...(unitFade ? { unitFade: { elapsed, frames: midpoint + 1 } } : {}),
+    ...(unitFade ? {
+      unitFade: { elapsed, frames: midpoint + 1, ...(previous.transition.kind === 'unit-breathe-black' ? { breathe: true as const } : {}) },
+    } : {}),
   }
   return { stepIndex, complete: false, layers: [outgoing, current] }
 }
@@ -236,13 +241,24 @@ export function resolveSequenceFrame(
 // 逐台淡出：每台淡出一段（前半的 1/3，台數少時較長），開始時間由第 1 台到最後一台平均錯開，最後一台在前半結束時剛好全黑。
 // Per-unit fade-out: each unit fades over a third of the first half (longer with fewer units), start times spread
 // evenly from the first unit to the last, and the last unit reaches black exactly at the end of the half.
-export function unitFadeWeight(fade: { elapsed: number; frames: number }, unitIndex: number, unitCount: number): number {
-  const fadeFrames = fade.frames / Math.min(3, Math.max(1, unitCount))
+//
+// 逐台呼吸後淡出：每台佔前半的 1/2（呼吸要夠長才看得出來），同樣平均錯開；每台前 2/3 呼吸一次（暗到 1 - BREATH_DEPTH
+// 再亮回來），後 1/3 淡出。
+// Per-unit breathe then fade: each unit takes half of the first half (a breath needs time to read), spread the same
+// way; its first 2/3 is one breath (down to 1 - BREATH_DEPTH and back), the last 1/3 fades out.
+export type UnitFade = { elapsed: number; frames: number; breathe?: true }
+export const BREATH_DEPTH = 0.85
+
+export function unitFadeWeight(fade: UnitFade, unitIndex: number, unitCount: number): number {
+  const fadeFrames = fade.frames / Math.min(fade.breathe ? 2 : 3, Math.max(1, unitCount))
   const start = unitCount <= 1 ? 0 : (fade.frames - fadeFrames) * unitIndex / (unitCount - 1)
-  return 1 - Math.min(1, Math.max(0, (fade.elapsed + 1 - start) / fadeFrames))
+  const progress = Math.min(1, Math.max(0, (fade.elapsed + 1 - start) / fadeFrames))
+  if (!fade.breathe) return 1 - progress
+  if (progress < 2 / 3) return 1 - BREATH_DEPTH * (0.5 - 0.5 * Math.cos(2 * Math.PI * progress * 1.5))
+  return Math.min(1, (1 - progress) * 3)
 }
 
-/** A layer's weight for one unit; only unit-fade-black differs per unit. */
+/** A layer's weight for one unit; only unit-fade-black and unit-breathe-black differ per unit. */
 export function layerUnitWeight(layer: SequenceLayer, unitIndex: number, unitCount: number): number {
   return layer.unitFade ? layer.weight * unitFadeWeight(layer.unitFade, unitIndex, unitCount) : layer.weight
 }

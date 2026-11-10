@@ -247,12 +247,25 @@
         "ringCount": 3
       },
       "color": {
-        "mode": "solid",
-        "color": {
-          "r": 1,
-          "g": 1,
-          "b": 1
-        }
+        "mode": "gradient",
+        "axis": "radius",
+        "colors": [
+          {
+            "r": 0.2,
+            "g": 0.85,
+            "b": 1
+          },
+          {
+            "r": 1,
+            "g": 0.2,
+            "b": 0.75
+          },
+          {
+            "r": 1,
+            "g": 0.7,
+            "b": 0.15
+          }
+        ]
       }
     },
     {
@@ -1683,7 +1696,8 @@
         "acceleration": 2,
         "ledFadeSeconds": 0,
         "holdSeconds": 5,
-        "fadeOutSeconds": 3
+        "fadeOutSeconds": 3,
+        "staggerSeconds": 0
       },
       "color": {
         "mode": "gradient",
@@ -1725,7 +1739,8 @@
         "acceleration": 2,
         "ledFadeSeconds": 0,
         "holdSeconds": 5,
-        "fadeOutSeconds": 3
+        "fadeOutSeconds": 3,
+        "staggerSeconds": 0
       },
       "color": {
         "mode": "solid",
@@ -1744,7 +1759,8 @@
         "acceleration": 2,
         "ledFadeSeconds": 0,
         "holdSeconds": 5,
-        "fadeOutSeconds": 3
+        "fadeOutSeconds": 3,
+        "staggerSeconds": 0
       },
       "color": {
         "mode": "gradient",
@@ -1771,7 +1787,8 @@
         "acceleration": 2,
         "ledFadeSeconds": 0,
         "holdSeconds": 5,
-        "fadeOutSeconds": 3
+        "fadeOutSeconds": 3,
+        "staggerSeconds": 0
       },
       "color": {
         "mode": "gradient",
@@ -2255,6 +2272,380 @@
         "glitchSeconds": 1.2,
         "glitchSpreadSeconds": 2,
         "flickerFrames": 2,
+        "endDarkSeconds": 0.5
+      },
+      "color": {
+        "mode": "gradient",
+        "axis": "radius",
+        "colors": [
+          {
+            "r": 0,
+            "g": 0.1,
+            "b": 1
+          },
+          {
+            "r": 0.15,
+            "g": 0.8,
+            "b": 0.3
+          },
+          {
+            "r": 1,
+            "g": 0.1,
+            "b": 0.2
+          },
+          {
+            "r": 0.8,
+            "g": 0.9,
+            "b": 0
+          },
+          {
+            "r": 0.25,
+            "g": 0.2,
+            "b": 0.7
+          },
+          {
+            "r": 1,
+            "g": 0.6,
+            "b": 0.3
+          },
+          {
+            "r": 0.4,
+            "g": 1,
+            "b": 0.8
+          },
+          {
+            "r": 0.7,
+            "g": 0.1,
+            "b": 0.9
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "two-tone-trail",
+      "parameters": {
+        "periodSeconds": 4,
+        "tailLength": 0.3
+      },
+      "color": {
+        "mode": "gradient",
+        "axis": "strip",
+        "colors": [
+          {
+            "r": 1,
+            "g": 0,
+            "b": 0
+          },
+          {
+            "r": 0,
+            "g": 1,
+            "b": 0
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "two-tone-trail",
+      "parameters": {
+        "periodSeconds": 4,
+        "tailLength": 0.3
+      },
+      "color": {
+        "mode": "solid",
+        "color": {
+          "r": 0.2,
+          "g": 0.75,
+          "b": 0.1
+        }
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "two-tone-trail",
+      "parameters": {
+        "periodSeconds": 4,
+        "tailLength": 0.3
+      },
+      "color": {
+        "mode": "gradient",
+        "axis": "strip",
+        "colors": [
+          {
+            "r": 1,
+            "g": 0.1,
+            "b": 0
+          },
+          {
+            "r": 0,
+            "g": 0.2,
+            "b": 1
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "two-tone-trail",
+      "parameters": {
+        "periodSeconds": 4,
+        "tailLength": 0.3
+      },
+      "color": {
+        "mode": "gradient",
+        "axis": "radius",
+        "colors": [
+          {
+            "r": 0,
+            "g": 0.1,
+            "b": 1
+          },
+          {
+            "r": 0.15,
+            "g": 0.8,
+            "b": 0.3
+          },
+          {
+            "r": 1,
+            "g": 0.1,
+            "b": 0.2
+          },
+          {
+            "r": 0.8,
+            "g": 0.9,
+            "b": 0
+          },
+          {
+            "r": 0.25,
+            "g": 0.2,
+            "b": 0.7
+          },
+          {
+            "r": 1,
+            "g": 0.6,
+            "b": 0.3
+          },
+          {
+            "r": 0.4,
+            "g": 1,
+            "b": 0.8
+          },
+          {
+            "r": 0.7,
+            "g": 0.1,
+            "b": 0.9
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "firework-rise",
+      "parameters": {
+        "travelSeconds": 1.5,
+        "gapSeconds": 1,
+        "headSize": 0.08,
+        "trailSeconds": 1,
+        "randomness": 0.6,
+        "direction": 0,
+        "trailColor": 0
+      },
+      "color": {
+        "mode": "solid",
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1
+        }
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "firework-rise",
+      "parameters": {
+        "travelSeconds": 1.5,
+        "gapSeconds": 1,
+        "headSize": 0.08,
+        "trailSeconds": 1,
+        "randomness": 0.6,
+        "direction": 0,
+        "trailColor": 0
+      },
+      "color": {
+        "mode": "solid",
+        "color": {
+          "r": 0.2,
+          "g": 0.75,
+          "b": 0.1
+        }
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "firework-rise",
+      "parameters": {
+        "travelSeconds": 1.5,
+        "gapSeconds": 1,
+        "headSize": 0.08,
+        "trailSeconds": 1,
+        "randomness": 0.6,
+        "direction": 0,
+        "trailColor": 0
+      },
+      "color": {
+        "mode": "gradient",
+        "axis": "strip",
+        "colors": [
+          {
+            "r": 1,
+            "g": 0.1,
+            "b": 0
+          },
+          {
+            "r": 0,
+            "g": 0.2,
+            "b": 1
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "firework-rise",
+      "parameters": {
+        "travelSeconds": 1.5,
+        "gapSeconds": 1,
+        "headSize": 0.08,
+        "trailSeconds": 1,
+        "randomness": 0.6,
+        "direction": 0,
+        "trailColor": 0
+      },
+      "color": {
+        "mode": "gradient",
+        "axis": "radius",
+        "colors": [
+          {
+            "r": 0,
+            "g": 0.1,
+            "b": 1
+          },
+          {
+            "r": 0.15,
+            "g": 0.8,
+            "b": 0.3
+          },
+          {
+            "r": 1,
+            "g": 0.1,
+            "b": 0.2
+          },
+          {
+            "r": 0.8,
+            "g": 0.9,
+            "b": 0
+          },
+          {
+            "r": 0.25,
+            "g": 0.2,
+            "b": 0.7
+          },
+          {
+            "r": 1,
+            "g": 0.6,
+            "b": 0.3
+          },
+          {
+            "r": 0.4,
+            "g": 1,
+            "b": 0.8
+          },
+          {
+            "r": 0.7,
+            "g": 0.1,
+            "b": 0.9
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "pillar-fill",
+      "parameters": {
+        "stepSeconds": 0.5,
+        "acceleration": 1,
+        "fadeInSeconds": 0.3,
+        "holdSeconds": 2,
+        "fadeOutSeconds": 1,
+        "endDarkSeconds": 0.5
+      },
+      "color": {
+        "mode": "solid",
+        "color": {
+          "r": 1,
+          "g": 1,
+          "b": 1
+        }
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "pillar-fill",
+      "parameters": {
+        "stepSeconds": 0.5,
+        "acceleration": 1,
+        "fadeInSeconds": 0.3,
+        "holdSeconds": 2,
+        "fadeOutSeconds": 1,
+        "endDarkSeconds": 0.5
+      },
+      "color": {
+        "mode": "solid",
+        "color": {
+          "r": 0.2,
+          "g": 0.75,
+          "b": 0.1
+        }
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "pillar-fill",
+      "parameters": {
+        "stepSeconds": 0.5,
+        "acceleration": 1,
+        "fadeInSeconds": 0.3,
+        "holdSeconds": 2,
+        "fadeOutSeconds": 1,
+        "endDarkSeconds": 0.5
+      },
+      "color": {
+        "mode": "gradient",
+        "axis": "strip",
+        "colors": [
+          {
+            "r": 1,
+            "g": 0.1,
+            "b": 0
+          },
+          {
+            "r": 0,
+            "g": 0.2,
+            "b": 1
+          }
+        ]
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "effectId": "pillar-fill",
+      "parameters": {
+        "stepSeconds": 0.5,
+        "acceleration": 1,
+        "fadeInSeconds": 0.3,
+        "holdSeconds": 2,
+        "fadeOutSeconds": 1,
         "endDarkSeconds": 0.5
       },
       "color": {
@@ -3565,9 +3956,9 @@
         "unitPhaseProjection": 1
       },
       "expected": {
-        "r": 0,
-        "g": 0,
-        "b": 0
+        "r": 0.17962576870139702,
+        "g": 0.0359251537402794,
+        "b": 0.13471932652604776
       }
     },
     {
@@ -3709,9 +4100,9 @@
         "unitPhaseProjection": 1
       },
       "expected": {
-        "r": 0,
-        "g": 0,
-        "b": 0
+        "r": 0.0359251537402794,
+        "g": 0.13471932652604776,
+        "b": 0.0179625768701397
       }
     },
     {
@@ -3854,8 +4245,8 @@
       },
       "expected": {
         "r": 0,
-        "g": 0,
-        "b": 0
+        "g": 0.0359251537402794,
+        "b": 0.17962576870139702
       }
     },
     {
@@ -3997,9 +4388,9 @@
         "unitPhaseProjection": 1
       },
       "expected": {
-        "r": 0,
-        "g": 0,
-        "b": 0
+        "r": 0.026943865305209553,
+        "g": 0.1437006149611176,
+        "b": 0.053887730610419106
       }
     },
     {
@@ -13825,6 +14216,1734 @@
         "g": 0.20774193548387104,
         "b": 0.6922580645161289
       }
+    },
+    {
+      "presetIndex": 80,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 0,
+        "g": 1,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 80,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 1,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 80,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 1,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 80,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 0.04296875,
+        "g": 0.95703125,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 80,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 0.042090763181025226,
+        "g": 0.9579092368189748,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 80,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0.8422351982313201,
+        "g": 0.1577648017686799,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 80,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 1,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 80,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 0.9070997082141391,
+        "g": 0.0929002917858609,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 80,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 1,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 81,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 0.2,
+        "g": 0.75,
+        "b": 0.1
+      }
+    },
+    {
+      "presetIndex": 81,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 81,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 81,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 0.19140625,
+        "g": 0.7177734375,
+        "b": 0.095703125
+      }
+    },
+    {
+      "presetIndex": 81,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 0.19158184736379497,
+        "g": 0.718431927614231,
+        "b": 0.09579092368189748
+      }
+    },
+    {
+      "presetIndex": 81,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0.03155296035373598,
+        "g": 0.11832360132650993,
+        "b": 0.01577648017686799
+      }
+    },
+    {
+      "presetIndex": 81,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 81,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 0.01858005835717218,
+        "g": 0.06967521883939568,
+        "b": 0.00929002917858609
+      }
+    },
+    {
+      "presetIndex": 81,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 82,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 0,
+        "g": 0.2,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 82,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 1,
+        "g": 0.1,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 82,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 1,
+        "g": 0.1,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 82,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 0.04296875,
+        "g": 0.195703125,
+        "b": 0.95703125
+      }
+    },
+    {
+      "presetIndex": 82,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 0.042090763181025226,
+        "g": 0.1957909236818975,
+        "b": 0.9579092368189748
+      }
+    },
+    {
+      "presetIndex": 82,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0.8422351982313201,
+        "g": 0.115776480176868,
+        "b": 0.1577648017686799
+      }
+    },
+    {
+      "presetIndex": 82,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 1,
+        "g": 0.1,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 82,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 0.9070997082141391,
+        "g": 0.1092900291785861,
+        "b": 0.0929002917858609
+      }
+    },
+    {
+      "presetIndex": 82,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 1,
+        "g": 0.1,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 83,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 0.7,
+        "g": 0.1,
+        "b": 0.9
+      }
+    },
+    {
+      "presetIndex": 83,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0.1,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 83,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0.1,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 83,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 0.609765625,
+        "g": 0.370703125,
+        "b": 0.8699218750000001
+      }
+    },
+    {
+      "presetIndex": 83,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 0.6116093973198469,
+        "g": 0.3651718080404591,
+        "b": 0.8705364657732824
+      }
+    },
+    {
+      "presetIndex": 83,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0.23870057052364546,
+        "g": 0.7269524713334685,
+        "b": 0.28956463876192406
+      }
+    },
+    {
+      "presetIndex": 83,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0.1,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 83,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 0.09754530637515395,
+        "g": 0.5552114297507185,
+        "b": 0.5447885702492816
+      }
+    },
+    {
+      "presetIndex": 83,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0.1,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 84,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 84,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 84,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 84,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 84,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 84,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0.23808524563958533,
+        "g": 0.23808524563958533,
+        "b": 0.23808524563958533
+      }
+    },
+    {
+      "presetIndex": 84,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 84,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 84,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0.055959948690300396,
+        "g": 0.055959948690300396,
+        "b": 0.055959948690300396
+      }
+    },
+    {
+      "presetIndex": 85,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 0.2,
+        "g": 0.75,
+        "b": 0.1
+      }
+    },
+    {
+      "presetIndex": 85,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 85,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 85,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 0.2,
+        "g": 0.75,
+        "b": 0.1
+      }
+    },
+    {
+      "presetIndex": 85,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 0.2,
+        "g": 0.75,
+        "b": 0.1
+      }
+    },
+    {
+      "presetIndex": 85,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0.04761704912791707,
+        "g": 0.178563934229689,
+        "b": 0.023808524563958534
+      }
+    },
+    {
+      "presetIndex": 85,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 85,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 85,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0.01119198973806008,
+        "g": 0.04196996151772529,
+        "b": 0.00559599486903004
+      }
+    },
+    {
+      "presetIndex": 86,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 1,
+        "g": 0.1,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 86,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 86,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 86,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0.2,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 86,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 0.9935483870967742,
+        "g": 0.10064516129032258,
+        "b": 0.0064516129032258064
+      }
+    },
+    {
+      "presetIndex": 86,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0.0015360338428360384,
+        "g": 0.04746344574363347,
+        "b": 0.2365492117967493
+      }
+    },
+    {
+      "presetIndex": 86,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 86,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 86,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0.044045895098171924,
+        "g": 0.006787400228242887,
+        "b": 0.01191405359212847
+      }
+    },
+    {
+      "presetIndex": 87,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 0.7,
+        "g": 0.1,
+        "b": 0.9
+      }
+    },
+    {
+      "presetIndex": 87,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 87,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 87,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 0.7,
+        "g": 0.1,
+        "b": 0.9
+      }
+    },
+    {
+      "presetIndex": 87,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 0.6729032258064515,
+        "g": 0.1812903225806456,
+        "b": 0.8909677419354839
+      }
+    },
+    {
+      "presetIndex": 87,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0.16020832980779834,
+        "g": 0.04316255098369267,
+        "b": 0.21212627369565634
+      }
+    },
+    {
+      "presetIndex": 87,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 87,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 87,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0.014802309008402046,
+        "g": 0.011625228050501119,
+        "b": 0.038738725770769235
+      }
+    },
+    {
+      "presetIndex": 88,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 0.08333333333333333,
+        "g": 0.08333333333333333,
+        "b": 0.08333333333333333
+      }
+    },
+    {
+      "presetIndex": 88,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 0.08333333333333333,
+        "g": 0.08333333333333333,
+        "b": 0.08333333333333333
+      }
+    },
+    {
+      "presetIndex": 88,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 88,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 0.3333333333333333,
+        "g": 0.3333333333333333,
+        "b": 0.3333333333333333
+      }
+    },
+    {
+      "presetIndex": 88,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 88,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 88,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 88,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 88,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 1,
+        "g": 1,
+        "b": 1
+      }
+    },
+    {
+      "presetIndex": 89,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 0.016666666666666666,
+        "g": 0.0625,
+        "b": 0.008333333333333333
+      }
+    },
+    {
+      "presetIndex": 89,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 0.016666666666666666,
+        "g": 0.0625,
+        "b": 0.008333333333333333
+      }
+    },
+    {
+      "presetIndex": 89,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 89,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 0.06666666666666667,
+        "g": 0.25,
+        "b": 0.03333333333333333
+      }
+    },
+    {
+      "presetIndex": 89,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 89,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 89,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 89,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 0.2,
+        "g": 0.75,
+        "b": 0.1
+      }
+    },
+    {
+      "presetIndex": 89,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0.2,
+        "g": 0.75,
+        "b": 0.1
+      }
+    },
+    {
+      "presetIndex": 90,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 0.08333333333333333,
+        "g": 0.008333333333333333,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 90,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 0.04193548387096774,
+        "g": 0.012473118279569893,
+        "b": 0.04139784946236559
+      }
+    },
+    {
+      "presetIndex": 90,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 90,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0.06666666666666667,
+        "b": 0.3333333333333333
+      }
+    },
+    {
+      "presetIndex": 90,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 90,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 90,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 90,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 0.49677419354838714,
+        "g": 0.1503225806451613,
+        "b": 0.5032258064516129
+      }
+    },
+    {
+      "presetIndex": 90,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0.7870967741935484,
+        "g": 0.12129032258064516,
+        "b": 0.2129032258064516
+      }
+    },
+    {
+      "presetIndex": 91,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 0,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0.49
+      },
+      "expected": {
+        "r": 0.05833333333333333,
+        "g": 0.008333333333333333,
+        "b": 0.075
+      }
+    },
+    {
+      "presetIndex": 91,
+      "context": {
+        "controllerFrame": 0,
+        "globalControllerFrame": 0,
+        "ledIndex": 77,
+        "unitIndex": 0,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.51
+      },
+      "expected": {
+        "r": 0.0005645161290322594,
+        "g": 0.010967741935483877,
+        "b": 0.08069892473118279
+      }
+    },
+    {
+      "presetIndex": 91,
+      "context": {
+        "controllerFrame": 1,
+        "globalControllerFrame": 1,
+        "ledIndex": 78,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -0.51
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 91,
+      "context": {
+        "controllerFrame": 3,
+        "globalControllerFrame": 3,
+        "ledIndex": 155,
+        "unitIndex": 0,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": -1
+      },
+      "expected": {
+        "r": 0.2333333333333333,
+        "g": 0.03333333333333333,
+        "b": 0.3
+      }
+    },
+    {
+      "presetIndex": 91,
+      "context": {
+        "controllerFrame": 4,
+        "globalControllerFrame": 4,
+        "ledIndex": 1,
+        "unitIndex": 8,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": 0
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 91,
+      "context": {
+        "controllerFrame": 19,
+        "globalControllerFrame": 19,
+        "ledIndex": 154,
+        "unitIndex": 8,
+        "unitRelativeY": 0,
+        "unitPhaseProjection": 0.5
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 91,
+      "context": {
+        "controllerFrame": 20,
+        "globalControllerFrame": 800,
+        "ledIndex": 77,
+        "unitIndex": 8,
+        "unitRelativeY": 1,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    },
+    {
+      "presetIndex": 91,
+      "context": {
+        "controllerFrame": 100,
+        "globalControllerFrame": 100,
+        "ledIndex": 78,
+        "unitIndex": 0,
+        "unitRelativeY": -1,
+        "unitPhaseProjection": -0.49
+      },
+      "expected": {
+        "r": 0.006774193548386998,
+        "g": 0.131612903225806,
+        "b": 0.968387096774194
+      }
+    },
+    {
+      "presetIndex": 91,
+      "context": {
+        "controllerFrame": 160,
+        "globalControllerFrame": 160,
+        "ledIndex": 33,
+        "unitIndex": 5,
+        "unitRelativeY": 0.01,
+        "unitPhaseProjection": 1
+      },
+      "expected": {
+        "r": 0.2645161290322582,
+        "g": 0.20774193548387104,
+        "b": 0.6922580645161289
+      }
     }
   ],
   "frames": [
@@ -14841,504 +16960,504 @@
       "globalFrame": 0,
       "controllerFrame": 0,
       "unitIndex": 0,
-      "sha256": "77980ce2531c281c3109e324d99b2cd13f1b68972b7af230d86a40609f4919bd"
+      "sha256": "79b80078482a82721db81e3f9164f38cdbb9937d41b69be23c745cd9a04ae3cb"
     },
     {
       "presetIndex": 8,
       "globalFrame": 0,
       "controllerFrame": 16,
       "unitIndex": 8,
-      "sha256": "692f48b3fb9f109246055450ee735cec7deba5444a914965f251d9c4bddd3d19"
+      "sha256": "ba9fe72c2b9be7f8c305ae2f3c28cd686691a0b164a3600d868364e369d54299"
     },
     {
       "presetIndex": 8,
       "globalFrame": 3,
       "controllerFrame": 3,
       "unitIndex": 0,
-      "sha256": "82bec608b14fe8ef9cfdb6d8aa4b29397d8a3576d7b31f4a4fafc1711bae6691"
+      "sha256": "b103620015d710343aa61ab6f64386de50269cb3e54f95bff75000a5fd9ade9f"
     },
     {
       "presetIndex": 8,
       "globalFrame": 3,
       "controllerFrame": 19,
       "unitIndex": 8,
-      "sha256": "4aac90d9570e5e0694be5de107ead57bf2da0db82795e932b9491566f05a230d"
+      "sha256": "2334b73c89565e0517e8b6822e69c35e758434f90158ee154ed061d60d09236d"
     },
     {
       "presetIndex": 8,
       "globalFrame": 4,
       "controllerFrame": 4,
       "unitIndex": 0,
-      "sha256": "cf95a7da2a1bd8ef2bbc05787122f84b79051716b01c8adef85f8331ad27a1d9"
+      "sha256": "2e478eae16c232d3cbfd83a54ba50b51f4d1dd02948cfbd0636b75bf32f547af"
     },
     {
       "presetIndex": 8,
       "globalFrame": 4,
       "controllerFrame": 20,
       "unitIndex": 8,
-      "sha256": "700e53291a640d8a2c3b4102c0536ae3984724f00e6aa3b8b51720c6c6a1754c"
+      "sha256": "7f3b48e198425a2ccad4ed8037316f9d89ca197a9c6636c43f9eb723c6505455"
     },
     {
       "presetIndex": 8,
       "globalFrame": 19,
       "controllerFrame": 19,
       "unitIndex": 0,
-      "sha256": "4aac90d9570e5e0694be5de107ead57bf2da0db82795e932b9491566f05a230d"
+      "sha256": "2334b73c89565e0517e8b6822e69c35e758434f90158ee154ed061d60d09236d"
     },
     {
       "presetIndex": 8,
       "globalFrame": 19,
       "controllerFrame": 35,
       "unitIndex": 8,
-      "sha256": "8abd8b52d2aa500f061d49a28ce8a676bc6a84467b5e3d93cdf4b2a0bd14d492"
+      "sha256": "2a88db6af6e8a151ed858c215ea5606dde90423d83744e4934381846a0f70469"
     },
     {
       "presetIndex": 8,
       "globalFrame": 20,
       "controllerFrame": 20,
       "unitIndex": 0,
-      "sha256": "700e53291a640d8a2c3b4102c0536ae3984724f00e6aa3b8b51720c6c6a1754c"
+      "sha256": "7f3b48e198425a2ccad4ed8037316f9d89ca197a9c6636c43f9eb723c6505455"
     },
     {
       "presetIndex": 8,
       "globalFrame": 20,
       "controllerFrame": 36,
       "unitIndex": 8,
-      "sha256": "3149960494efeab7c6edf1dcbef4a05ddbcf7fc1c91c3dc68128acf6dc682df7"
+      "sha256": "2d91dd63c8218473cbb61937b6a90d9f8c1458a89fc2df020e4d947791f3b1d1"
     },
     {
       "presetIndex": 8,
       "globalFrame": 100,
       "controllerFrame": 100,
       "unitIndex": 0,
-      "sha256": "7f2b2d288160239ef76707bc0c8a28b17aa4a91ecdaf40146948aa1cd0fb340c"
+      "sha256": "3f1c29389140f3dc4bad271cd1d27df4708f5d5229788a2a022d1a791a267f41"
     },
     {
       "presetIndex": 8,
       "globalFrame": 100,
       "controllerFrame": 116,
       "unitIndex": 8,
-      "sha256": "8502619d4c9fcbcb159ade53c539485f67108411120cedf3487757caad634c14"
+      "sha256": "3a3419c6f7fa512eeb430564e9c54dcf98624bdd135e97be15ced566de1f7f70"
     },
     {
       "presetIndex": 8,
       "globalFrame": 800,
       "controllerFrame": 800,
       "unitIndex": 0,
-      "sha256": "77980ce2531c281c3109e324d99b2cd13f1b68972b7af230d86a40609f4919bd"
+      "sha256": "79b80078482a82721db81e3f9164f38cdbb9937d41b69be23c745cd9a04ae3cb"
     },
     {
       "presetIndex": 8,
       "globalFrame": 800,
       "controllerFrame": 816,
       "unitIndex": 8,
-      "sha256": "692f48b3fb9f109246055450ee735cec7deba5444a914965f251d9c4bddd3d19"
+      "sha256": "ba9fe72c2b9be7f8c305ae2f3c28cd686691a0b164a3600d868364e369d54299"
     },
     {
       "presetIndex": 8,
       "globalFrame": 1600,
       "controllerFrame": 1600,
       "unitIndex": 0,
-      "sha256": "77980ce2531c281c3109e324d99b2cd13f1b68972b7af230d86a40609f4919bd"
+      "sha256": "79b80078482a82721db81e3f9164f38cdbb9937d41b69be23c745cd9a04ae3cb"
     },
     {
       "presetIndex": 8,
       "globalFrame": 1600,
       "controllerFrame": 1616,
       "unitIndex": 8,
-      "sha256": "692f48b3fb9f109246055450ee735cec7deba5444a914965f251d9c4bddd3d19"
+      "sha256": "ba9fe72c2b9be7f8c305ae2f3c28cd686691a0b164a3600d868364e369d54299"
     },
     {
       "presetIndex": 8,
       "globalFrame": 2650,
       "controllerFrame": 2650,
       "unitIndex": 0,
-      "sha256": "2f6c3977859d57353ab33e2eb9441b55d8f2b6fccdcf772ac7ff3bd799905b77"
+      "sha256": "d349cac9cedfdfca490bf841caea889148beaa184c5a14ca4343ff0139913355"
     },
     {
       "presetIndex": 8,
       "globalFrame": 2650,
       "controllerFrame": 2666,
       "unitIndex": 8,
-      "sha256": "03f636c91812ad1455a6042d29069f526d93f1818d1d49fdbb634817d87a08aa"
+      "sha256": "323d90e1ff1fa8cfbb294d9e468add7c5b485e672bc4e9038989110d14f11888"
     },
     {
       "presetIndex": 9,
       "globalFrame": 0,
       "controllerFrame": 0,
       "unitIndex": 0,
-      "sha256": "45e9bf060fbecaab370a6dd1183b8cdd8f3eceeeb5363483a6cda9709a322655"
+      "sha256": "cbbd9098e953e19a7a90f9e0ca87b30dc5becd4a24b10f8e803abcb64e2aa915"
     },
     {
       "presetIndex": 9,
       "globalFrame": 0,
       "controllerFrame": 16,
       "unitIndex": 8,
-      "sha256": "0ceb4d875c30f85fd2fd97e52edfe81b1c8f1b83d9bf69cf6332b4c5ca96cd50"
+      "sha256": "a7cf88054558551c5895e8208a5ad0a7998bf14b12d0abaf02d56b653a7bf2b4"
     },
     {
       "presetIndex": 9,
       "globalFrame": 3,
       "controllerFrame": 3,
       "unitIndex": 0,
-      "sha256": "9dce3ee54b2a217857ec489b6f4081c3018dbeefbf2d17d2f753af6ff18f3d4f"
+      "sha256": "21c88a3184517cb8e2dd38f22fb06ef191958a74675df29801805344abcd5346"
     },
     {
       "presetIndex": 9,
       "globalFrame": 3,
       "controllerFrame": 19,
       "unitIndex": 8,
-      "sha256": "f9d036a8ab0e9dfa382c78b0c8d972cb73aec4405b6edf0f25960084acac50d5"
+      "sha256": "d2d2f0dd91410b6c1c940750325b77fc01553340c27bf954a526f38ff3ebe764"
     },
     {
       "presetIndex": 9,
       "globalFrame": 4,
       "controllerFrame": 4,
       "unitIndex": 0,
-      "sha256": "6bdb028feb2fcd4a0d3adf8e7182abea4adc67db6077e42e334d7819355f5e63"
+      "sha256": "51b53d728a407ca900143b6d5319e29eff7e9d044673deca7cde04061119bf9b"
     },
     {
       "presetIndex": 9,
       "globalFrame": 4,
       "controllerFrame": 20,
       "unitIndex": 8,
-      "sha256": "4ce1e177ad7a644ecdd8cb8eb2165c3a15f4917358f49528514d34e5dd52c00c"
+      "sha256": "72196d3aab48847b9fea44713bd833484d0470ff5e7653babb1241fcc1f75e19"
     },
     {
       "presetIndex": 9,
       "globalFrame": 19,
       "controllerFrame": 19,
       "unitIndex": 0,
-      "sha256": "f9d036a8ab0e9dfa382c78b0c8d972cb73aec4405b6edf0f25960084acac50d5"
+      "sha256": "d2d2f0dd91410b6c1c940750325b77fc01553340c27bf954a526f38ff3ebe764"
     },
     {
       "presetIndex": 9,
       "globalFrame": 19,
       "controllerFrame": 35,
       "unitIndex": 8,
-      "sha256": "76b106a4a02869493536caed023aec7a79e6f42c63428cd7e51fd47a3e4d8eda"
+      "sha256": "48102e9a9c17c352da71882831a70a0775b91ffb706f3bee0c79f5a3283ed36d"
     },
     {
       "presetIndex": 9,
       "globalFrame": 20,
       "controllerFrame": 20,
       "unitIndex": 0,
-      "sha256": "4ce1e177ad7a644ecdd8cb8eb2165c3a15f4917358f49528514d34e5dd52c00c"
+      "sha256": "72196d3aab48847b9fea44713bd833484d0470ff5e7653babb1241fcc1f75e19"
     },
     {
       "presetIndex": 9,
       "globalFrame": 20,
       "controllerFrame": 36,
       "unitIndex": 8,
-      "sha256": "bdfea47ba2483bd151752932785981744ebf88f1b57699a72f3d39b61345c445"
+      "sha256": "e228b26324ebc894f314059c6ac234775464a1c9b16b5c359eaa953008ea5278"
     },
     {
       "presetIndex": 9,
       "globalFrame": 100,
       "controllerFrame": 100,
       "unitIndex": 0,
-      "sha256": "02cffe6e18711740213c27d1bb62acc18c95db36328f6d067ae8fc9d864d0610"
+      "sha256": "b6b2b559d53e08f0f1647ec7c88686462ddbb64d4da0b241a5d7aa2b565f1506"
     },
     {
       "presetIndex": 9,
       "globalFrame": 100,
       "controllerFrame": 116,
       "unitIndex": 8,
-      "sha256": "1a69bead7e5254f95998633f0b331a1779283212089e018dac45289e3e8d44e3"
+      "sha256": "48887cb447734eaa27487ffe945cd787a7e48a909ea2f46b7653c340b2eb5e96"
     },
     {
       "presetIndex": 9,
       "globalFrame": 800,
       "controllerFrame": 800,
       "unitIndex": 0,
-      "sha256": "45e9bf060fbecaab370a6dd1183b8cdd8f3eceeeb5363483a6cda9709a322655"
+      "sha256": "cbbd9098e953e19a7a90f9e0ca87b30dc5becd4a24b10f8e803abcb64e2aa915"
     },
     {
       "presetIndex": 9,
       "globalFrame": 800,
       "controllerFrame": 816,
       "unitIndex": 8,
-      "sha256": "0ceb4d875c30f85fd2fd97e52edfe81b1c8f1b83d9bf69cf6332b4c5ca96cd50"
+      "sha256": "a7cf88054558551c5895e8208a5ad0a7998bf14b12d0abaf02d56b653a7bf2b4"
     },
     {
       "presetIndex": 9,
       "globalFrame": 1600,
       "controllerFrame": 1600,
       "unitIndex": 0,
-      "sha256": "45e9bf060fbecaab370a6dd1183b8cdd8f3eceeeb5363483a6cda9709a322655"
+      "sha256": "cbbd9098e953e19a7a90f9e0ca87b30dc5becd4a24b10f8e803abcb64e2aa915"
     },
     {
       "presetIndex": 9,
       "globalFrame": 1600,
       "controllerFrame": 1616,
       "unitIndex": 8,
-      "sha256": "0ceb4d875c30f85fd2fd97e52edfe81b1c8f1b83d9bf69cf6332b4c5ca96cd50"
+      "sha256": "a7cf88054558551c5895e8208a5ad0a7998bf14b12d0abaf02d56b653a7bf2b4"
     },
     {
       "presetIndex": 9,
       "globalFrame": 2650,
       "controllerFrame": 2650,
       "unitIndex": 0,
-      "sha256": "d3a83df83e25699beaf413959fa8f37c14acbf7307318e2296136fb044773343"
+      "sha256": "cbbf7ea9385742000b1c137e3067389c31ca6e2c8b7073f0db8f0d2254239a99"
     },
     {
       "presetIndex": 9,
       "globalFrame": 2650,
       "controllerFrame": 2666,
       "unitIndex": 8,
-      "sha256": "d6e3ac006d351c0c88eb509f7ed69a117f16281d842ffeacf502fff85ad365bf"
+      "sha256": "35303ef59369f187540a8b8065c0c858c934ed40497405588c1f5992b76da8d8"
     },
     {
       "presetIndex": 10,
       "globalFrame": 0,
       "controllerFrame": 0,
       "unitIndex": 0,
-      "sha256": "4f46a2e828e5bf48b9f978d5462344a5ed1d2f1db2c8fefbdec5d54be6440d5b"
+      "sha256": "bb7da238b631f4c77ca110fb990fceac57d2ca083584a2853de54cf3fc683c66"
     },
     {
       "presetIndex": 10,
       "globalFrame": 0,
       "controllerFrame": 16,
       "unitIndex": 8,
-      "sha256": "a9c70e59ba398278daad1648278f5b6cf213e8667bcd77620fa3dd63bdf40356"
+      "sha256": "180766ab823878f28c08fb53f851f71630dd90eae36d0605780d70bf0e647997"
     },
     {
       "presetIndex": 10,
       "globalFrame": 3,
       "controllerFrame": 3,
       "unitIndex": 0,
-      "sha256": "8a0125cd32347ac17efa4cddc1ececda8ebbaee7c7274b6924d959b3f2b1f758"
+      "sha256": "8418d392816f9e41775ef66f25a17c9e5adcba4e1490e1f2e97e3ede235c45d3"
     },
     {
       "presetIndex": 10,
       "globalFrame": 3,
       "controllerFrame": 19,
       "unitIndex": 8,
-      "sha256": "330e266b4f181383c3ab81e27dcbb2cce1fac147d70f2b14099472c1bb173826"
+      "sha256": "62f97cea23afc0b240306a41b7ccba75dc2b866c2f8da51cae42499e6d1ca10e"
     },
     {
       "presetIndex": 10,
       "globalFrame": 4,
       "controllerFrame": 4,
       "unitIndex": 0,
-      "sha256": "b53176aa83c584e0e9b1a68257c498bfea1710c3430863dab89d4ce6fd106d3c"
+      "sha256": "d8bfd6596ffa28481f029379cb5b5bb2fe68b78e7077828965399d9ce11d61e0"
     },
     {
       "presetIndex": 10,
       "globalFrame": 4,
       "controllerFrame": 20,
       "unitIndex": 8,
-      "sha256": "8630a803ae1aadecb75591f6d89a565a40ff570c3b2cf62ba71897e43877e5de"
+      "sha256": "2a51c4e3b018f3e87fdf2e61f42bd8c94b17fdbd1ed38273c8a38f351d9f3edc"
     },
     {
       "presetIndex": 10,
       "globalFrame": 19,
       "controllerFrame": 19,
       "unitIndex": 0,
-      "sha256": "330e266b4f181383c3ab81e27dcbb2cce1fac147d70f2b14099472c1bb173826"
+      "sha256": "62f97cea23afc0b240306a41b7ccba75dc2b866c2f8da51cae42499e6d1ca10e"
     },
     {
       "presetIndex": 10,
       "globalFrame": 19,
       "controllerFrame": 35,
       "unitIndex": 8,
-      "sha256": "fb610edcea75e04d8bb106ef87aed5c8060ef468e10315a0a49be20b61928e28"
+      "sha256": "bb6288c355911de60312bc9c258f6c6628d20ea6b2d7ced260b6a75440c11537"
     },
     {
       "presetIndex": 10,
       "globalFrame": 20,
       "controllerFrame": 20,
       "unitIndex": 0,
-      "sha256": "8630a803ae1aadecb75591f6d89a565a40ff570c3b2cf62ba71897e43877e5de"
+      "sha256": "2a51c4e3b018f3e87fdf2e61f42bd8c94b17fdbd1ed38273c8a38f351d9f3edc"
     },
     {
       "presetIndex": 10,
       "globalFrame": 20,
       "controllerFrame": 36,
       "unitIndex": 8,
-      "sha256": "f31852db0a5e45829450457d1eea933b458e5631b37a17d5164b16ab649263f0"
+      "sha256": "6cf1d683159d562b5e176d28f6f0851d32a97f4aefbeab8abc171db2af7489df"
     },
     {
       "presetIndex": 10,
       "globalFrame": 100,
       "controllerFrame": 100,
       "unitIndex": 0,
-      "sha256": "54e57943f7d6162f4d9317a5e53f6a947bc199838ac8524c78269f96126df660"
+      "sha256": "91eb3dc84c99e103f74c678509275298cc7cd108f5086466ff1b06b20dbec1d9"
     },
     {
       "presetIndex": 10,
       "globalFrame": 100,
       "controllerFrame": 116,
       "unitIndex": 8,
-      "sha256": "67006fa14d3957ca70bd8ec72696c06914fa8bf0bb3a926cb7ea1c9ede10844e"
+      "sha256": "7a7ba1e278bc1dbd40cf95060345a34ff00d8009b4c9db6ab18ae0ca2a470782"
     },
     {
       "presetIndex": 10,
       "globalFrame": 800,
       "controllerFrame": 800,
       "unitIndex": 0,
-      "sha256": "4f46a2e828e5bf48b9f978d5462344a5ed1d2f1db2c8fefbdec5d54be6440d5b"
+      "sha256": "bb7da238b631f4c77ca110fb990fceac57d2ca083584a2853de54cf3fc683c66"
     },
     {
       "presetIndex": 10,
       "globalFrame": 800,
       "controllerFrame": 816,
       "unitIndex": 8,
-      "sha256": "a9c70e59ba398278daad1648278f5b6cf213e8667bcd77620fa3dd63bdf40356"
+      "sha256": "180766ab823878f28c08fb53f851f71630dd90eae36d0605780d70bf0e647997"
     },
     {
       "presetIndex": 10,
       "globalFrame": 1600,
       "controllerFrame": 1600,
       "unitIndex": 0,
-      "sha256": "4f46a2e828e5bf48b9f978d5462344a5ed1d2f1db2c8fefbdec5d54be6440d5b"
+      "sha256": "bb7da238b631f4c77ca110fb990fceac57d2ca083584a2853de54cf3fc683c66"
     },
     {
       "presetIndex": 10,
       "globalFrame": 1600,
       "controllerFrame": 1616,
       "unitIndex": 8,
-      "sha256": "a9c70e59ba398278daad1648278f5b6cf213e8667bcd77620fa3dd63bdf40356"
+      "sha256": "180766ab823878f28c08fb53f851f71630dd90eae36d0605780d70bf0e647997"
     },
     {
       "presetIndex": 10,
       "globalFrame": 2650,
       "controllerFrame": 2650,
       "unitIndex": 0,
-      "sha256": "d73d6f973df0ef53e851eb477662275ccfee7c28a5be10bfcc739546d4c75141"
+      "sha256": "c16c3501122d1322366a421daa47c7e559f57820a5000f1ed46f02ac9659c3cd"
     },
     {
       "presetIndex": 10,
       "globalFrame": 2650,
       "controllerFrame": 2666,
       "unitIndex": 8,
-      "sha256": "2c93a972395de959be6a5a837f275973ce3c04e9ce99b80624f4a7739acaef52"
+      "sha256": "be32eb3022ddb01a757db4446a2bdfe724140c75f0b0ea013605d8d090878528"
     },
     {
       "presetIndex": 11,
       "globalFrame": 0,
       "controllerFrame": 0,
       "unitIndex": 0,
-      "sha256": "53c1b9e6f23ab0536e1bf7a23db68322699b5ab8358717fe1b5f89fe9f60cf7e"
+      "sha256": "1632ebba0205c5eed8139559c3e88160f4ed10412f53181e7bb21221245d7b50"
     },
     {
       "presetIndex": 11,
       "globalFrame": 0,
       "controllerFrame": 16,
       "unitIndex": 8,
-      "sha256": "feecbaae87a5ec36a99c65ff4671aeead37da6a94a26e10013c75d7241b510b9"
+      "sha256": "944ffdaa47b9270698e12cbb31d3dab2678a1cbb70a0560c2d7ea47ff1eff00c"
     },
     {
       "presetIndex": 11,
       "globalFrame": 3,
       "controllerFrame": 3,
       "unitIndex": 0,
-      "sha256": "597e6a3e50e56e0ee9e886aa8561d291050460d120031912848ec6d4e529c600"
+      "sha256": "539b5d6d78e1fea79ce2bca84c45c2496ec332554f06f37d61f114ef2cc5e8a2"
     },
     {
       "presetIndex": 11,
       "globalFrame": 3,
       "controllerFrame": 19,
       "unitIndex": 8,
-      "sha256": "5cdf2577a387907fd2717123efcc1a30f3ea68432828b4c8a1a65fd8c5f35832"
+      "sha256": "9fbc27f1c066faf5be023eeb686d806f1093db5fe091b6aad106e56cbb0a57f3"
     },
     {
       "presetIndex": 11,
       "globalFrame": 4,
       "controllerFrame": 4,
       "unitIndex": 0,
-      "sha256": "ac32c082942e29db61af59303b4cb4b5f8210fe9b1f19dd7b065e1b40441a0b4"
+      "sha256": "ccb3c1b4d7f3b21c7274caf2fec2460945769e47e293b96461c18a0cfeb6ea76"
     },
     {
       "presetIndex": 11,
       "globalFrame": 4,
       "controllerFrame": 20,
       "unitIndex": 8,
-      "sha256": "96c51845dc0a7ba427deda1bdb5475b5fc1c6484b4c97e976c16caca839243df"
+      "sha256": "7861db49bb6abadb8070e0f0d55eaf538c30999f1a4585155e90f69903c915ad"
     },
     {
       "presetIndex": 11,
       "globalFrame": 19,
       "controllerFrame": 19,
       "unitIndex": 0,
-      "sha256": "5cdf2577a387907fd2717123efcc1a30f3ea68432828b4c8a1a65fd8c5f35832"
+      "sha256": "9fbc27f1c066faf5be023eeb686d806f1093db5fe091b6aad106e56cbb0a57f3"
     },
     {
       "presetIndex": 11,
       "globalFrame": 19,
       "controllerFrame": 35,
       "unitIndex": 8,
-      "sha256": "72db7349a5e2280f1fb6126eb1b94680d2d5afd28bae75ef0ed3cf649a45f2a7"
+      "sha256": "0a6f2891e7b426c9604c202cc3a7d72af4ad131aeaf7226ef7a3206bb6ac072b"
     },
     {
       "presetIndex": 11,
       "globalFrame": 20,
       "controllerFrame": 20,
       "unitIndex": 0,
-      "sha256": "96c51845dc0a7ba427deda1bdb5475b5fc1c6484b4c97e976c16caca839243df"
+      "sha256": "7861db49bb6abadb8070e0f0d55eaf538c30999f1a4585155e90f69903c915ad"
     },
     {
       "presetIndex": 11,
       "globalFrame": 20,
       "controllerFrame": 36,
       "unitIndex": 8,
-      "sha256": "5e9edd4dadba63fba7f94244ddc6c091142f886563078e5ff332498d5682b528"
+      "sha256": "ec1824934e10c7310990384c6601b962f985cd8ecb9beb1665590f36ee6229c3"
     },
     {
       "presetIndex": 11,
       "globalFrame": 100,
       "controllerFrame": 100,
       "unitIndex": 0,
-      "sha256": "d90c5515a98de2d9b156da86c63a1c820742ea9a0e96299da9400016c7f90782"
+      "sha256": "94cbe1590bd374484076653c649e00d03f1c6ea8d14b30f99845fe42f6fb0e87"
     },
     {
       "presetIndex": 11,
       "globalFrame": 100,
       "controllerFrame": 116,
       "unitIndex": 8,
-      "sha256": "d9fcf7746de9c5df7c44c09dc7b9fa0736b0a2f19ae85347f89517b97bf39f3f"
+      "sha256": "7565511d12432ea148d446f64bf020583ad7409d65498b1f4459357689a20880"
     },
     {
       "presetIndex": 11,
       "globalFrame": 800,
       "controllerFrame": 800,
       "unitIndex": 0,
-      "sha256": "53c1b9e6f23ab0536e1bf7a23db68322699b5ab8358717fe1b5f89fe9f60cf7e"
+      "sha256": "1632ebba0205c5eed8139559c3e88160f4ed10412f53181e7bb21221245d7b50"
     },
     {
       "presetIndex": 11,
       "globalFrame": 800,
       "controllerFrame": 816,
       "unitIndex": 8,
-      "sha256": "feecbaae87a5ec36a99c65ff4671aeead37da6a94a26e10013c75d7241b510b9"
+      "sha256": "944ffdaa47b9270698e12cbb31d3dab2678a1cbb70a0560c2d7ea47ff1eff00c"
     },
     {
       "presetIndex": 11,
       "globalFrame": 1600,
       "controllerFrame": 1600,
       "unitIndex": 0,
-      "sha256": "53c1b9e6f23ab0536e1bf7a23db68322699b5ab8358717fe1b5f89fe9f60cf7e"
+      "sha256": "1632ebba0205c5eed8139559c3e88160f4ed10412f53181e7bb21221245d7b50"
     },
     {
       "presetIndex": 11,
       "globalFrame": 1600,
       "controllerFrame": 1616,
       "unitIndex": 8,
-      "sha256": "feecbaae87a5ec36a99c65ff4671aeead37da6a94a26e10013c75d7241b510b9"
+      "sha256": "944ffdaa47b9270698e12cbb31d3dab2678a1cbb70a0560c2d7ea47ff1eff00c"
     },
     {
       "presetIndex": 11,
       "globalFrame": 2650,
       "controllerFrame": 2650,
       "unitIndex": 0,
-      "sha256": "2b5a8d28889854cf31997caf4c021b95abaa8a3e6c6033037c0bc6b0d6ec0606"
+      "sha256": "e3943371d1f992a166441ed53161bd4d48b53e321d826f1d59c5ce215529230e"
     },
     {
       "presetIndex": 11,
       "globalFrame": 2650,
       "controllerFrame": 2666,
       "unitIndex": 8,
-      "sha256": "ae5f4a9d5271e06c1885432aefd2d2e1f31afe2c5256130cc01d871ec0c8479c"
+      "sha256": "ea802de97d9f00784f59ed331f814c442b35828211442f1b46a8f00d16abd61b"
     },
     {
       "presetIndex": 12,
@@ -23907,6 +26026,1518 @@
       "controllerFrame": 2666,
       "unitIndex": 8,
       "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "da3cd97c8b8967000f9321fc1ed36abbd3cf77bad2f51c0131d668bfe2d946d7"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "ad211e30528ccbe1de07be21bad27a53a740e41551b9d807266a351d73f4fcbe"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "6984c7feb62650c427bb1a0c06f414b46be4e68dc357fd9f88bdb147ad6409cb"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "41bb4fed7da68bf58fb47e739ecbf3620574335adde8b793d0173d627c8be47f"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "f41a7563efc84034d6aa3f6c2ab2421d09815ad060b74a6ec9894049a7d4e72e"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "375badeedd84290623ef8924996557277cb583337feeabc9eb2dc63c9839f89d"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "41bb4fed7da68bf58fb47e739ecbf3620574335adde8b793d0173d627c8be47f"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "0bdf4c9944dad0eba495839eb0ec9d331c964ccb6184ebbf0381ef4e42b0b8dc"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "375badeedd84290623ef8924996557277cb583337feeabc9eb2dc63c9839f89d"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "6bcc1a48085b3cc08c5253805e9e3f7068c57a0bc949c81d2048a4f8bfaeee91"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "7cb84299c62225cc98228d20ab6eca8e419eaeec977ded2c86891d77b9aa5f63"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "e4a18cb132ea7b411c8718c52f99fc240f13bd299e7604519a59c36bd28e223f"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "da3cd97c8b8967000f9321fc1ed36abbd3cf77bad2f51c0131d668bfe2d946d7"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "ad211e30528ccbe1de07be21bad27a53a740e41551b9d807266a351d73f4fcbe"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "da3cd97c8b8967000f9321fc1ed36abbd3cf77bad2f51c0131d668bfe2d946d7"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "ad211e30528ccbe1de07be21bad27a53a740e41551b9d807266a351d73f4fcbe"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "8e46c8af2221ff67c47992d4325f3f294a3dba8f050e6aba30b102ba1595c872"
+    },
+    {
+      "presetIndex": 80,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "3c58accdfb205599928d30c79b7ef82702e9658dc0c56548a08d87b57afd1a8e"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "a766dd54b9f7f869f65be8366eaf75f791d8ce0fa24e100396ade49b2049971a"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "4452bdf23534d5868123b42cd51d968cb4e658f63e39ec7a218518410135f792"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "e79b5f5b2b2824b65e3f2d9f7f3ad51bbd1c513f496517196562413987fe66f3"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "b5e9001da51b01637a3e7ee80bdd777fd59623403ed84f77ba98fce484cd41c1"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "31a7ef389d9d8e08d06db1da6a122af0647a1643d3762ba71ee4a810cee0df4d"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "11d62d6c4477d99cc1c160f51a331c41733c51876c7bbe9a9ec3c9fc3ac1a4da"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "b5e9001da51b01637a3e7ee80bdd777fd59623403ed84f77ba98fce484cd41c1"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "9c2fa22f5c12df257bd000094501ee86e5aa5cd16d9b751c1a67d4b7eda6a977"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "11d62d6c4477d99cc1c160f51a331c41733c51876c7bbe9a9ec3c9fc3ac1a4da"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "c0f9f983d1a09fc1dc6a25f2151cb3b0aaf875f04eaabd5969b047921706421d"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "642ef23e6736f19d95063f72504de4197b27b7d1b458bbcf8cf617aefe647d96"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "65478ca45aae37f285462a005b7d77a9d779d4ef40efde984a9256989933f4d4"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "a766dd54b9f7f869f65be8366eaf75f791d8ce0fa24e100396ade49b2049971a"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "4452bdf23534d5868123b42cd51d968cb4e658f63e39ec7a218518410135f792"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "a766dd54b9f7f869f65be8366eaf75f791d8ce0fa24e100396ade49b2049971a"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "4452bdf23534d5868123b42cd51d968cb4e658f63e39ec7a218518410135f792"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "06a4846c30c676b4e54364854129be01166c1e3d26f17a9bc3770eff1c778c89"
+    },
+    {
+      "presetIndex": 81,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "05760c60f97bf6fabaca2be942a18aa62e8f857f165800d48106535feb88e4e2"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "77ed02ee5a3885b421722f41692242a856b4ff32eea359bb714040e16d1e4a3f"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "b09cf95fbfa931b2ca8513325ebc053c5c857218a6874a92615d28f2d5c1de64"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "23eb30526d2304a73f8050a1b34b8b4a1c4a1fa9d50652288927353f61963f30"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "37a32449f19d2e819690c16ed34b309fdfee0817b843725adb5fe23974d7e1c4"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "ce0c9133ae67e73f653ce2b57f2a763801841d0223659beecae7850edb3bd35d"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "4c7df35b20c447bde73a36209aad478aeb2432ce7da4660143d7b50fa94837f1"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "37a32449f19d2e819690c16ed34b309fdfee0817b843725adb5fe23974d7e1c4"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "3b82049775a6bd0f6d9b51edb670aa4099beea8c6aa14cdb20256f2e9024e1aa"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "4c7df35b20c447bde73a36209aad478aeb2432ce7da4660143d7b50fa94837f1"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "1b7b740217bd8746d7688dbf7ff09addd1546bdba8c72199c14490d905efca3a"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "fd13c45f0bb99012c0eb6eabe0a73a2bd19cfa256f5a90c200257ff6899a8b5f"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "44ba317e9bdef59cb3cd0b2627875db75d05007844e351f20a2eb7a98b9e1fb6"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "77ed02ee5a3885b421722f41692242a856b4ff32eea359bb714040e16d1e4a3f"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "b09cf95fbfa931b2ca8513325ebc053c5c857218a6874a92615d28f2d5c1de64"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "77ed02ee5a3885b421722f41692242a856b4ff32eea359bb714040e16d1e4a3f"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "b09cf95fbfa931b2ca8513325ebc053c5c857218a6874a92615d28f2d5c1de64"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "72205c80c559c5fd7f01ed83acba937c475c53fb7d173054c52fed03d3231647"
+    },
+    {
+      "presetIndex": 82,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "03cbe784001decc9fa7805636675355f9b0adb74d67725d35765fcc563d0c4fc"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "9855f268f95ed054009654702a9a663fd5422de3bbdaac78ad919dd24d39be9a"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "1a52cefe8be327bf6824ae8f85c65e6ce820f96cd45c53f482390812157e066a"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "750bbf0bad5244f7f2d331520113aee9cea5bdb0bc9468790b3234604cf3fe94"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "5f9c1ac6b68d84790d2a2d97a2b5a99cf18073532625da7e73bf4c88b964f707"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "9c0480a7c46e32a0f493abda621f4d598cf76c1363fc05bb2b00a9ecb42be4ff"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "79bc3530e1e22c5e16778f3e61cca48e0946e781e45a47d5bcc673d719afed12"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "5f9c1ac6b68d84790d2a2d97a2b5a99cf18073532625da7e73bf4c88b964f707"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "bb61ac635af8676b52cf2d695c707b5ab26e44fa3a7962436bec0f3034bed66f"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "79bc3530e1e22c5e16778f3e61cca48e0946e781e45a47d5bcc673d719afed12"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "793a7c390db9e6fc1ba7d9269485acae72d3e3f066e13aff5791ae1f51129aca"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "ca25aa6c83dd38f90c0de7c3d5ecbccad7329cba584a9f4ad3f6c308bc9a251e"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "6546c94433756a41c426a607ba171b0d03e50cf5ae10ae9ad930433ac4b6c7f0"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "9855f268f95ed054009654702a9a663fd5422de3bbdaac78ad919dd24d39be9a"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "1a52cefe8be327bf6824ae8f85c65e6ce820f96cd45c53f482390812157e066a"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "9855f268f95ed054009654702a9a663fd5422de3bbdaac78ad919dd24d39be9a"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "1a52cefe8be327bf6824ae8f85c65e6ce820f96cd45c53f482390812157e066a"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "661f5935ad7fa64087fe9b0791e4b38e3d79933493f604d2ba00dbeaa3561d22"
+    },
+    {
+      "presetIndex": 83,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "65a9d063d9bc3423ddacb4feb268ec6292f5f9ce1b8217bc84286144b0400e8d"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "d82bb75dc5772a2cdc89bc19470d201e507aa976e604e96bcfc57e43cbf27b77"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "a4614fe5b8f499563bf95f0936871c4512d92af628e70cebb2f10d9a2ad471fa"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "2ea2daa89923e5fe6701d72eb68b0aa13a9827391126cc64b2c14ae39d8fd89e"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "59ab1b71c0d064793029ec4006805f24d74a7a25d3f9c71c8d1e5db20cdc6b8b"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "f7548248f49420be5768b04f5d5d64bb8e1668d3154f8bb1cd0c15846d68a022"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "7e82fa6a0cccf1662953238d7ae94c8d49096b979264b240e37789e11531d22d"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "eb031d9fb862ff99d0f4030f7aa404fd616b63fca336e1aa98ce5557fc0499be"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "f2261727f66ea624de1844f03ad777d48a2fd3287ee9a3fe8f07783f981d0fac"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "fc01e066fe99a7e32a7b4b3d56664a6ebaec57ecd6f7393d2e692601574aad81"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "b3eec5e13f82cd0c18f76bdc493e6efcaded826d66f900a33d4368a51569884e"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "18d87b37f6b75a9589ae50cc5121d5179ed3b193c73e11d44987060d57923d63"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "9782613a8010b7d343caa65a2ff0efb24f697a55cafe6fc10d20855682c453b0"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "93990e121b1f1e9990c03325c218dad4103662c78a023871121dd6a40ccb2d22"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "0ab48ffd2f0d2acf5c8f12c43facb27edd414db1ffd222682ea0b37151ba5701"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "3991fa6cd982b539d864c3c409ec90dd55dff6bbba8140c10cc52f50bdb7d6ba"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "d7603c5e15b95e5b269f4a1821697ed4dc992c6d24cd45c1a5556e9102a78196"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "5b18d2a9f1069767c0bbef3c3bb76217ca9af46005fd1de458db094afede382b"
+    },
+    {
+      "presetIndex": 84,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "85478ac3b8923909705aba1b250a27115108da1a54a7314682fc2f2d0a422840"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "107c49e7998d9706a5c10de6d76b7f53edd5616ad087a7246403f41cdc15d68d"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "afe68d4579be625075feee918bae284536a6b41f0a2da7ecb72b5c0ddbd16fa6"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "93b3b63b6ec55858bccd55c2557867d38c9423c6d2bea1b7547b7c2ca508849d"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "2baec0c9c7752df540f0f489e314e37f629c0ea8bba1d92fd2a45f3e13229913"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "73f82c21e210007587715caf3b4b5c8eb4b9f48c6bd85b9b0f5ef7498755857f"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "87cb258c70527264115c378f52449aa1a20df85995142f1e367bccbf03b50274"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "21b0936ca8a88a5fa48d75a935922b869888098d6587d5ab3da0f29fb6f1c9ed"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "b462f26d5f26586c334438fda2eaabd857b08729bdb1fc741ade03c40640fb46"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "5e34591e3daf05e7d041e4f3c589d9e7c5bfab1b27c828dd300112f2cc1e5bce"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "8dead4664dd6c0bedc9baf076fc5839b0670b5d9d854b5a26d55d6dd3756844f"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "1557e70e5f8c5a600d56a6dc50c43d071896c7a0c265cb5cf5965ad583bf66dd"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "428eb3c7fedad11bfc249f503874cc27d02e60f70a5826df514009f1f3b5bcb3"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "7b2c9a2a31fba19e4890ca12aec4971025244549c96c3983162706c6011c080e"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "f5e885e25d397ff16d1eafa2cde87760357db57cde6677fa76200589e6185c71"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "8cd6541d6b91151ae41321dd3652eea202a3cbdaaeee0b54dbb35a1f6862a165"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "6289141ede5633b49c1ccf15164aafe5f295a0105eefee7cc76afc5071909304"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "bbd09912072531bb122e905017d0695749629151e2fd35b8ae80c52bf1ae087e"
+    },
+    {
+      "presetIndex": 85,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "983cd383a48c7acd100029d6f3075502cbc1324385aadcdb576f0bfa7236d181"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "57e73376d438937e1e290d2a9266dc445c60c8075d515e09c7c8701957b13208"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "3c29e3b5415a12f0487b06b17f4f04d9c4cee7ad3c9a7c1a5fbcb53442477248"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "84e970e1369d95402236718a0db7151787910701577cba74c51978e255f7b447"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "71a2f20107a621e3ef7250db27acf84a1a25159bc3a30c0be8b71b806646fdb3"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "7bef9a9326fc6d8f80be53fa23ce08b0de06947eaa36c32ab75e80c17f997095"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "86c7b8f6d54fe8ee2a5f76f46ae400a4489ee58056f8a468d0c774e1d84777ea"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "6b22e7b17f0e0e14c9fb5ca8faf07dd5eb19d7e29314891a23645b2cdab8ed43"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "328369768ef4d9a8c679b2c41423c6b00eca2ea9261519af4b4c75e0dd47844e"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "747e804623e92218472a2a74874f542ad3e0fabae22a06aa6734ed6baa4626c0"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "d86ea8b8a2de75f121906c1a32180d98619105df5d9583d8f90250611c3dbd4b"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "ad6feb9e4bc4958edc36d7823575ddf0495571d325fca6a291ceaf0ad36ad8ba"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "42140c2811988b54c03ddc179596c8ec3bd1086a9853eb22dcaa3c9846b74c12"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "da16d6c0cd8c57eac6c26e1fbf6bb000ec1ac6666f8ce5e5891561fb954af674"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "5f16dcd9e16648e65db2b4c55ee8b2a0e7abae7e5b0c8fba07bfc83a2b039556"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "9d644789724f8cbe7fe0ec1bbaac6515f31165aaf320f3adbcd1bb0090110b35"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "3b6768b46387a347cfb5d04fce1781945c63c5bcd920db43d0d00bf49e93d4c3"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "37c7932a1ffbb835a48a228dd4e361eb56c044f6741697cf1c3cf17d827e1186"
+    },
+    {
+      "presetIndex": 86,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "ab1436840c749718fb9da46ac293d470396d612faef80068cd832de0a16d64a9"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "d80715009a4cb9ac7e599f05dfa17fda7fab28eaad49d90d1d154899323b4f62"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "ba69fdb5dbe29857af14a5c7c867a6dc86f2d6fc593530090007a7e88a46ada8"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "fff541af444b7b1e4fea6de1cc411c4be7270413132db7bd25205d572c61030f"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "43fcff8225eb95d53b6bc047cec592d240395d5bf9d92350ee51b4c20031b294"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "3541af4226c29cbcf2aebe90dafef8074c819da3e9308d20f32fd74b6c538ccf"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "7f323c7977d91f0f62b6afec943bc68a9ad78d9232acd89834924fc8a7d1d85f"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "47158f5d0029faf98abcce65c470f0ed6b93c8282c0c2fd63d03ec00ef9fa9b5"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "837b91b009e3679a9e0e888dc04726f2710a538e2956d43615972db50a86fc0c"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "c35e96298d69cec590762524c1c0901ee97687ced98dfa5aeb116cfd63d559fd"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "53c47222aca4da83e1a34c9ea0117cbd32d2ef24dcb70c76e03c0858a1daf960"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "a259210f1d5ecff398ecd82d73a34de5f2b3f227899cc0cb7c1e8198b2d68e6f"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "0221a854192c4373a14b52e95ea3fcdf0fb1fcba4d6d9b816c7f9cd6d0fbcec3"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "d2c8e472bc8a6dedbeaaa9221a71c484bac6248127971c775363b203dd666a90"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "539d6452b76cbb7dcc07ac85a9877d62b9f9d5f995bda8c22b18c99afddaa52e"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "78f74ec35c257c5cd3d7e838f110219e98df2c935ad820e6973ffeee5f7328f5"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "2a07dfad867e6e9b9d44cbb779d0ccf2681a810b7fd448d9fa0aa3c881225633"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "92a54528a2bcba09cd8d6b7e291dcffae21bec8c213e8b560ce33e5a95f7a65f"
+    },
+    {
+      "presetIndex": 87,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "8b9640a16a9ef7b5f79ff6e4f72edf5b3c2b08c2eda142d4e7f0e8bd28b792e1"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "d89bafdeca3142b3ee4a361a6dacac36893476d188941808aeb562684352542c"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "89bb232aff0bffa7f08f8f641fa435b64f96abb5c6de707ff4d0c04ae8ccc73f"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "d702f288d660f3d031b100a414ac46f0392886901dd731ad199c6aae8ca01291"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "72ea1f236b489fb91b63f41859d566d5f05c463fff88b1ddfe13ca5a585e353a"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "72ea1f236b489fb91b63f41859d566d5f05c463fff88b1ddfe13ca5a585e353a"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "72ea1f236b489fb91b63f41859d566d5f05c463fff88b1ddfe13ca5a585e353a"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "72ea1f236b489fb91b63f41859d566d5f05c463fff88b1ddfe13ca5a585e353a"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "72ea1f236b489fb91b63f41859d566d5f05c463fff88b1ddfe13ca5a585e353a"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "72ea1f236b489fb91b63f41859d566d5f05c463fff88b1ddfe13ca5a585e353a"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "72ea1f236b489fb91b63f41859d566d5f05c463fff88b1ddfe13ca5a585e353a"
+    },
+    {
+      "presetIndex": 88,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "f3e53ee52f0f254bf789c6dd3efed00a04e41a68779a2664d85f43ce68c3cd63"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "b2449802f681a621a8534ae23cb9d7b23e2d9e8c3a7291c2914ae0896f6eb51d"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "296ad2c3b07a28a421780ba0b4cca87e630482b4ee17be8aecfbc67746a12164"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "f562c48df25045e651ddc834594bc7f2d8a54e2b1d7eca21f674566caf9f14de"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "c4186797bb44cbeb96ea8549f013f4f9b01e8ac3d621a16272dd1a4c9d12cd3b"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "c4186797bb44cbeb96ea8549f013f4f9b01e8ac3d621a16272dd1a4c9d12cd3b"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "c4186797bb44cbeb96ea8549f013f4f9b01e8ac3d621a16272dd1a4c9d12cd3b"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "c4186797bb44cbeb96ea8549f013f4f9b01e8ac3d621a16272dd1a4c9d12cd3b"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "c4186797bb44cbeb96ea8549f013f4f9b01e8ac3d621a16272dd1a4c9d12cd3b"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "c4186797bb44cbeb96ea8549f013f4f9b01e8ac3d621a16272dd1a4c9d12cd3b"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "c4186797bb44cbeb96ea8549f013f4f9b01e8ac3d621a16272dd1a4c9d12cd3b"
+    },
+    {
+      "presetIndex": 89,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "9b1ec55c074496502f8fd6094f134b61c3827e7937ea36322bb125018758252f"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "4c586a77a9c244fa2469accc0527bf37e9221c735ee503793b7b5b584af8f244"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "57654be7c4f9441d34664ed429be03c8f2600d3f7a22aa6780521c72fee8b1f6"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "95fb3c282ed61887e7f06baf64abd0b8db8db992fdf822ca2c1f0d05029b5017"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "95f28fd7a973a721b8875c5cc9521d9613897ff12668a9ce3b5aeba7bc0c0356"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "95f28fd7a973a721b8875c5cc9521d9613897ff12668a9ce3b5aeba7bc0c0356"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "95f28fd7a973a721b8875c5cc9521d9613897ff12668a9ce3b5aeba7bc0c0356"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "95f28fd7a973a721b8875c5cc9521d9613897ff12668a9ce3b5aeba7bc0c0356"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "95f28fd7a973a721b8875c5cc9521d9613897ff12668a9ce3b5aeba7bc0c0356"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "95f28fd7a973a721b8875c5cc9521d9613897ff12668a9ce3b5aeba7bc0c0356"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "95f28fd7a973a721b8875c5cc9521d9613897ff12668a9ce3b5aeba7bc0c0356"
+    },
+    {
+      "presetIndex": 90,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "13a0e51fa6f0720407d2f9d5ca157623fef3ce014f920c0e5d6167c7b400a255"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 0,
+      "controllerFrame": 0,
+      "unitIndex": 0,
+      "sha256": "8041608ae95bcdd5b3e45b4e164f0d2d0d735d5b333c9963a33592e09d11d771"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 0,
+      "controllerFrame": 16,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 3,
+      "controllerFrame": 3,
+      "unitIndex": 0,
+      "sha256": "45d72157c73d3dbf9e3c13a0213e0e86fe5aad86114040d479911024a58c221f"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 3,
+      "controllerFrame": 19,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 4,
+      "controllerFrame": 4,
+      "unitIndex": 0,
+      "sha256": "543d6250f690e3462e24b3f0effa76d34249fffd8b82c20f764a53f8b74e90e4"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 4,
+      "controllerFrame": 20,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 19,
+      "controllerFrame": 19,
+      "unitIndex": 0,
+      "sha256": "ec4977b418e560d96282b2fae0473f1e3d01ad0e75da2eb5b5b0c2fe6976a913"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 19,
+      "controllerFrame": 35,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 20,
+      "controllerFrame": 20,
+      "unitIndex": 0,
+      "sha256": "ec4977b418e560d96282b2fae0473f1e3d01ad0e75da2eb5b5b0c2fe6976a913"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 20,
+      "controllerFrame": 36,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 100,
+      "controllerFrame": 100,
+      "unitIndex": 0,
+      "sha256": "ec4977b418e560d96282b2fae0473f1e3d01ad0e75da2eb5b5b0c2fe6976a913"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 100,
+      "controllerFrame": 116,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 800,
+      "controllerFrame": 800,
+      "unitIndex": 0,
+      "sha256": "ec4977b418e560d96282b2fae0473f1e3d01ad0e75da2eb5b5b0c2fe6976a913"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 800,
+      "controllerFrame": 816,
+      "unitIndex": 8,
+      "sha256": "ec4977b418e560d96282b2fae0473f1e3d01ad0e75da2eb5b5b0c2fe6976a913"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 1600,
+      "controllerFrame": 1600,
+      "unitIndex": 0,
+      "sha256": "ec4977b418e560d96282b2fae0473f1e3d01ad0e75da2eb5b5b0c2fe6976a913"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 1600,
+      "controllerFrame": 1616,
+      "unitIndex": 8,
+      "sha256": "fad0291d5a68a5bcfa50634082d9313e1636346fe46371801de06576f8d1f4a6"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 2650,
+      "controllerFrame": 2650,
+      "unitIndex": 0,
+      "sha256": "ec4977b418e560d96282b2fae0473f1e3d01ad0e75da2eb5b5b0c2fe6976a913"
+    },
+    {
+      "presetIndex": 91,
+      "globalFrame": 2650,
+      "controllerFrame": 2666,
+      "unitIndex": 8,
+      "sha256": "14d3821569c8bab1722c5dc28281231cc45116fe404cb485e8dad26d4aead927"
     }
   ],
   "unitVariations": [
@@ -24048,12 +27679,25 @@
           "ringCount": 3
         },
         "color": {
-          "mode": "solid",
-          "color": {
-            "r": 1,
-            "g": 1,
-            "b": 1
-          }
+          "mode": "gradient",
+          "axis": "radius",
+          "colors": [
+            {
+              "r": 0.2,
+              "g": 0.85,
+              "b": 1
+            },
+            {
+              "r": 1,
+              "g": 0.2,
+              "b": 0.75
+            },
+            {
+              "r": 1,
+              "g": 0.7,
+              "b": 0.15
+            }
+          ]
         },
         "unitVariation": {
           "parameter": "speedHz",
@@ -24084,12 +27728,25 @@
           "ringCount": 3
         },
         "color": {
-          "mode": "solid",
-          "color": {
-            "r": 1,
-            "g": 1,
-            "b": 1
-          }
+          "mode": "gradient",
+          "axis": "radius",
+          "colors": [
+            {
+              "r": 0.2,
+              "g": 0.85,
+              "b": 1
+            },
+            {
+              "r": 1,
+              "g": 0.2,
+              "b": 0.75
+            },
+            {
+              "r": 1,
+              "g": 0.7,
+              "b": 0.15
+            }
+          ]
         },
         "unitVariation": {
           "parameter": "speedHz",
@@ -24120,12 +27777,25 @@
           "ringCount": 3
         },
         "color": {
-          "mode": "solid",
-          "color": {
-            "r": 1,
-            "g": 1,
-            "b": 1
-          }
+          "mode": "gradient",
+          "axis": "radius",
+          "colors": [
+            {
+              "r": 0.2,
+              "g": 0.85,
+              "b": 1
+            },
+            {
+              "r": 1,
+              "g": 0.2,
+              "b": 0.75
+            },
+            {
+              "r": 1,
+              "g": 0.7,
+              "b": 0.15
+            }
+          ]
         },
         "unitVariation": {
           "parameter": "speedHz",
@@ -24156,12 +27826,25 @@
           "ringCount": 3
         },
         "color": {
-          "mode": "solid",
-          "color": {
-            "r": 1,
-            "g": 1,
-            "b": 1
-          }
+          "mode": "gradient",
+          "axis": "radius",
+          "colors": [
+            {
+              "r": 0.2,
+              "g": 0.85,
+              "b": 1
+            },
+            {
+              "r": 1,
+              "g": 0.2,
+              "b": 0.75
+            },
+            {
+              "r": 1,
+              "g": 0.7,
+              "b": 0.15
+            }
+          ]
         },
         "unitVariation": {
           "parameter": "ringCount",
@@ -24192,12 +27875,25 @@
           "ringCount": 3
         },
         "color": {
-          "mode": "solid",
-          "color": {
-            "r": 1,
-            "g": 1,
-            "b": 1
-          }
+          "mode": "gradient",
+          "axis": "radius",
+          "colors": [
+            {
+              "r": 0.2,
+              "g": 0.85,
+              "b": 1
+            },
+            {
+              "r": 1,
+              "g": 0.2,
+              "b": 0.75
+            },
+            {
+              "r": 1,
+              "g": 0.7,
+              "b": 0.15
+            }
+          ]
         },
         "unitVariation": {
           "parameter": "ringCount",
@@ -24228,12 +27924,25 @@
           "ringCount": 3
         },
         "color": {
-          "mode": "solid",
-          "color": {
-            "r": 1,
-            "g": 1,
-            "b": 1
-          }
+          "mode": "gradient",
+          "axis": "radius",
+          "colors": [
+            {
+              "r": 0.2,
+              "g": 0.85,
+              "b": 1
+            },
+            {
+              "r": 1,
+              "g": 0.2,
+              "b": 0.75
+            },
+            {
+              "r": 1,
+              "g": 0.7,
+              "b": 0.15
+            }
+          ]
         },
         "unitVariation": {
           "parameter": "ringCount",
@@ -26397,7 +30106,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -26459,7 +30169,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -26521,7 +30232,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -26583,7 +30295,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -26645,7 +30358,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -26707,7 +30421,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -26769,7 +30484,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -26831,7 +30547,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -26893,7 +30610,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -26955,7 +30673,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -27017,7 +30736,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -27079,7 +30799,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -27141,7 +30862,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -27203,7 +30925,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -27265,7 +30988,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -27317,6 +31041,1131 @@
         6
       ],
       "completionFrames": 2940
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "two-tone-trail",
+        "parameters": {
+          "periodSeconds": 4,
+          "tailLength": 0.3
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "strip",
+          "colors": [
+            {
+              "r": 1,
+              "g": 0,
+              "b": 0
+            },
+            {
+              "r": 0,
+              "g": 1,
+              "b": 0
+            }
+          ]
+        },
+        "unitVariation": {
+          "parameter": "periodSeconds",
+          "from": 20,
+          "to": 0.7,
+          "distribution": "linear"
+        }
+      },
+      "values": [
+        20,
+        17.5,
+        15,
+        13,
+        10.5,
+        8,
+        5.5,
+        3,
+        0.5
+      ],
+      "completionFrames": 800
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "two-tone-trail",
+        "parameters": {
+          "periodSeconds": 4,
+          "tailLength": 0.3
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "strip",
+          "colors": [
+            {
+              "r": 1,
+              "g": 0,
+              "b": 0
+            },
+            {
+              "r": 0,
+              "g": 1,
+              "b": 0
+            }
+          ]
+        },
+        "unitVariation": {
+          "parameter": "periodSeconds",
+          "from": 20,
+          "to": 0.7,
+          "distribution": "skip"
+        }
+      },
+      "values": [
+        20,
+        10.5,
+        0.5,
+        13,
+        3,
+        15,
+        5.5,
+        17.5,
+        8
+      ],
+      "completionFrames": 800
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "two-tone-trail",
+        "parameters": {
+          "periodSeconds": 4,
+          "tailLength": 0.3
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "strip",
+          "colors": [
+            {
+              "r": 1,
+              "g": 0,
+              "b": 0
+            },
+            {
+              "r": 0,
+              "g": 1,
+              "b": 0
+            }
+          ]
+        },
+        "unitVariation": {
+          "parameter": "periodSeconds",
+          "from": 20,
+          "to": 0.7,
+          "distribution": "random"
+        }
+      },
+      "values": [
+        15.5,
+        5,
+        8,
+        16.5,
+        6.5,
+        10,
+        9.5,
+        3,
+        11.5
+      ],
+      "completionFrames": 660
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "two-tone-trail",
+        "parameters": {
+          "periodSeconds": 4,
+          "tailLength": 0.3
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "strip",
+          "colors": [
+            {
+              "r": 1,
+              "g": 0,
+              "b": 0
+            },
+            {
+              "r": 0,
+              "g": 1,
+              "b": 0
+            }
+          ]
+        },
+        "unitVariation": {
+          "parameter": "tailLength",
+          "from": 1,
+          "to": 0.07,
+          "distribution": "linear"
+        }
+      },
+      "values": [
+        1,
+        0.9,
+        0.75,
+        0.65,
+        0.55,
+        0.4,
+        0.3,
+        0.2,
+        0.05
+      ],
+      "completionFrames": 160
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "two-tone-trail",
+        "parameters": {
+          "periodSeconds": 4,
+          "tailLength": 0.3
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "strip",
+          "colors": [
+            {
+              "r": 1,
+              "g": 0,
+              "b": 0
+            },
+            {
+              "r": 0,
+              "g": 1,
+              "b": 0
+            }
+          ]
+        },
+        "unitVariation": {
+          "parameter": "tailLength",
+          "from": 1,
+          "to": 0.07,
+          "distribution": "skip"
+        }
+      },
+      "values": [
+        1,
+        0.55,
+        0.05,
+        0.65,
+        0.2,
+        0.75,
+        0.3,
+        0.9,
+        0.4
+      ],
+      "completionFrames": 160
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "two-tone-trail",
+        "parameters": {
+          "periodSeconds": 4,
+          "tailLength": 0.3
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "strip",
+          "colors": [
+            {
+              "r": 1,
+              "g": 0,
+              "b": 0
+            },
+            {
+              "r": 0,
+              "g": 1,
+              "b": 0
+            }
+          ]
+        },
+        "unitVariation": {
+          "parameter": "tailLength",
+          "from": 1,
+          "to": 0.07,
+          "distribution": "random"
+        }
+      },
+      "values": [
+        0.8,
+        0.25,
+        0.4,
+        0.85,
+        0.35,
+        0.5,
+        0.5,
+        0.2,
+        0.6
+      ],
+      "completionFrames": 160
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "travelSeconds",
+          "from": 10,
+          "to": 0.35,
+          "distribution": "linear"
+        }
+      },
+      "values": [
+        10,
+        8.75,
+        7.5,
+        6.5,
+        5.25,
+        4,
+        2.75,
+        1.5,
+        0.25
+      ],
+      "completionFrames": 440
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "travelSeconds",
+          "from": 10,
+          "to": 0.35,
+          "distribution": "skip"
+        }
+      },
+      "values": [
+        10,
+        5.25,
+        0.25,
+        6.5,
+        1.5,
+        7.5,
+        2.75,
+        8.75,
+        4
+      ],
+      "completionFrames": 440
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "travelSeconds",
+          "from": 10,
+          "to": 0.35,
+          "distribution": "random"
+        }
+      },
+      "values": [
+        7.75,
+        2.5,
+        4,
+        8.25,
+        3.25,
+        5,
+        4.75,
+        1.5,
+        5.75
+      ],
+      "completionFrames": 370
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "gapSeconds",
+          "from": 10,
+          "to": 0.1,
+          "distribution": "linear"
+        }
+      },
+      "values": [
+        10,
+        8.75,
+        7.5,
+        6.25,
+        5,
+        3.75,
+        2.5,
+        1.25,
+        0
+      ],
+      "completionFrames": 460
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "gapSeconds",
+          "from": 10,
+          "to": 0.1,
+          "distribution": "skip"
+        }
+      },
+      "values": [
+        10,
+        5,
+        0,
+        6.25,
+        1.25,
+        7.5,
+        2.5,
+        8.75,
+        3.75
+      ],
+      "completionFrames": 460
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "gapSeconds",
+          "from": 10,
+          "to": 0.1,
+          "distribution": "random"
+        }
+      },
+      "values": [
+        7.75,
+        2.25,
+        3.75,
+        8.25,
+        3.25,
+        4.75,
+        4.5,
+        1.25,
+        5.75
+      ],
+      "completionFrames": 390
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "headSize",
+          "from": 0.3,
+          "to": 0.024,
+          "distribution": "linear"
+        }
+      },
+      "values": [
+        0.3,
+        0.27,
+        0.23,
+        0.2,
+        0.16,
+        0.13,
+        0.09,
+        0.06,
+        0.02
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "headSize",
+          "from": 0.3,
+          "to": 0.024,
+          "distribution": "skip"
+        }
+      },
+      "values": [
+        0.3,
+        0.16,
+        0.02,
+        0.2,
+        0.06,
+        0.23,
+        0.09,
+        0.27,
+        0.13
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "headSize",
+          "from": 0.3,
+          "to": 0.024,
+          "distribution": "random"
+        }
+      },
+      "values": [
+        0.24,
+        0.08,
+        0.13,
+        0.25,
+        0.11,
+        0.15,
+        0.15,
+        0.06,
+        0.18
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "trailSeconds",
+          "from": 5,
+          "to": 0.14,
+          "distribution": "linear"
+        }
+      },
+      "values": [
+        5,
+        4.4,
+        3.8,
+        3.2,
+        2.6,
+        2,
+        1.4,
+        0.7,
+        0.1
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "trailSeconds",
+          "from": 5,
+          "to": 0.14,
+          "distribution": "skip"
+        }
+      },
+      "values": [
+        5,
+        2.6,
+        0.1,
+        3.2,
+        0.7,
+        3.8,
+        1.4,
+        4.4,
+        2
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "trailSeconds",
+          "from": 5,
+          "to": 0.14,
+          "distribution": "random"
+        }
+      },
+      "values": [
+        3.9,
+        1.2,
+        2,
+        4.1,
+        1.7,
+        2.4,
+        2.3,
+        0.7,
+        2.9
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "randomness",
+          "from": 1,
+          "to": 0.020000000000000004,
+          "distribution": "linear"
+        }
+      },
+      "values": [
+        1,
+        0.9,
+        0.75,
+        0.65,
+        0.5,
+        0.4,
+        0.25,
+        0.15,
+        0
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "randomness",
+          "from": 1,
+          "to": 0.020000000000000004,
+          "distribution": "skip"
+        }
+      },
+      "values": [
+        1,
+        0.5,
+        0,
+        0.65,
+        0.15,
+        0.75,
+        0.25,
+        0.9,
+        0.4
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "randomness",
+          "from": 1,
+          "to": 0.020000000000000004,
+          "distribution": "random"
+        }
+      },
+      "values": [
+        0.8,
+        0.25,
+        0.4,
+        0.85,
+        0.35,
+        0.5,
+        0.45,
+        0.15,
+        0.6
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "direction",
+          "from": 1,
+          "to": 0.4,
+          "distribution": "linear"
+        }
+      },
+      "values": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "direction",
+          "from": 1,
+          "to": 0.4,
+          "distribution": "skip"
+        }
+      },
+      "values": [
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "direction",
+          "from": 1,
+          "to": 0.4,
+          "distribution": "random"
+        }
+      },
+      "values": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "trailColor",
+          "from": 1,
+          "to": 0.4,
+          "distribution": "linear"
+        }
+      },
+      "values": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "trailColor",
+          "from": 1,
+          "to": 0.4,
+          "distribution": "skip"
+        }
+      },
+      "values": [
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1
+      ],
+      "completionFrames": 100
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "unitVariation": {
+          "parameter": "trailColor",
+          "from": 1,
+          "to": 0.4,
+          "distribution": "random"
+        }
+      },
+      "values": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        1
+      ],
+      "completionFrames": 100
     }
   ],
   "unitFade": {
@@ -27370,7 +32219,7 @@
             "seconds": 2
           },
           "transition": {
-            "kind": "unit-fade-black",
+            "kind": "unit-breathe-black",
             "seconds": 0.5
           }
         }
@@ -28881,8 +33730,8 @@
         "frame": 120,
         "weights": [
           [
-            0.7,
-            0.95,
+            0.44366777739064733,
+            0.8981725353800132,
             1,
             1,
             1,
@@ -28908,10 +33757,10 @@
         "frame": 121,
         "weights": [
           [
-            0.4,
-            0.6499999999999999,
-            0.8999999999999999,
-            1,
+            0.2311677773906473,
+            0.21262793014951076,
+            0.6414846476420981,
+            0.9882572161690125,
             1,
             1,
             1,
@@ -28935,11 +33784,11 @@
         "frame": 122,
         "weights": [
           [
-            0.10000000000000009,
-            0.35,
-            0.6,
-            0.85,
-            1,
+            0.9188322226093526,
+            0.47578572036124034,
+            0.15523245524706641,
+            0.3529381099957217,
+            0.8248087322243011,
             1,
             1,
             1,
@@ -28962,13 +33811,13 @@
         "frame": 123,
         "weights": [
           [
-            0,
-            0.04999999999999993,
-            0.29999999999999993,
-            0.55,
-            0.7999999999999999,
-            1,
-            1,
+            0.5999999999999999,
+            0.9749999999999999,
+            0.7679459623893077,
+            0.29898457945967183,
+            0.17080098057455972,
+            0.5416548843156659,
+            0.9536777727800564,
             1,
             1
           ],
@@ -28990,13 +33839,13 @@
         "weights": [
           [
             0,
-            0,
-            0,
-            0.25,
-            0.4999999999999999,
-            0.7499999999999998,
-            1,
-            1,
+            0.375,
+            0.75,
+            0.9676488013172968,
+            0.575,
+            0.1823511986827031,
+            0.2744796179957173,
+            0.7376404587551633,
             1
           ],
           [
@@ -29018,13 +33867,13 @@
           [
             0,
             0,
-            0,
-            0,
-            0.19999999999999996,
-            0.44999999999999984,
-            0.7,
-            0.95,
-            1
+            0.15000000000000013,
+            0.5250000000000001,
+            0.9000000000000001,
+            0.8510154205403279,
+            0.38205403761069257,
+            0.15131013316342057,
+            0.44366777739064733
           ],
           [
             0,
@@ -29047,11 +33896,11 @@
             0,
             0,
             0,
-            0,
-            0.1499999999999999,
-            0.4,
-            0.6499999999999999,
-            0.8999999999999998
+            0.29999999999999993,
+            0.6749999999999999,
+            0.9947675447529335,
+            0.6742142796387596,
+            0.2311677773906473
           ],
           [
             0,
@@ -29075,10 +33924,10 @@
             0,
             0,
             0,
-            0,
-            0.10000000000000009,
-            0.35,
-            0.5999999999999999
+            0.07500000000000007,
+            0.45000000000000007,
+            0.8250000000000001,
+            0.9188322226093526
           ],
           [
             0,
@@ -29104,8 +33953,8 @@
             0,
             0,
             0,
-            0.04999999999999993,
-            0.2999999999999998
+            0.22499999999999987,
+            0.5999999999999999
           ],
           [
             0,
@@ -32297,7 +37146,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -33243,7 +38093,8 @@
           "acceleration": 2,
           "ledFadeSeconds": 0,
           "holdSeconds": 5,
-          "fadeOutSeconds": 3
+          "fadeOutSeconds": 3,
+          "staggerSeconds": 0
         },
         "color": {
           "mode": "gradient",
@@ -33292,6 +38143,229 @@
       ],
       "totalFrames": 5440,
       "sha256": "43174ed6153ac7b6ff4dc2f631be19feefb40c9659f040efa0edd37a59330678"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "pillar-fill",
+        "parameters": {
+          "stepSeconds": 0.5,
+          "acceleration": 1,
+          "fadeInSeconds": 0.3,
+          "holdSeconds": 2,
+          "fadeOutSeconds": 1,
+          "endDarkSeconds": 0.5
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        }
+      },
+      "unitCount": 24,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 1224,
+      "sha256": "dd4b181dbf345dc96567581da63ddd92414b1fb6d43f9cf718fa0a4242fbf0c7"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "pillar-fill",
+        "parameters": {
+          "stepSeconds": 0.5,
+          "acceleration": 2.5,
+          "fadeInSeconds": 0.15,
+          "holdSeconds": 2,
+          "fadeOutSeconds": 1,
+          "endDarkSeconds": 0.5
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        }
+      },
+      "unitCount": 24,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 1212,
+      "sha256": "866b6eece5a0c7b324d367c18fb7184cdfe6664c8fd97fd0ee028a2dc072125f"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "random-fill",
+        "parameters": {
+          "fillSeconds": 5,
+          "acceleration": 3.5,
+          "ledFadeSeconds": 0.25,
+          "holdSeconds": 6,
+          "fadeOutSeconds": 0.5,
+          "staggerSeconds": 2
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "unit",
+          "colors": [
+            {
+              "r": 0.2784313725490196,
+              "g": 0.8431372549019608,
+              "b": 1
+            },
+            {
+              "r": 0.47843137254901963,
+              "g": 0.3607843137254902,
+              "b": 1
+            },
+            {
+              "r": 1,
+              "g": 0.30980392156862746,
+              "b": 0.6392156862745098
+            },
+            {
+              "r": 1,
+              "g": 0.7294117647058823,
+              "b": 0.28627450980392155
+            },
+            {
+              "r": 0.36470588235294116,
+              "g": 1,
+              "b": 0.6980392156862745
+            }
+          ]
+        }
+      },
+      "unitCount": 9,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 1100,
+      "sha256": "282646eaf06292881164689e43e26f5d16478584ed8e6c7070deba8d09f6d6d6"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 1,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 0.6,
+          "direction": 0,
+          "trailColor": 0
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        }
+      },
+      "unitCount": 9,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 200,
+      "sha256": "b9652c74f17b996c4322c2da37e6706085d31993e64bd0ee836bea0d607a6039"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "firework-rise",
+        "parameters": {
+          "travelSeconds": 1.5,
+          "gapSeconds": 0,
+          "headSize": 0.08,
+          "trailSeconds": 1,
+          "randomness": 1,
+          "direction": 1,
+          "trailColor": 1
+        },
+        "color": {
+          "mode": "gradient",
+          "axis": "radius",
+          "colors": [
+            {
+              "r": 1,
+              "g": 1,
+              "b": 1
+            },
+            {
+              "r": 1,
+              "g": 0.7,
+              "b": 0.1
+            },
+            {
+              "r": 0.8,
+              "g": 0,
+              "b": 0
+            }
+          ]
+        }
+      },
+      "unitCount": 9,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 120,
+      "sha256": "228704f61cdd02d3c8f6feedfd95ad3677537edf51e919501b311158af538de1"
     }
   ],
   "rainLines": {
@@ -33334,12 +38408,12 @@
       {
         "effectId": "moving-rings",
         "fps": 40,
-        "sha256": "3ed59912691f0aba40a980f0678c4df0a614e667b5750b657e4950e2f260c0a7"
+        "sha256": "c0a4fbe6ce55fb4b1d4c05e4155ce2527d510c3bc7bf82a79a2bbdd4860bcf32"
       },
       {
         "effectId": "moving-rings",
         "fps": 60,
-        "sha256": "738296ae78178693cb6c933c33c4056162a84bb2c9db2c13fbce81395429cecf"
+        "sha256": "1c178aca288deb53d60964a1ead487928a8e8a15691d8e81b166c2a1c0ae7bea"
       },
       {
         "effectId": "sequential-center-fill",
@@ -33510,6 +38584,36 @@
         "effectId": "roulette-ring",
         "fps": 60,
         "sha256": "6a6a2f7c8123dbeb555707709f8f287290f68b37d79b0a7ee4f7864cdd6001d2"
+      },
+      {
+        "effectId": "two-tone-trail",
+        "fps": 40,
+        "sha256": "d3748bd8027661919b3fb860e2ea08e986d7b25ff24757255d1d6bd1036e286c"
+      },
+      {
+        "effectId": "two-tone-trail",
+        "fps": 60,
+        "sha256": "b7e2ffe9196e33298fd626a879cc7c6801981a6364c1ec4401979966a6b27960"
+      },
+      {
+        "effectId": "firework-rise",
+        "fps": 40,
+        "sha256": "f97a36505c3be89e59a95607eaef771b363e8f3665b5c92d73270aa9fd09354a"
+      },
+      {
+        "effectId": "firework-rise",
+        "fps": 60,
+        "sha256": "f47249935091ab19b00c21567ad1b549f0b8177f8f07a78fe2e7572d5ed5a35c"
+      },
+      {
+        "effectId": "pillar-fill",
+        "fps": 40,
+        "sha256": "e697f3ca018d2cbfe806bcac6d8294a54a70d62aeac8afbd7365a2af75839e01"
+      },
+      {
+        "effectId": "pillar-fill",
+        "fps": 60,
+        "sha256": "1ccdbc04e649b3572526c0f64554400243cf0a59ccaa1a343d43bbeb3aadb69f"
       }
     ]
   }

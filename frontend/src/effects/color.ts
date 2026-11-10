@@ -24,6 +24,14 @@ export function defaultEffectColor(effectId: EffectId): EffectColor {
   if (effectId === 'random-fill') {
     return { mode: 'gradient', axis: 'unit', colors: SPECTRUM.map((color) => ({ ...color })) }
   }
+  if (effectId === 'moving-rings') {
+    // 每個環一色：青、洋紅、琥珀。 / One colour per ring: cyan, magenta, amber.
+    return { mode: 'gradient', axis: 'radius', colors: [{ r: 0.2, g: 0.85, b: 1 }, { r: 1, g: 0.2, b: 0.75 }, { r: 1, g: 0.7, b: 0.15 }] }
+  }
+  if (effectId === 'two-tone-trail') {
+    // 底色紅、亮點綠。 / Red base, green dot.
+    return { mode: 'gradient', axis: 'strip', colors: [{ r: 1, g: 0, b: 0 }, { r: 0, g: 1, b: 0 }] }
+  }
   if (effectId === 'color-breathing' || effectId === 'twenty-beat') {
     return {
       mode: 'gradient', axis: 'radius', colors: [

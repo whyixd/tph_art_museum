@@ -80,6 +80,8 @@ export function App() {
   const [view, setView] = useState<SceneView>('site')
   const [selectedUnit, setSelectedUnit] = useState(0)
   const [showStructure, setShowStructure] = useState(true)
+  // 演出時間軸可收起，讓小螢幕（iPad mini）把高度留給 3D 畫面。 / The show timeline can be hidden so small screens keep the 3D view.
+  const [timelineVisible, setTimelineVisible] = useState(true)
   const [visible, setVisible] = useState<GroupVisibility>({ spinner: true, ball: true, wash: true })
   const [selectedFixture, setSelectedFixture] = useState<FixtureSelection>(null)
   const [editGroup, setEditGroup] = useState<EditGroup>('spinner')
@@ -604,7 +606,7 @@ export function App() {
         </div>
       </header>
 
-      <section className="workspace">
+      <section className={inShow && timelineVisible ? 'workspace with-timeline' : 'workspace'}>
         <div className="viewport-panel">
           <div className="viewport-toolbar">
             <div className="button-row">
@@ -650,6 +652,13 @@ export function App() {
                 onChange={(event) => setShowStructure(event.target.checked)} />
               <span>骨架</span>
             </label>
+            {inShow && (
+              <label className="scene-toggle">
+                <input type="checkbox" checked={timelineVisible}
+                  onChange={(event) => setTimelineVisible(event.target.checked)} />
+                <span>時間軸</span>
+              </label>
+            )}
           </div>
           <div className="canvas-wrap">
             <SimulationCanvas
@@ -701,7 +710,7 @@ export function App() {
               <div><span>Time</span><strong>{diagnostics.simulationTime.toFixed(1)} s</strong></div>
             </div>
           </div>
-          {inShow && <ShowTimeline editor={showEditor} fallbackSeconds={showPreviewSeconds} />}
+          {inShow && timelineVisible && <ShowTimeline editor={showEditor} fallbackSeconds={showPreviewSeconds} />}
         </div>
 
         <ControlPanel

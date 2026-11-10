@@ -10,7 +10,7 @@ type PlaybackProgressProps = {
   stepCount: number | null
 }
 
-const TRANSITION_LABELS = { crossfade: '交叉淡化中', 'fade-black': '淡出再淡入中', 'unit-fade-black': '逐台淡出再淡入中' } as const
+const TRANSITION_LABELS = { crossfade: '交叉淡化中', 'fade-black': '淡出再淡入中', 'unit-fade-black': '逐台淡出再淡入中', 'unit-breathe-black': '逐台呼吸後淡出再淡入中' } as const
 
 function seconds(frames: number, fps: number) {
   return (frames / fps).toFixed(1)

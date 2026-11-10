@@ -251,6 +251,7 @@ export function SequenceEditor({
                     <option value="fade-black">淡出至黑再淡入</option>
                     <option value="crossfade">交叉淡化</option>
                     <option value="unit-fade-black">逐台淡出至黑再淡入</option>
+                    <option value="unit-breathe-black">逐台呼吸後淡出至黑再淡入</option>
                   </select>
                 </label>
                 {selected.transition.kind !== 'cut' && (

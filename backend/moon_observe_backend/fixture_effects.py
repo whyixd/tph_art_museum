@@ -26,6 +26,7 @@ FIXTURE_EFFECT_IDS = (
     "space-wave",
     "fixture-twinkle",
     "fixture-chase",
+    "fixture-firework",
 )
 # min, max, default, integer
 FIXTURE_PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
@@ -36,6 +37,13 @@ FIXTURE_PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
     "space-wave": {"speedHz": (0.05, 2, 0.2, False), "waveCount": (0.5, 4, 1, False), "direction": (0, 1, 0, True)},
     "fixture-twinkle": {"holdSeconds": (0.1, 10, 1, False), "density": (0.05, 1, 0.3, False)},
     "fixture-chase": {"stepSeconds": (0.05, 5, 0.3, False), "tailCount": (0, 10, 2, True), "direction": (0, 1, 0, True)},
+    "fixture-firework": {
+        "spreadSeconds": (0, 10, 2, False),
+        "burstSeconds": (0.25, 10, 2.5, False),
+        "gapSeconds": (0, 10, 0.5, False),
+        "density": (0.05, 1, 0.6, False),
+        "flickerFrames": (1, 20, 2, True),
+    },
 }
 # 雨天：每顆各自隨機相位、短暫閃亮後衰減，其餘時間保留 RAIN_FLOOR 的亮度。
 # Rain: each fixture flashes at its own random phase and decays; between flashes it keeps RAIN_FLOOR.
@@ -134,6 +142,12 @@ def _frames(seconds: float, fps: float) -> int:
     return max(1, _round_half_up(seconds * fps))
 
 
+def fixture_firework_timing(parameters: Mapping[str, Any], fps: float) -> tuple[int, int, int]:
+    """(spread, burst, gap) whole frames; spread and gap may be 0 (frontend fixtureFireworkTiming)."""
+    return (max(0, _round_half_up(parameters["spreadSeconds"] * fps)), _frames(parameters["burstSeconds"], fps),
+            max(0, _round_half_up(parameters["gapSeconds"] * fps)))
+
+
 def fixture_completion_frames(preset: Mapping[str, Any], fps: int, fixture_count: int) -> int | None:
     """Frames for one natural cycle, or None when the effect has no boundary."""
     effect = preset["effectId"]
@@ -144,6 +158,8 @@ def fixture_completion_frames(preset: Mapping[str, Any], fps: int, fixture_count
         return max(1, math.ceil(fps / p["speedHz"]))
     if effect == "fixture-chase":
         return _frames(p["stepSeconds"], fps) * max(1, fixture_count)
+    if effect == "fixture-firework":
+        return sum(fixture_firework_timing(p, fps))
     return None
 
 
@@ -189,6 +205,21 @@ def fixture_brightness(preset: Mapping[str, Any], ctx: FixtureContext) -> float:
         behind = (head - order) % count
         tail = int(p["tailCount"])
         return 1 - behind / (tail + 1) if behind <= tail else 0.0
+    if effect == "fixture-firework":
+        # 依高度晚開始：最低一顆先炸開。 / Delay by height: the lowest bursts first.
+        spread, burst, gap = fixture_firework_timing(p, ctx.controller_fps)
+        cycle = spread + burst + gap
+        local = frame - (frame // cycle) * cycle - _round_half_up(ctx.normalized_height * spread)
+        if local < 0 or local >= burst:
+            return 0.0
+        # 先全亮，之後隨機閃爍並以平方漸暗。 / Fully lit on ignition, then random flicker fading quadratically.
+        flicker = max(1, int(p["flickerFrames"]))
+        if local < flicker:
+            return 1.0
+        if hash01(frame // flicker, ctx.fixture_index, 31) >= p["density"]:
+            return 0.0
+        remaining = 1 - local / burst
+        return remaining * remaining
     raise ValueError(f"unknown fixture effectId: {effect!r}")
 
 

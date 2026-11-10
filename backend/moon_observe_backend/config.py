@@ -201,6 +201,30 @@ def _position(value: Any, name: str) -> dict[str, float]:
 
 
 MAX_POLES = 200
+ARM_REACH_CM = 120  # 與前端 site/layout.ts 相同 / same as the frontend site/layout.ts
+
+
+def pillar_ranks(spinners: list[dict[str, float] | None], poles: list[dict[str, float]]) -> list[int]:
+    """Each unit's rank by pillar for pillar-fill (frontend pillarRanks).
+
+    A spinner belongs to the nearest pole in plan within ARM_REACH_CM; units sort by (pole order in the layout,
+    height z, unit). Spinners without a pole or position come last, by unit.
+    依柱子的順序：每台轉燈歸屬平面上最近（ARM_REACH_CM 內）的柱子，依（柱子順序、高度、編號）排序；沒有柱子的排最後。
+    """
+    keys = []
+    for unit, position in enumerate(spinners):
+        pole, best = math.inf, float(ARM_REACH_CM)
+        if position is not None and "x" in position and "y" in position:
+            for index, candidate in enumerate(poles):
+                distance = math.hypot(candidate["x"] - position["x"], candidate["y"] - position["y"])
+                if distance <= best:
+                    pole, best = index, distance
+        z = 0.0 if pole == math.inf or position is None else position.get("z", 0.0)
+        keys.append((pole, z, unit))
+    ranks = [0] * len(spinners)
+    for rank, (_, _, unit) in enumerate(sorted(keys)):
+        ranks[unit] = rank
+    return ranks
 
 
 def _layout(path: Path, unit_count: int, fixtures: dict[str, list[dict[str, Any]]] | None,
@@ -411,6 +435,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         "dmx": dmx,
         "spinner_positions": spinner_positions,
         "poles": poles,
+        "pillar_ranks": pillar_ranks(spinner_positions, poles),
         "unit_id": targets[0]["unit_id"],
         "unit_count": unit_count,
         "preset_path": str(preset_path),

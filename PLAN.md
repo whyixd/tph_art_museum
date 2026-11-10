@@ -149,6 +149,7 @@ renderFixtureFrame(preset, geometry, frame, {fps, raining, palette, frameStep, c
 | `space-wave` | 亮度波沿 x 推進 | `speedHz` 0.2、`waveCount` 1、`direction` 0 | `ceil(fps/speedHz)` |
 | `fixture-twinkle` | 每顆各自隨機亮起並淡出（固定種子） | `holdSeconds` 1、`density` 0.3 | – |
 | `fixture-chase` | 依編號逐顆巡行，拖 `tailCount` 顆漸暗 | `stepSeconds` 0.3、`tailCount` 2、`direction` 0 | 每步影格 × 顆數 |
+| `fixture-firework` | 煙火蔓延：最低一顆先炸開（全亮 `flickerFrames` 影格），依高度晚 `round(height × spread)` 影格，之後以 `hash01(frame // flickerFrames, index, 31) < density` 隨機閃爍、亮度 `(1 - t/burst)²`；搭配轉燈 `firework-rise` | `spreadSeconds` 2、`burstSeconds` 2.5、`gapSeconds` 0.5、`density` 0.6、`flickerFrames` 2 | 蔓延＋持續＋全暗影格 |
 
 - `follow-spinner`（跟隨最近的轉燈）**未做**：要等 Q9（是否需要連動）與 Q5（座標），且需要輸出迴圈先算好轉燈顏色（M6）。
 - **幾何／layout**：`[render] layout = "layout.json"`（選填；2026-11-10 由 `[dmx]` 移到 `[render]`，因為也放轉燈）。格式 `{"schemaVersion": 1, "spinners": {"1": {"x","y","z"}…}, "fixtures": {"ball": {"1": {…}}, "wash": {…}}}`，單位 cm，x／y／z 都可缺。原點 = 左牆內側線 × 前牆（上視圖下方、說明牌 A 那側）內側線，x 沿長牆往右、y 往後牆、z 離地；轉燈 z 為中心高度。轉燈編號 1–64，超過 `unit_count` 的忽略；沒有 `[dmx]` 時忽略 `fixtures`。球燈群組內每顆都有某軸時才依該軸正規化到 0–1，否則該軸改依編號排列（`config["dmx"]["geometry"]`）；轉燈座標在 `config["spinner_positions"]`，`GET /api/patch` 一併回傳。
@@ -179,7 +180,7 @@ M5 已實作（`sequence.py`）：
 - `spinner` 必填；`ball`／`wash` 選填，**省略 = 全暗**（採用建議）。轉燈要暗可用 `full-on` 配黑色。
 - `playback.count` 可加 `clock`（`spinner`／`ball`／`wash`，預設 `spinner`），以該群組效果的週期計次；只有 clock 群組每次重播時回到第 0 影格，其他群組在段內自由運行。clock 群組必須有 preset 且有週期，否則報錯。`fixture-chase` 的週期依顆數，`compile_sequence`／`SequenceStore` 接受 `fixture_counts`（M6 由 config 傳入）。
 - 讀到 Sequence v1 時升級為 v2（`spinner` = 原 preset，無 `ball`／`wash`）；`SequenceStore` 讀到 v1 檔不會改寫，下次儲存才寫成 v2。`GET /api/sequence` 一律回傳 v2。
-- 轉場對 DMX 群組：`crossfade`、`fade-black` 與轉燈相同權重；`unit-fade-black` 依編號（DMX 鏈順序）逐顆淡出。
+- 轉場對 DMX 群組：`crossfade`、`fade-black` 與轉燈相同權重；`unit-fade-black` 依編號（DMX 鏈順序）逐顆淡出；`unit-breathe-black`（逐台呼吸後淡出）同樣依編號逐顆呼吸後淡出。
 - 前端在 `backendApi.ts` 轉換：讀入 v2 時轉成內部 v1 形狀（`step.preset` = 轉燈，`step.fixtures` 原樣保留 ball／wash），儲存時轉回 v2；現有編輯器只編轉燈，球燈／洗牆燈設定不會遺失（編輯 UI 在 M7）。前端串接預覽仍以轉燈週期計次，`clock` 只在後端生效。
 
 ## 4. 輸出迴圈（`output.py`）
@@ -365,7 +366,7 @@ M5 已實作（`sequence.py`）：
 
 - **Show v1**（`show.py`、`frontend/src/simulation/show.ts`）：`{schemaVersion: 1, id, title, trackId, ending, sections}`。
   - 段落 `{id, start, spinner, ball?, wash?, transition}`；`start` 是 `{seconds}` 或 `{bar, beat?}`（第 1 小節從拍點檔的 `firstDownbeat` 起算，第 0 小節是弱起；`beat` 從 1 起）。第一段固定 `{seconds: 0}`；每段播到下一段開始，最後一段播到曲尾。
-  - `transition` 是**進入這一段**的轉場：`{kind, seconds}` 或 `{kind, beats}`（拍數依該處實際拍距換算，可用小數）；種類同串接（`cut`／`crossfade`／`fade-black`／`unit-fade-black`），從段落開始的拍點起算。
+  - `transition` 是**進入這一段**的轉場：`{kind, seconds}` 或 `{kind, beats}`（拍數依該處實際拍距換算，可用小數）；種類同串接（`cut`／`crossfade`／`fade-black`／`unit-fade-black`／`unit-breathe-black`），從段落開始的拍點起算。
   - `ending`：`{kind: "loop"}`（音樂循環、第一段的轉場用在接回開頭）或 `{kind: "fade-black", seconds}`（曲終淡出，之後回到待機輸出）。
 - **編譯**：演出編成與串接相同的影格表（曲長 × FPS 向上取整），沿用同一套渲染與轉場；影格取整用 `floor(x + 0.5)`，前後端一致（同一組節拍器測試向量）。
 - **播放**（`ShowPlayer`）：影格 = 音樂時間（音訊時鐘＋延遲補償）× FPS；循環時每一輪依曲長重新對齊，不累積誤差。出聲前停在起點；曲子播完後以最後讀到的時間外推，跑完結尾淡出。沒有音訊時以系統時鐘無聲播放。演出播放時取代串接／單一效果、不套用天氣；結束後待機輸出從頭播放。儲存正在播放的演出會直接換上新內容（同曲目、同循環設定時音樂不中斷）。

@@ -302,7 +302,7 @@ export async function saveWeatherPalette(palette: WeatherPalette): Promise<Weath
 }
 
 export type PlaybackTransition = {
-  kind: 'crossfade' | 'fade-black' | 'unit-fade-black'
+  kind: 'crossfade' | 'fade-black' | 'unit-fade-black' | 'unit-breathe-black'
   fromIndex: number
   elapsed: number
   frames: number

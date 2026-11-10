@@ -116,6 +116,21 @@ class FixturePresetTests(unittest.TestCase):
         down = validate_fixture_preset({**default_fixture_preset("height-sweep"), "parameters": {"direction": 1}})
         self.assertEqual(2, max(range(3), key=lambda index: render_fixture_frame(down, geometry, 20)[index][0]))
 
+    def test_firework_bursts_from_lowest_to_highest(self):
+        preset = validate_fixture_preset(default_fixture_preset("fixture-firework"))
+        geometry = fixture_geometry([{"z": z} for z in (0, 500, 1000)])
+        self.assertEqual(200, fixture_completion_frames(preset, 40, 3))
+
+        def levels(frame):
+            return [color[0] for color in render_fixture_frame(preset, geometry, frame)]
+
+        self.assertEqual([1.0, 0.0, 0.0], levels(0))
+        self.assertEqual((1.0, 0.0), (levels(40)[1], levels(40)[2]))
+        self.assertIn(round(levels(40)[0], 2), (0.0, 0.36))
+        self.assertEqual(1.0, levels(80)[2])
+        self.assertEqual([0.0, 0.0, 0.0], levels(190))
+        self.assertEqual([1.0, 0.0, 0.0], levels(200))
+
     def test_max_level_and_off(self):
         solid = validate_fixture_preset({**default_fixture_preset("fixture-solid"), "maxLevel": 0.5})
         self.assertEqual([(0.5, 0.5, 0.5)], render_fixture_frame(solid, [(0.5, 0.5, 0.5)], 0))

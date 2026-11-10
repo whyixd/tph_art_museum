@@ -31,6 +31,9 @@ EFFECT_IDS = (
     "unit-chase",
     "unit-random",
     "roulette-ring",
+    "two-tone-trail",
+    "firework-rise",
+    "pillar-fill",
 )
 # min, max, default, integer
 PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
@@ -70,6 +73,7 @@ PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "ledFadeSeconds": (0, 5, 0, False),
         "holdSeconds": (0, 30, 5, False),
         "fadeOutSeconds": (0, 10, 3, False),
+        "staggerSeconds": (0, 30, 0, False),
     },
     "full-on": {},
     "unit-chase": {
@@ -98,6 +102,24 @@ PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "flickerFrames": (1, 20, 2, True),
         "endDarkSeconds": (0, 10, 0.5, False),
     },
+    "two-tone-trail": {"periodSeconds": (0.5, 20, 4, False), "tailLength": (0.05, 1, 0.3, False)},
+    "firework-rise": {
+        "travelSeconds": (0.25, 10, 1.5, False),
+        "gapSeconds": (0, 10, 1, False),
+        "headSize": (0.02, 0.3, 0.08, False),
+        "trailSeconds": (0.1, 5, 1, False),
+        "randomness": (0, 1, 0.6, False),
+        "direction": (0, 1, 0, True),
+        "trailColor": (0, 1, 0, True),
+    },
+    "pillar-fill": {
+        "stepSeconds": (0.05, 5, 0.5, False),
+        "acceleration": (1, 4, 1, False),
+        "fadeInSeconds": (0, 5, 0.3, False),
+        "holdSeconds": (0, 30, 2, False),
+        "fadeOutSeconds": (0, 10, 1, False),
+        "endDarkSeconds": (0, 10, 0.5, False),
+    },
 }
 # 與前端 manifest 的 step 一致；各燈台數值會對齊這個刻度。整數參數刻度為 1。
 # Matches the frontend manifest steps; per-unit values snap to them. Integer parameters step by 1.
@@ -111,13 +133,20 @@ PARAMETER_STEPS: dict[str, dict[str, float]] = {
     "stardust-cloud": {"holdSeconds": 0.5},
     "color-breathing": {"breatheHz": 0.05},
     "sine-swell": {"speedHz": 0.05, "waveCount": 0.5, "depth": 0.05},
-    "random-fill": {"fillSeconds": 5, "acceleration": 0.25, "ledFadeSeconds": 0.25, "holdSeconds": 1, "fadeOutSeconds": 0.5},
+    "random-fill": {"fillSeconds": 5, "acceleration": 0.25, "ledFadeSeconds": 0.25, "holdSeconds": 1, "fadeOutSeconds": 0.5,
+                    "staggerSeconds": 0.25},
+    "two-tone-trail": {"periodSeconds": 0.5, "tailLength": 0.05},
+    "firework-rise": {"travelSeconds": 0.25, "gapSeconds": 0.25, "headSize": 0.01, "trailSeconds": 0.1,
+                      "randomness": 0.05},
 }
 # 逐組填滿與整台效果靠九台共用時間表，各台參數不同會錯亂，所以不開放。
 # sequential-center-fill and the whole-unit effects share one schedule, so per-unit values would break them.
 FIXED_PARAMETERS: dict[str, tuple[str, ...]] = {
     "sequential-center-fill": ("expansionSeconds", "holdSeconds"),
     "random-leds": ("durationMode",),
+    "pillar-fill": ("stepSeconds", "acceleration", "fadeInSeconds", "holdSeconds", "fadeOutSeconds", "endDarkSeconds"),
+    # 錯落順序靠九台共用的整輪長度。 / The stagger order relies on one shared round length.
+    "random-fill": ("staggerSeconds",),
     "unit-chase": ("stepSeconds", "fadeSeconds", "gapSeconds", "holdSeconds", "endDarkSeconds"),
     "unit-random": ("fadeInSeconds", "holdSeconds", "fadeOutSeconds", "gapSeconds"),
     "roulette-ring": tuple(  # every parameter
@@ -126,7 +155,7 @@ FIXED_PARAMETERS: dict[str, tuple[str, ...]] = {
 }
 # 九台共用時間表、不套用天氣多雲錯開的效果（前端 ignoresWeatherTiming）；它們也沒有雨天線條版本。
 # Shared-schedule effects that skip weather cloud offsets (frontend ignoresWeatherTiming); they have no rain lines either.
-WEATHER_TIMING_FREE = ("unit-chase", "unit-random", "roulette-ring")
+WEATHER_TIMING_FREE = ("unit-chase", "unit-random", "roulette-ring", "pillar-fill")
 UNIT_VARIATION_DISTRIBUTIONS = ("linear", "skip", "random")
 # 不用到燈台編號／相位的效果：沒有雨、各台不錯開時，每台畫面相同，只需算一次（輸出迴圈依此共用）。
 # 其他效果依 unit_index（隨機種子、逐台排程、燈台色盤）或各台相位而不同。測試逐台比對確認。
@@ -135,7 +164,7 @@ UNIT_VARIATION_DISTRIBUTIONS = ("linear", "skip", "random")
 # schedules, unit palette) or the unit phase. A test renders every unit to confirm the list.
 UNIT_INDEPENDENT_EFFECTS = (
     "spectrum-cycle", "center-out-sine", "moving-rings", "periodic-leds", "reverse-tide", "wide-rings",
-    "comet-tail", "color-breathing", "sector-smear", "twenty-beat", "sine-swell", "full-on",
+    "comet-tail", "color-breathing", "sector-smear", "twenty-beat", "sine-swell", "full-on", "two-tone-trail",
 )
 
 
@@ -330,6 +359,14 @@ def default_preset(effect_id: str, led_count: int | None = None) -> dict[str, An
             {"r": 0.7, "g": 0.25, "b": 1},
             {"r": 1, "g": 0.55, "b": 0.2},
         ]}
+    elif effect_id == "moving-rings":
+        # 每個環一色：青、洋紅、琥珀。 / One colour per ring: cyan, magenta, amber.
+        color = {"mode": "gradient", "axis": "radius", "colors": [
+            {"r": 0.2, "g": 0.85, "b": 1}, {"r": 1, "g": 0.2, "b": 0.75}, {"r": 1, "g": 0.7, "b": 0.15},
+        ]}
+    elif effect_id == "two-tone-trail":
+        # 底色紅、亮點綠。 / Red base, green dot.
+        color = {"mode": "gradient", "axis": "strip", "colors": [{"r": 1, "g": 0, "b": 0}, {"r": 0, "g": 1, "b": 0}]}
     elif effect_id == "center-out-sine":
         color = {"mode": "gradient", "axis": "radius", "colors": [
             {"r": 0.2, "g": 0.92, "b": 1},
@@ -375,6 +412,8 @@ class EffectContext:
     global_controller_frame: int | None = None
     unit_relative_y: float = 0.0
     unit_phase_projection: float = 1.0
+    # 依柱子的順序（config.pillar_ranks）；None 時用 unit_index。 / Rank by pillar (config.pillar_ranks); None uses unit_index.
+    unit_rank: int | None = None
 
     @property
     def strip(self) -> float:
@@ -454,30 +493,7 @@ def _brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float:
         phase = TAU * (1.5 * ctx.radius - p["speedHz"] * time)
         return 0.04 + (0.5 + 0.5 * math.cos(phase)) * 0.96
     if effect == "moving-rings":
-        count = int(p["ringCount"])
-        step = 1 if ctx.led_count <= 1 else 2 / (ctx.led_count - 1)
-        offset = step / 2 if ctx.led_count % 2 == 0 else 0
-        lane_width = 1 / count
-        gap = min(step * 2, lane_width * 0.5)
-        motion = math.sin(TAU * p["speedHz"] * time)
-        brightness = 0.0
-        for ring in range(count):
-            start = 0 if ring == 0 else ring * lane_width + gap / 2
-            end = 1 if ring == count - 1 else (ring + 1) * lane_width - gap / 2
-            center = (start + end) / 2
-            travel = (end - start) / 2
-            continuous = center + (1 if ring % 2 == 0 else -1) * travel * motion
-            clamped = max(offset, clamp01(continuous))
-            position = (clamped - offset) / step
-            lower = math.floor(position)
-            upper = math.ceil(position)
-            blend = position - lower
-            tolerance = step * 1e-6
-            if abs(ctx.radius - (offset + lower * step)) <= tolerance:
-                brightness = max(brightness, 1 - blend)
-            if abs(ctx.radius - (offset + upper * step)) <= tolerance:
-                brightness = max(brightness, blend)
-        return brightness
+        return min(1.0, sum(ring_weights(p, ctx)))
     if effect == "sequential-center-fill":
         expansion = max(0.01, p["expansionSeconds"])
         stage = expansion + max(0, p["holdSeconds"])
@@ -530,6 +546,12 @@ def _brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float:
         phase = _cycle(ctx.radius * int(p["ringCount"]) - time * p["speedHz"])
         distance = min(phase, 1 - phase)
         return 1 - _smoothstep((distance - p["width"] / 2 + 0.04) / 0.08)
+    if effect == "two-tone-trail":
+        # 漸層時整條全亮（底色），亮點與拖尾靠顏色；純色時只亮亮點與拖尾。
+        # Gradient: fully lit (the base colour), the dot and trail are colour; solid: only the dot and trail.
+        return 1.0 if preset["color"]["mode"] == "gradient" else two_tone_trail_strength(p, ctx)
+    if effect == "firework-rise":
+        return meteor_strength(p, ctx)
     if effect == "comet-tail":
         head = _cycle(time / p["periodSeconds"])
         behind = _cycle(head - ctx.strip)
@@ -568,10 +590,14 @@ def _brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float:
         # 波谷亮度 = 1 - depth，波峰 = 1。 / Trough is 1 - depth, crest is full brightness.
         return 1 - p["depth"] * (0.5 - 0.5 * math.cos(phase))
     if effect == "random-fill":
-        fill, acceleration, led_fade, hold, fade_out = _random_fill_timing(p, ctx.controller_fps)
-        cycle = fill + led_fade + hold + fade_out
+        fill, acceleration, led_fade, hold, fade_out, stagger = _random_fill_timing(p, ctx.controller_fps)
+        unit_cycle = fill + led_fade + hold + fade_out
         frame = max(0, ctx.controller_frame)
-        loop, elapsed = divmod(frame, cycle)
+        loop, elapsed = divmod(frame, unit_cycle + stagger)
+        elapsed -= _random_fill_delay(stagger, loop, ctx.unit_index, ctx.unit_count)
+        # 還沒輪到或已做完的台全暗。 / Dark before this unit's start and after its round.
+        if elapsed < 0 or elapsed >= unit_cycle:
+            return 0.0
         # 每一輪、每組各自重新洗牌；同組兩條半圓共用順序。 / Reshuffle per round and unit; both arcs share the order.
         rank = _random_ranks(loop, ctx.unit_index, ctx.led_count)[ctx.led_index]
         # 已亮數量 = 燈數 × (經過時間 / 填滿時間)^加速程度：從全暗開始，一開始慢、後面越來越快。
@@ -588,6 +614,8 @@ def _brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float:
         return 1.0
     if effect == "unit-chase":
         return _unit_chase(p, ctx)
+    if effect == "pillar-fill":
+        return _pillar_fill(p, ctx)
     if effect == "unit-random":
         return _unit_random(p, ctx)
     if effect == "roulette-ring":
@@ -661,10 +689,95 @@ def _rain_brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float | N
     return None
 
 
+_METEOR_TRAIL_DECAY = 5.5  # exp(-5.5) ≈ 1/245 at the trail time
+_METEOR_RATE_SALT = 500
+
+
+def _meteor_timing(parameters: Mapping[str, Any], fps: float) -> tuple[int, int]:
+    """(travel, gap) whole frames (frontend meteorTiming)."""
+    return max(1, _round_half_up(parameters["travelSeconds"] * fps)), _seconds_frames(parameters, "gapSeconds", fps)
+
+
+def meteor_strength(p: Mapping[str, Any], ctx: EffectContext) -> float:
+    """firework-rise, after WLED's Meteor (frontend meteorStrength): 1 in the head, then each LED it passed fades at
+    its own fixed-seed rate, so the tail breaks up; 0 before the first meteor reaches an LED."""
+    travel, gap = _meteor_timing(p, ctx.controller_fps)
+    cycle = travel + gap
+    frame = max(0, ctx.controller_frame)
+    loop = frame // cycle
+    elapsed = frame - loop * cycle
+    # 兩邊半圓對稱；方向 0 由底部往上。 / Both halves alike; direction 0 rises from the bottom.
+    height = 1 - ctx.radius
+    along = height if p["direction"] == 0 else 1 - height
+    # 還沒到這一輪的流星時，看上一輪那顆。 / Before this round's meteor arrives, the previous one counts.
+    passed = along * travel
+    launch = loop if elapsed >= passed else loop - 1
+    if launch < 0:
+        return 0.0
+    since = elapsed - passed if elapsed >= passed else elapsed + cycle - passed
+    head_frames = p["headSize"] * travel
+    if since < head_frames:
+        return 1.0
+    randomness = p["randomness"]
+    scale = max(0.05, 1 + randomness * (2 * hash01(launch, ctx.unit_index, _METEOR_RATE_SALT + ctx.led_index) - 1))
+    trail = max(1, p["trailSeconds"] * ctx.controller_fps)
+    value = math.exp(-_METEOR_TRAIL_DECAY * (since - head_frames) / (trail * scale))
+    return 0.0 if value < 1 / 255 else value
+
+
+def ring_weights(parameters: Mapping[str, Any], ctx: EffectContext) -> list[float]:
+    """moving-rings: each ring's brightness at this LED (frontend ringWeights).
+
+    Every ring travels the whole half (top 0 to bottom 1); neighbours move in opposite directions with phases
+    π/N apart, so they cross. The centre is split between the two nearest radial LED coordinates."""
+    count = int(parameters["ringCount"])
+    time = ctx.controller_frame / ctx.controller_fps if ctx.controller_fps > 0 else 0
+    step = 1 if ctx.led_count <= 1 else 2 / (ctx.led_count - 1)
+    offset = step / 2 if ctx.led_count % 2 == 0 else 0
+    tolerance = step * 1e-6
+    weights = []
+    for ring in range(count):
+        direction = 1 if ring % 2 == 0 else -1
+        centre = 0.5 + 0.5 * direction * math.sin(TAU * parameters["speedHz"] * time + math.pi * ring / count)
+        position = (max(offset, clamp01(centre)) - offset) / step
+        lower = math.floor(position)
+        upper = math.ceil(position)
+        blend = position - lower
+        weight = 0.0
+        if abs(ctx.radius - (offset + lower * step)) <= tolerance:
+            weight = max(weight, 1 - blend)
+        if abs(ctx.radius - (offset + upper * step)) <= tolerance:
+            weight = max(weight, blend)
+        weights.append(weight)
+    return weights
+
+
+def two_tone_trail_strength(parameters: Mapping[str, Any], ctx: EffectContext) -> float:
+    """Trail strength 0..1 (frontend twoToneTrailStrength).
+
+    The strip splits into two halves (middle at the top, ends at the bottom); on both a dot runs from the bottom up
+    to the top and back, one round trip per periodSeconds. Each LED shows how long ago the dot passed it: 1 right
+    after, back to 0 once the dot has covered tailLength of the half."""
+    time = ctx.controller_frame / ctx.controller_fps if ctx.controller_fps > 0 else 0
+    phase = _cycle(time / parameters["periodSeconds"])
+    # 半徑 0 = 頂部，1 = 底部；上行在 (1 - r) / 2 經過，下行在 0.5 + r / 2 經過。
+    # Radius 0 is the top, 1 the bottom; going up the dot passes at (1 - r) / 2, coming down at 0.5 + r / 2.
+    radius = ctx.radius
+    since = min(_cycle(phase - (1 - radius) / 2), _cycle(phase - (0.5 + radius / 2)))
+    # 走完半圓要半個來回。 / Covering the half takes half a round trip.
+    return 1 - _smoothstep(since / (parameters["tailLength"] / 2))
+
+
 def _axis_color(preset: Mapping[str, Any], colors: tuple[Rgb, ...], axis: str, ctx: EffectContext) -> Rgb:
     if preset["effectId"] == "random-fill":
         # 不論漸層方向，每組跳著取一個純色 / Every axis gives each unit one solid colour, skipping along the palette.
         return _gradient(colors, unit_palette_position(ctx.unit_index, ctx.unit_count), False)
+    if preset["effectId"] == "firework-rise" and preset["parameters"]["trailColor"] == 1:
+        # 依拖尾變色：第一色是流星頭，尾巴往最後一色。 / Colour by trail: the head takes the first colour, the tail the last.
+        return _gradient(colors, 1 - meteor_strength(preset["parameters"], ctx), False)
+    if preset["effectId"] == "two-tone-trail":
+        # 不論方向：第一色底色、最後一色亮點，依拖尾強度取色。 / Any axis: base colour to dot colour by trail strength.
+        return _gradient(colors, two_tone_trail_strength(preset["parameters"], ctx), False)
     if axis == "unit":
         # 每台燈在漸層上取一個純色 / One solid color per unit, sampled across the units.
         position = 0.0 if ctx.unit_count <= 1 else ctx.unit_index / (ctx.unit_count - 1)
@@ -686,8 +799,18 @@ def sample_effect(
     """``elapsed_frame`` only drives the gradient axis change (default: the shared global frame);
     ``raining`` switches to the effect's rain lines."""
     rain = _rain_brightness(preset, ctx) if raining else None
-    brightness = _brightness(preset, ctx) if rain is None else rain
     color = preset["color"]
+    if preset["effectId"] == "moving-rings" and color["mode"] == "gradient" and rain is None:
+        # 每個環一色（第 k 環取第 k 色），重疊處相加。 / Ring k takes colour k; overlaps add up.
+        colors = color["colors"]
+        total = [0.0, 0.0, 0.0]
+        for ring, weight in enumerate(ring_weights(preset["parameters"], ctx)):
+            if weight > 0:
+                stop = colors[ring % len(colors)]
+                for channel in range(3):
+                    total[channel] += stop[channel] * weight
+        return tuple(clamp01(channel) for channel in total)  # type: ignore[return-value]
+    brightness = _brightness(preset, ctx) if rain is None else rain
     if color["mode"] == "solid":
         rgb: Rgb = color["color"]
     else:
@@ -717,12 +840,23 @@ def _reverse_tide_stage_frames(parameters: Mapping[str, Any], fps: int) -> tuple
     return move, move + _round_half_up(fps * parameters["holdSeconds"])
 
 
-def _random_fill_timing(parameters: Mapping[str, Any], fps: int) -> tuple[int, float, int, int, int]:
-    """(fill, acceleration, LED fade, hold, fade out); stages are whole frames."""
+def _random_fill_timing(parameters: Mapping[str, Any], fps: int) -> tuple[int, float, int, int, int, int]:
+    """(fill, acceleration, LED fade, hold, fade out, stagger); stages are whole frames.
+
+    A unit's round is fill + LED fade + hold + fade out; the whole round adds the stagger."""
     def frames(key: str, minimum: int) -> int:
-        return max(minimum, _round_half_up(parameters[key] * fps))
+        return max(minimum, _round_half_up(parameters.get(key, 0) * fps))
     return (frames("fillSeconds", 1), max(1.0, parameters["acceleration"]), frames("ledFadeSeconds", 0),
-            frames("holdSeconds", 0), frames("fadeOutSeconds", 0))
+            frames("holdSeconds", 0), frames("fadeOutSeconds", 0), frames("staggerSeconds", 0))
+
+
+def _random_fill_delay(stagger: int, loop: int, unit_index: int, unit_count: int) -> int:
+    """A unit's start delay: a fresh random order per round, spread evenly over the stagger (frontend unitDelay)."""
+    if stagger == 0 or unit_count <= 1:
+        return 0
+    # 以台數當作「台」的種子，和各台燈點的洗牌分開。 / Seeded with unit_count as the unit, apart from the LED shuffles.
+    order = _random_ranks(loop, unit_count, unit_count)[unit_index]
+    return _round_half_up(stagger * order / (unit_count - 1))
 
 
 def _seconds_frames(parameters: Mapping[str, Any], key: str, fps: float, minimum: int = 0) -> int:
@@ -742,6 +876,34 @@ def _pulse(frame: int, start: int, end: int, fade: int) -> float:
     if frame < end + fade:
         return 1 - (frame - end + 1) / fade
     return 0.0
+
+
+def _pillar_fill_timing(parameters: Mapping[str, Any], fps: float, unit_count: int) -> tuple[int, int, int, int, int]:
+    """(span, fade in, fade start, fade out, cycle) whole frames (frontend pillarFillTiming).
+
+    span = (N - 1) × step is the time from the first unit's start to the last one's."""
+    span = (max(1, unit_count) - 1) * max(1, _round_half_up(parameters["stepSeconds"] * fps))
+    fade_in = _seconds_frames(parameters, "fadeInSeconds", fps)
+    fade_out = _seconds_frames(parameters, "fadeOutSeconds", fps)
+    fade_start = span + fade_in + _seconds_frames(parameters, "holdSeconds", fps)
+    return span, fade_in, fade_start, fade_out, max(1, fade_start + fade_out + _seconds_frames(parameters, "endDarkSeconds", fps))
+
+
+def _pillar_fill(p: Mapping[str, Any], ctx: EffectContext) -> float:
+    """Units light one by one in pillar order and stay lit; then hold, fade out together and stay dark."""
+    span, fade_in, fade_start, fade_out, cycle = _pillar_fill_timing(p, ctx.controller_fps, ctx.unit_count)
+    frame = max(0, ctx.controller_frame)
+    elapsed = frame - (frame // cycle) * cycle
+    units = max(1, ctx.unit_count)
+    rank = min(units - 1, max(0, ctx.unit_index if ctx.unit_rank is None else ctx.unit_rank))
+    # 加速：第 r 台在 span × (r / (N - 1))^(1 / 加速程度) 開始。 / Acceleration: rank r starts at span × (r/(N-1))^(1/a).
+    start = 0 if units <= 1 else _round_half_up(span * (rank / (units - 1)) ** (1 / max(1.0, p["acceleration"])))
+    if elapsed < start:
+        return 0.0
+    lit = 1.0 if fade_in == 0 else min(1.0, (elapsed - start + 1) / fade_in)
+    if elapsed < fade_start:
+        return lit
+    return 0.0 if fade_out == 0 else lit * max(0.0, 1 - (elapsed - fade_start + 1) / fade_out)
 
 
 def _unit_chase_timing(parameters: Mapping[str, Any], fps: float, unit_count: int) -> tuple[int, int, int, int, int]:
@@ -965,13 +1127,17 @@ def completion_frames(preset: Mapping[str, Any], fps: int, unit_count: int) -> i
         return 4 * _reverse_tide_stage_frames(parameters, fps)[1]
     if effect in ("wide-rings", "sine-swell"):
         return max(1, math.ceil(fps / parameters["speedHz"]))
-    if effect == "comet-tail":
+    if effect in ("comet-tail", "two-tone-trail"):
         return max(1, math.ceil(fps * parameters["periodSeconds"]))
+    if effect == "firework-rise":
+        return sum(_meteor_timing(parameters, fps))
     if effect == "random-fill":
-        fill, _, led_fade, hold, fade_out = _random_fill_timing(parameters, fps)
-        return fill + led_fade + hold + fade_out
+        fill, _, led_fade, hold, fade_out, stagger = _random_fill_timing(parameters, fps)
+        return fill + led_fade + hold + fade_out + stagger
     if effect == "unit-chase":
         return _unit_chase_timing(parameters, fps, unit_count)[-1]
+    if effect == "pillar-fill":
+        return _pillar_fill_timing(parameters, fps, unit_count)[-1]
     if effect == "unit-random":
         return _unit_random_timing(parameters, fps)[-1] * max(1, unit_count)
     if effect == "roulette-ring":

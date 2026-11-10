@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compileSequence, createSequenceStep, resolveSequenceFrame } from '../src/simulation/sequence'
 import { createDefaultEffectPreset } from '../src/effects'
 import { createDefaultFixturePreset } from '../src/fixtures'
-import { EXAMPLE_LAYOUT, exampleSiteLayout, poleArms, scenePositions, siteLayout, toScene } from '../src/site/layout'
+import { EXAMPLE_LAYOUT, exampleSiteLayout, pillarRanks, poleArms, scenePositions, siteLayout, toScene } from '../src/site/layout'
 import { buildLoopLeds, effectIndexFor, loopLedPosition, SPINNER_RADIUS } from '../src/site/spinnerGeometry'
 
 describe('museum spinner geometry', () => {
@@ -64,6 +64,21 @@ describe('site layout', () => {
     expect(layout.wash).toEqual([{ id: 1, position: null }, { id: 2, position: null }])
     const points = scenePositions(layout.wash.map((fixture) => fixture.position), 300)
     expect(points).toEqual([[1.5, 3, 1.5], [3, 3, 1.5]])
+  })
+})
+
+describe('pillar order', () => {
+  it('goes pole by pole in layout order, low to high on each pole', () => {
+    const layout = exampleSiteLayout()
+    // Pole 6 holds units 11, 12 and 14 (before 13 on pole 7); poles 10, 11 and 12 hold 20, then 18 and 19, then 17.
+    expect(pillarRanks(layout.spinners, layout.poles)).toEqual(
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 12, 14, 15, 19, 17, 18, 16, 20, 21, 22, 23])
+  })
+
+  it('puts spinners without a nearby pole last, by unit', () => {
+    const poles = [{ x: 0, y: 0, z: 800 }]
+    expect(pillarRanks([{ x: 500, y: 0, z: 100 }, { x: 50, y: 0, z: 600 }, null, { x: 0, y: 50, z: 300 }], poles))
+      .toEqual([2, 1, 3, 0])
   })
 })
 
