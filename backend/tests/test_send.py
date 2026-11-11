@@ -135,6 +135,27 @@ class SendTests(unittest.TestCase):
         )
         self.assertEqual(packets[2][:468], packets[3][:468])
 
+    def test_motor_per_unit(self):
+        # 每台各自的馬達命令；結束時只對轉動中的那台送緩停。 / Per-unit motor commands; only the running unit gets a soft stop.
+        clients = []
+        now = [0.0]
+        config = {**example_config(), "unit_count": 3, "targets": [
+            {"unit_id": unit, "ip": f"192.0.2.{20 + unit}", "universe": 0} for unit in (1, 2, 3)]}
+
+        def factory(*args, **kwargs):
+            clients.append(FakeClient(*args, **kwargs))
+            return clients[-1]
+
+        def sleep(seconds):
+            now[0] += seconds
+
+        stream(config, validate_preset(default_preset("spectrum-cycle")), seconds=0.05, client_factory=factory,
+               motor_provider=lambda: (0, 255, 0), clock=lambda: now[0], sleep=sleep)
+        self.assertEqual([[0, 0], [255, 255, 0], [0, 0]], [[packet[468] for packet in client.packets] for client in clients])
+        with self.assertRaisesRegex(ValueError, "0 or 255"):
+            stream(config, validate_preset(default_preset("spectrum-cycle")), seconds=0.05, client_factory=factory,
+                   motor_provider=lambda: (0, 1, 0), clock=lambda: now[0], sleep=sleep)
+
 
 if __name__ == "__main__":
     unittest.main()

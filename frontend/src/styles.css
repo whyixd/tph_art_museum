@@ -207,6 +207,12 @@ h2 { font-size: 1rem; font-weight: 650; }
 .restart-controls, .motor-controls { margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid #242c37; }
 .restart-controls .button-row { flex-wrap: wrap; }
 .restart-controls .control-note, .motor-controls .control-note { margin-top: 0.6rem; padding-top: 0; border-top: 0; }
+.motor-units { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.35rem; margin-top: 0.7rem; }
+.motor-units button { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; min-width: 0; padding: 0.35rem 0.2rem; font-variant-numeric: tabular-nums; }
+.motor-units small { font-size: 0.65rem; opacity: 0.8; }
+.backend-apply { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin-bottom: 0.9rem; padding: 0.6rem 0.7rem; border: 1px solid #2c3a4a; border-radius: 0.5rem; background: #121a24; }
+.backend-apply p { flex: 1 1 12rem; margin: 0; font-size: 0.78rem; color: #9fb0c2; }
+.backend-apply .backend-error { flex-basis: 100%; }
 
 .scene-controls {
   margin-top: 1rem;

@@ -445,3 +445,11 @@ M5 已實作（`sequence.py`）：
 - `firmware/wled/unit_settings.json` 的 `order` 0 → 1（`COL_ORDER_RGB`）。backend 照送 RGB、`[hardware] color_order` 不用改，Art-Net 內容不變。
 - 由 Pi 以 `flash.py config`（只寫設定、不刷韌體，寫入後重開機並讀回比對）套用到網路上的 21 台（2.0.0.201–206、208–222），先改 201 經使用者單色測試確認紅綠藍正確後再改其餘 20 台。寫入前的設定備份在 Pi 的 `~/wled-config/backups/`。
 - **未套用**：2.0.0.207、223、224 不在網路上（ARP 無回應），接回後要跑 `uv run flash.py config 2.0.0.207 2.0.0.223 2.0.0.224`（服務要先停）。
+
+### 2026-11-11：每台轉燈的馬達、效果分頁直接套用
+
+- **每台馬達**：`PresetStore.motor_units`（轉動中的編號；後端重啟後全部停止）。`PUT /api/motor` 接受 `{"enabled"}`（全部）或 `{"enabled", "units": [編號…]}`（只動這些台，其他不變）；`GET /api/state` 的 `motor` 多了 `units`（每台 true／false），`enabled`／`value` 改為「有任何一台在轉」。輸出迴圈的 `motor_provider` 可回傳每台的值（`store.motor_values(unit_count)`），每台 Art-Net ch469 各自送 0／255；結束時只對轉動中的台送緩停。
+- 前端「後端」分頁的馬達控制：〔全部緩停〕〔全部緩啟動〕＋ 24 個編號按鈕（亮色 = 轉動中，點一下切換該台），顯示「轉動中 N／24 台」。舊後端沒有 `units` 時只顯示全部的按鈕。
+- **效果分頁套用**：後端控制時，「效果」「色彩」分頁頂端有〔套用並覆蓋播放〕：送出轉燈、球燈、洗牆燈的 preset（同「後端」分頁的套用到後端），後端停止演出／串接、改播這個效果。狀態列說明後端目前播放什麼（演出／串接 → 會被停止；尚未套用；已在播放）；已在播放且沒有變更時按鈕停用。
+- 驗證：backend 新增 `MotorPerUnitTests`（個別啟停、無變更不加 revision、錯誤的編號清單）與每台馬達的輸出測試；frontend 163 個測試、`tsc`、build 通過。Playwright（`--api-only`）：點 3、7 號 → 後端 `units` 只有 3、7 轉動，「轉動中 2／24 台」；再點 3 → 只剩 7；全部緩停 → 全停。效果分頁改效果後按套用 → 後端 preset 換成該效果、播放模式由串接變成 single。
+

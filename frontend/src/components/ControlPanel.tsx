@@ -90,7 +90,8 @@ type ControlPanelProps = {
   onSequenceTransition: (kind: TransitionKind, seconds: number) => void
   onRefreshBackend: () => void
   onApplyBackend: () => void
-  onMotor: (enabled: boolean) => void
+  /** units 省略 = 全部轉燈。 / units omitted = every unit. */
+  onMotor: (enabled: boolean, units?: number[]) => void
   onRestartBackend: (source: 'sequence' | 'single') => void
   onUnitColorTest: () => void
   onSetting: (name: NumericSetting, value: number) => void
@@ -107,6 +108,49 @@ type ControlPanelProps = {
   onShowPlayFrom: (sectionId: number) => void
 }
 
+
+/**
+ * 馬達：全部或每台個別轉動／停止（255 緩啟動、0 緩停）。舊後端沒有 units 時只顯示全部的按鈕。
+ * Motors: start / stop every unit or each one (255 soft start, 0 soft stop). Old backends without units: all only.
+ */
+function MotorControls({ motor, unitCount, busy, onMotor }: {
+  motor: BackendState['motor']
+  unitCount: number
+  busy: boolean
+  onMotor: (enabled: boolean, units?: number[]) => void
+}) {
+  const units = motor.units
+  const running = units ? units.filter(Boolean).length : null
+  const allRunning = units ? running === unitCount : motor.enabled
+  return (
+    <div className="motor-controls">
+      <span className="control-label">馬達控制 · Art-Net Channel {motor.channel}</span>
+      <p role="status">
+        {running === null ? (motor.enabled ? '開啟命令：255（緩啟動）' : '關閉命令：0（緩停）')
+          : `轉動中 ${running}／${unitCount} 台`}
+      </p>
+      <div className="button-row">
+        <button type="button" className="secondary" onClick={() => onMotor(false)}
+          disabled={busy || !motor.enabled}>全部緩停</button>
+        <button type="button" onClick={() => onMotor(true)} disabled={busy || allRunning}>全部緩啟動</button>
+      </div>
+      {units && (
+        <div className="motor-units" role="group" aria-label="每台轉燈的馬達">
+          {units.map((on, index) => (
+            <button type="button" key={index} className={on ? 'active' : 'secondary'} aria-pressed={on}
+              title={on ? `轉燈 ${index + 1} 轉動中：按下緩停` : `轉燈 ${index + 1} 停止：按下緩啟動`}
+              onClick={() => onMotor(!on, [index + 1])} disabled={busy}>
+              {index + 1}<small>{on ? '轉動' : '停止'}</small>
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="control-note">
+        點編號切換該台轉動／停止（亮色 = 轉動中）。後端啟動時全部停止。Channel {motor.channel} 位於 LED 通道之後；斷線時是否停機需由接收端保障。
+      </p>
+    </div>
+  )
+}
 
 const DISTRIBUTIONS: ReadonlyArray<[UnitVariationDistribution, string]> = [
   ['linear', '依序'],
@@ -565,6 +609,25 @@ export function ControlPanel({
     </div>
   )
 
+  // 後端控制時，效果／色彩分頁直接套用：轉燈、球燈、洗牆燈一起送出，停止演出／串接並改播這個效果。
+  // Backend control: apply from the effect / colour tabs (spinner, ball and wash together), replacing a show or sequence.
+  const backendApplyBar = () => {
+    const replacing = backendShowPlaying ? '演出' : sequencePlaybackMode === 'sequence' ? '串接' : null
+    const status = backendState === null ? '尚未連線後端。'
+      : replacing ? `後端正在播放${replacing}；套用會停止${replacing}，改播畫面上的效果。`
+        : backendDirty ? '畫面上的效果還沒套用到後端。' : '後端正在播放畫面上的效果。'
+    return (
+      <div className="backend-apply">
+        <button type="button" onClick={onApplyBackend}
+          disabled={backendBusy || backendState === null || (!backendDirty && replacing === null)}>
+          {backendBusy ? '套用中…' : '套用並覆蓋播放'}
+        </button>
+        <p role="status">{status}轉燈、球燈、洗牆燈的效果與顏色會一起送出。</p>
+        {backendError && <p className="backend-error" role="alert">{backendError}</p>}
+      </div>
+    )
+  }
+
   return (
     <section className="controls" aria-label="控制面板">
       <div className="control-tabs" role="tablist" aria-label="控制分頁">
@@ -576,6 +639,7 @@ export function ControlPanel({
       </div>
 
       <div className="control-tabpanel" id="control-tabpanel" role="tabpanel" aria-labelledby={`control-tab-${shownTab}`}>
+        {(shownTab === 'effect' || shownTab === 'color') && controlMode === 'backend' && backendApplyBar()}
         {(shownTab === 'effect' || shownTab === 'color') && groupSwitch}
         {shownTab === 'effect' && editGroup !== 'spinner' && fixtureEditor('effect')}
         {shownTab === 'color' && editGroup !== 'spinner' && fixtureEditor('color')}
@@ -672,17 +736,8 @@ export function ControlPanel({
                 重播後端已儲存的串接或已套用的效果；畫面上尚未儲存、套用的變更不會送出。
               </p>
             </div>
-            <div className="motor-controls">
-              <span className="control-label">馬達控制 · Art-Net Channel {backendState?.motor.channel ?? 469}</span>
-              <p role="status">{backendState?.motor.enabled ? '開啟命令：255（緩啟動）' : '關閉命令：0（緩停）'}</p>
-              <div className="button-row">
-                <button type="button" className="secondary" onClick={() => onMotor(false)}
-                  disabled={backendBusy || backendState === null || !backendState.motor.enabled}>緩停關閉</button>
-                <button type="button" onClick={() => onMotor(true)}
-                  disabled={backendBusy || backendState === null || backendState.motor.enabled}>開啟緩啟動</button>
-              </div>
-              <p className="control-note">後端啟動預設為關閉。Channel {backendState?.motor.channel ?? 469} 位於 LED 通道之後；斷線時是否停機需由接收端保障。</p>
-            </div>
+            {backendState && <MotorControls motor={backendState.motor} unitCount={backendState.output.unitCount}
+              busy={backendBusy} onMotor={onMotor} />}
             {backendState && <AudioPanel />}
             {backendState && <UnitColorTestPanel unitCount={backendState.output.unitCount} onChange={onUnitColorTest} />}
             {backendState && (fixtureCounts.ball > 0 || fixtureCounts.wash > 0) && (

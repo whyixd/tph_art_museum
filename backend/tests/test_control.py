@@ -53,7 +53,7 @@ class ControlTests(unittest.TestCase):
                         self.assertIsNone(response.headers.get("Access-Control-Allow-Origin"))
                     self.assertEqual("center-out-sine", initial["preset"]["effectId"])
                     self.assertEqual(0, initial["revision"])
-                    self.assertEqual({"channel": 469, "enabled": False, "value": 0}, initial["motor"])
+                    self.assertEqual({"channel": 469, "enabled": False, "value": 0, "units": [False] * 9}, initial["motor"])
 
                     motor_request = Request(
                         base + "/api/motor", b'{"enabled":true}',
@@ -61,7 +61,7 @@ class ControlTests(unittest.TestCase):
                     )
                     with urlopen(motor_request) as response:
                         motor_state = json.load(response)
-                    self.assertEqual({"channel": 469, "enabled": True, "value": 255}, motor_state["motor"])
+                    self.assertEqual({"channel": 469, "enabled": True, "value": 255, "units": [True] * 9}, motor_state["motor"])
                     self.assertEqual(255, store.motor_value())
 
                     bad_motor_request = Request(
@@ -172,3 +172,39 @@ class ControlTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MotorPerUnitTests(unittest.TestCase):
+    """每台轉燈個別轉動／停止。 / Starting and stopping single units."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        path = Path(self.directory.name) / "preset.json"
+        path.write_text(json.dumps(default_preset("center-out-sine")), encoding="utf-8")
+        self.store = PresetStore(path, 156)
+
+    def test_units_start_and_stop_on_their_own(self):
+        store = self.store
+        self.assertEqual((0,) * 9, store.motor_values(9))
+        state = store.apply_motor({"enabled": True, "units": [2, 5]}, CONFIG)
+        self.assertEqual([False, True, False, False, True, False, False, False, False], state["motor"]["units"])
+        self.assertEqual((True, 255), (state["motor"]["enabled"], state["motor"]["value"]))
+        self.assertEqual((0, 255, 0, 0, 255, 0, 0, 0, 0), store.motor_values(9))
+        revision = state["revision"]
+        self.assertEqual(revision, store.apply_motor({"enabled": True, "units": [5]}, CONFIG)["revision"])  # no change
+        store.apply_motor({"enabled": False, "units": [2]}, CONFIG)
+        self.assertEqual((0, 0, 0, 0, 255, 0, 0, 0, 0), store.motor_values(9))
+        store.apply_motor({"enabled": True}, CONFIG)
+        self.assertEqual((255,) * 9, store.motor_values(9))
+        store.apply_motor({"enabled": False}, CONFIG)
+        self.assertEqual((0,) * 9, store.motor_values(9))
+        self.assertEqual(0, store.motor_value())
+
+    def test_rejects_bad_unit_lists(self):
+        for units in ([], [0], [10], ["1"], [True], 3, [1] * 10):
+            with self.subTest(units=units), self.assertRaisesRegex(ValueError, "unit ids 1..9"):
+                self.store.apply_motor({"enabled": True, "units": units}, CONFIG)
+        with self.assertRaisesRegex(ValueError, "motor command"):
+            self.store.apply_motor({"enabled": True, "unit": 1}, CONFIG)
+        self.assertEqual((0,) * 9, self.store.motor_values(9))

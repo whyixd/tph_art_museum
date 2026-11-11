@@ -390,13 +390,13 @@ export function App() {
     }
   }, [backendBusy, backendState, controlMode])
 
-  const setMotor = useCallback(async (enabled: boolean) => {
+  const setMotor = useCallback(async (enabled: boolean, units?: number[]) => {
     if (controlMode !== 'backend' || backendBusy || backendState === null) return
     const request = backendRequest.current
     setBackendBusy(true)
     setBackendError(null)
     try {
-      const state = await setBackendMotor(enabled)
+      const state = await setBackendMotor(enabled, units)
       if (request === backendRequest.current) setBackendState(state)
     } catch (error) {
       if (request === backendRequest.current) {
@@ -772,7 +772,7 @@ export function App() {
           onSequenceTransition={updateTransition}
           onRefreshBackend={() => setBackendRefresh((current) => current + 1)}
           onApplyBackend={() => { void applyToBackend(effectPreset, fixturePresets) }}
-          onMotor={(enabled) => { void setMotor(enabled) }}
+          onMotor={(enabled, units) => { void setMotor(enabled, units) }}
           onRestartBackend={(source) => { void restartBackend(source) }}
           onUnitColorTest={() => setPlaybackPoll((current) => current + 1)}
           onSetting={updateSetting}

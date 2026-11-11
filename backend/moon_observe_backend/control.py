@@ -32,7 +32,8 @@ class PresetStore:
         # 單一效果模式下的球燈／洗牆燈 preset；None = 全暗。 / Single-effect ball / wash presets; None = dark.
         self.fixtures: dict[str, Any] = {group: document.get(group) for group in FIXTURE_GROUPS}
         self.revision = 0
-        self.motor_enabled = False  # Never resume a running motor after backend restart.
+        # 轉動中的轉燈編號；後端重啟後一律停止。 / Units whose motor runs; all stopped after a backend restart.
+        self.motor_units: set[int] = set()
 
     def snapshot(self) -> Mapping[str, Any]:
         with self.lock:
@@ -43,15 +44,36 @@ class PresetStore:
             return dict(self.fixtures)
 
     def motor_value(self) -> int:
+        """255 while any unit's motor runs, else 0 (summary)."""
         with self.lock:
-            return 255 if self.motor_enabled else 0
+            return 255 if self.motor_units else 0
+
+    def motor_values(self, unit_count: int) -> tuple[int, ...]:
+        """Motor command per unit (index = unit - 1): 255 = soft start / run, 0 = soft stop."""
+        with self.lock:
+            return tuple(255 if unit in self.motor_units else 0 for unit in range(1, unit_count + 1))
 
     def apply_motor(self, raw: Any, config: Mapping[str, Any]) -> dict[str, Any]:
-        if not isinstance(raw, dict) or set(raw) != {"enabled"} or type(raw["enabled"]) is not bool:
-            raise ValueError("motor command must be {\"enabled\": true|false}")
+        """``{"enabled": bool}`` for every unit, or ``{"enabled": bool, "units": [1, 3, ...]}`` for those only.
+
+        全部或指定的轉燈轉動／停止。 / Start or stop every unit, or only the listed ones.
+        """
+        if not isinstance(raw, dict) or "enabled" not in raw or set(raw) - {"enabled", "units"} \
+                or type(raw["enabled"]) is not bool:
+            raise ValueError("motor command must be {\"enabled\": true|false, \"units\"?: [unit ids]}")
+        count = config["unit_count"]
+        if "units" in raw:
+            units = raw["units"]
+            if not isinstance(units, list) or not units or len(units) > count \
+                    or any(type(unit) is not int or not 1 <= unit <= count for unit in units):
+                raise ValueError(f"motor units must list unit ids 1..{count}")
+            chosen = set(units)
+        else:
+            chosen = set(range(1, count + 1))
         with self.lock:
-            if self.motor_enabled != raw["enabled"]:
-                self.motor_enabled = raw["enabled"]
+            updated = self.motor_units | chosen if raw["enabled"] else self.motor_units - chosen
+            if updated != self.motor_units:
+                self.motor_units = updated
                 self.revision += 1
             return self._state_unlocked(config)
 
@@ -95,9 +117,11 @@ class PresetStore:
         return {
             "revision": self.revision,
             "preset": self.raw,
+            # enabled／value：有任何一台在轉；units：每台（index = 編號 − 1）。 / enabled / value: any unit runs; units: per unit.
             "motor": {"channel": config.get("motor", {}).get("channel", default_motor_channel(config["pixels"])),
-                      "enabled": self.motor_enabled,
-                      "value": 255 if self.motor_enabled else 0},
+                      "enabled": bool(self.motor_units),
+                      "value": 255 if self.motor_units else 0,
+                      "units": [unit in self.motor_units for unit in range(1, config["unit_count"] + 1)]},
             "output": {
                 "ip": config["ip"], "universe": config["universe"],
                 "fps": config["fps"], "rpm": config["rpm"], "pixels": config["pixels"],

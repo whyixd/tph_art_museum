@@ -56,7 +56,8 @@ export type BackendState = {
   revision: number
   /** The spinner's single-effect preset. */
   preset: EffectPreset
-  motor: { channel: number; enabled: boolean; value: number }
+  /** enabled／value：有任何一台在轉；units：每台是否轉動（index = 編號 − 1，舊後端沒有）。 / enabled: any unit runs; units: per unit. */
+  motor: { channel: number; enabled: boolean; value: number; units?: boolean[] }
   output: {
     ip: string
     universe: number
@@ -175,11 +176,12 @@ export async function clearFixtureColorTest(): Promise<FixtureColorTest> {
   return readState<FixtureColorTest>(await fetch('/api/test/fixtures', { method: 'DELETE' }))
 }
 
-export async function setBackendMotor(enabled: boolean): Promise<BackendState> {
+/** 全部（units 省略）或指定轉燈的馬達轉動／停止。 / Start or stop every unit, or only the given unit ids. */
+export async function setBackendMotor(enabled: boolean, units?: number[]): Promise<BackendState> {
   return readState<BackendState>(await fetch('/api/motor', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ enabled }),
+    body: JSON.stringify(units ? { enabled, units } : { enabled }),
   }))
 }
 

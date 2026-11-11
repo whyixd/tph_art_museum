@@ -174,7 +174,7 @@ def stream(
     seconds: float | None = None,
     client_factory: Callable[..., Any] = StupidArtnet,
     preset_provider: Callable[[], Mapping[str, Any]] | None = None,
-    motor_provider: Callable[[], int] | None = None,
+    motor_provider: Callable[[], int | Sequence[int]] | None = None,
     sequence_provider: Callable[[], tuple[str, tuple[dict[str, Any], ...], int]] | None = None,
     weather_provider: Callable[[], Mapping[str, Any]] | None = None,
     playback_reporter: Callable[[str, Any, int, int], None] | None = None,
@@ -228,7 +228,8 @@ def stream(
     fixture_poles = (dmx.get("poles") or {}) if dmx else {}
     dmx_clients: list[Any] = []
     last_pixels: dict[int, Sequence[Rgb]] = {}
-    last_motor_value = 0
+    # 每台最後送出的馬達命令（結束時只對轉動中的送緩停）。 / Last motor command per unit (soft stop on exit).
+    last_motor_values: dict[int, int] = {}
     last_sequence_generation: int | None = None
     last_show_generation: int | None = None
     last_weather_generation: int | None = None
@@ -327,10 +328,12 @@ def stream(
                 last_frame = frame
                 mode = "sequence" if sequence_mode else "single"
                 last_boundary = boundary_key(schedule, active_preset, playback_frame, fps, config["unit_count"])
-            motor_value = motor_provider() if motor_provider is not None else 0
-            if motor_value not in (0, 255):
+            # 一個值 = 每台相同；序列 = 每台各自（index = 編號 − 1，缺的為 0）。
+            # One value for every unit, or one per unit (index = unit - 1; missing = 0).
+            motor_command = motor_provider() if motor_provider is not None else 0
+            motor_per_unit = not isinstance(motor_command, int)
+            if any(value not in (0, 255) for value in (motor_command if motor_per_unit else (motor_command,))):
                 raise ValueError("motor value must be 0 or 255")
-            last_motor_value = motor_value
             if playback_reporter is not None:
                 playback_reporter(mode, schedule if sequence_mode else active_preset, restarts, playback_frame)
             # 測試單色時，被指定的燈台整條填色；底下的播放照常前進。
@@ -375,6 +378,9 @@ def stream(
                         fps=fps, rpm=config["rpm"], raining=category == "rain",
                         color_override=color_override, shared=shared,
                     )
+                motor_value = (motor_command[unit_id - 1] if unit_id <= len(motor_command) else 0) \
+                    if motor_per_unit else motor_command
+                last_motor_values[unit_id] = motor_value
                 packets = build_packets(pixels, hardware=hardware, motor_channel=motor_channel, motor_value=motor_value)
                 for client, packet in zip(unit_clients, packets, strict=True):
                     client.send(packet)
@@ -423,7 +429,7 @@ def stream(
             # 先停馬達（最重要），再讓 DMX 燈具全暗。 / Stop the motors first (most important), then darken DMX.
             for target, unit_clients in clients:
                 try:
-                    if not link_lost and last_motor_value == 255 and target["unit_id"] in last_pixels:
+                    if not link_lost and last_motor_values.get(target["unit_id"]) == 255 and target["unit_id"] in last_pixels:
                         # 保留最後畫面，只把馬達改成緩停。 / Keep the last picture; only stop the motor.
                         packets = build_packets(last_pixels[target["unit_id"]], hardware=hardware,
                                                 motor_channel=motor_channel, motor_value=0)
@@ -573,7 +579,8 @@ def main(argv: list[str] | None = None) -> int:
                     source = f" from {config['source_ip']}" if config["source_ip"] else ""
                     print(f"Output {preset['effectId']} -> {len(config['targets'])} Art-Net target(s){dmx_summary} at {config['fps']} FPS{source}. {service_label} listening on {args.api_host}:{args.api_port}. Ctrl+C to stop.", flush=True)
                     sent = stream_when_source_available(config, preset, seconds=args.seconds,
-                                  preset_provider=store.snapshot, motor_provider=store.motor_value,
+                                  preset_provider=store.snapshot,
+                                  motor_provider=lambda: store.motor_values(config["unit_count"]),
                                   sequence_provider=sequence_store.snapshot,
                                   weather_provider=weather_store.snapshot if weather_store is not None else None,
                                   playback_reporter=playback_monitor.report,
