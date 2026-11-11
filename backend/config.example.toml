@@ -154,6 +154,66 @@ pixel_rotation = 64              # 實體第 i 顆顯示效果的第 (i+64) mod 
 [motor]
 channel = 469                    # must be explicit (default would be pixels * 3 + 1 = 388); the WLED usermod reads ch469
                                  # of the first universe; 0 = soft stop, 255 = soft start
+# 停止後至少隔這麼久才送啟動（秒，預設 12）。XIAO 緩停中（duty 82 約 10 秒，上限 90 約 11.1 秒）收到的啟動會被忽略且
+# 不再補，所以後端在每台送 0 滿這段時間後才改送 255；Art-Net 中斷超過 1 秒（WLED 逾時）也算停止。
+# Hold a start until the unit has been sent 0 this long (s, default 12): the XIAO ignores a start during its soft
+# stop (≈ 10 s at duty 82, ≈ 11.1 s at the maximum 90) and never retries it.
+# restart_delay_seconds = 12
+# 啟動分區：「全部緩啟動」時每隔 start_interval_seconds（預設 1，0 = 不分區）放行一組，依下面的順序；避免多台的
+# 繼電器與電容充電同時衝擊電源。停止不分區。沒有列入任何一組的轉燈各自一組、排在最後；整段省略 = 全部同時。
+# 分組來源 doc/新北美_ip控箱.pdf（unit = IP − 200），對應待現場確認。
+# Start groups: one group (control box) is released per start_interval_seconds (default 1, 0 = no spreading),
+# in the order below, so relays and capacitor charging do not all hit the supply at once. Stops are not spread.
+# Unlisted units are each their own group, last; no groups = all at once. From doc/新北美_ip控箱.pdf (unit = IP - 200).
+start_interval_seconds = 1
+
+[[motor.start_groups]]
+name = "控箱 101"
+units = [3, 4]
+
+[[motor.start_groups]]
+name = "控箱 102"
+units = [7, 8]
+
+[[motor.start_groups]]
+name = "控箱 103"
+units = [11, 12]
+
+[[motor.start_groups]]
+name = "控箱 104"
+units = [13, 14]
+
+[[motor.start_groups]]
+name = "控箱 105"
+units = [1, 2]
+
+[[motor.start_groups]]
+name = "控箱 106"
+units = [5, 6]
+
+[[motor.start_groups]]
+name = "控箱 107"
+units = [9, 10]
+
+[[motor.start_groups]]
+name = "控箱 108"
+units = [15, 16]
+
+[[motor.start_groups]]
+name = "控箱 109"
+units = [18, 19]
+
+[[motor.start_groups]]
+name = "控箱 110"
+units = [17, 20]
+
+[[motor.start_groups]]
+name = "控箱 111"
+units = [21, 22]
+
+[[motor.start_groups]]
+name = "控箱 112"
+units = [23, 24]
 
 # DMX 燈具（球燈、洗牆燈）經 Art-Net -> DMX 轉換器。`run.py --patch-report` 印出位址表。
 # DMX fixtures through Art-Net -> DMX nodes. `run.py --patch-report` prints the address table.

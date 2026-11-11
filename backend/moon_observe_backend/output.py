@@ -28,6 +28,7 @@ from .sequence import SequenceStore, render_sequence_fixtures, render_sequence_f
 from .show import ShowPlayer, ShowStore
 from .palette import PaletteStore
 from .playback import PlaybackMonitor
+from .motor import DEFAULT_RESTART_DELAY_SECONDS, DEFAULT_START_INTERVAL_SECONDS, MotorGate
 from .unit_colors import FixtureColorStore, UnitColorStore
 from .weather import WeatherStore
 
@@ -538,7 +539,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.check:
             print(f"OK: {preset['effectId']} -> {len(config['targets'])} Art-Net target(s){dmx_summary}")
             return 0
-        store = PresetStore(config["preset_path"], config["pixels"])
+        motor_gate = MotorGate(config["motor"].get("restart_delay_seconds", DEFAULT_RESTART_DELAY_SECONDS),
+                               start_interval=config["motor"].get("start_interval_seconds", DEFAULT_START_INTERVAL_SECONDS),
+                               start_groups=[group["units"] for group in config["motor"].get("start_groups", [])])
+        store = PresetStore(config["preset_path"], config["pixels"], motor_gate=motor_gate)
         initial = store.state(config)
         sequence_store = SequenceStore(sequence_path, config["pixels"], config["fps"],
                                        config["unit_count"], initial["preset"], counts,
@@ -587,7 +591,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"Output {preset['effectId']} -> {len(config['targets'])} Art-Net target(s){dmx_summary} at {config['fps']} FPS{source}. {service_label} listening on {args.api_host}:{args.api_port}. Ctrl+C to stop.", flush=True)
                     sent = stream_when_source_available(config, preset, seconds=args.seconds,
                                   preset_provider=store.snapshot,
-                                  motor_provider=lambda: store.motor_values(config["unit_count"]),
+                                  motor_provider=lambda: store.motor_output(config["unit_count"]),
                                   sequence_provider=sequence_store.snapshot,
                                   weather_provider=weather_store.snapshot if weather_store is not None else None,
                                   playback_reporter=playback_monitor.report,

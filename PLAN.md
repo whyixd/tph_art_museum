@@ -461,3 +461,20 @@ M5 已實作（`sequence.py`）：
 - `GET /api/playback` 在關燈時回傳 `blackout: true`，並把 `unitColors`／`fixtureColors` 設為全黑，3D 鏡像跟著全暗，左上角顯示「全部關燈中」。
 - 前端「後端」分頁連線資訊下方：〔關閉全部燈光〕／〔恢復燈光〕；關燈時「效果」「色彩」分頁的套用列提示套用後仍全暗。
 - 驗證：backend 221 個測試（新增 `BlackoutOutputTests`、`test_blackout_api_and_playback_mirror`）；frontend 163 個測試、`tsc`、build 通過。開發機以 Art-Net 全改送 127.0.0.x 的設定實際啟動，Playwright 按〔關閉全部燈光〕→ `/api/playback` 為 blackout、24／37／25 全黑、3D 全暗；〔恢復燈光〕→ `blackout: false`，無頁面錯誤。
+
+### 2026-11-12：馬達啟動被 XIAO 忽略（後端延後啟動）
+
+- 現象：「全部緩啟動」／「全部緩停」後總有幾台沒起動；等幾十秒單獨關再開就正常。
+- 原因（`firmware/sketches/motor_control_io`）：XIAO 只在 POWER_OFF 時、D8 由 HIGH 變 LOW 那一下才啟動；**緩停中（duty 82 約 10 秒，上限 90 約 11.1 秒）收到的啟動被忽略且不再補**。WLED 對 IO13 是持續的準位（Pi 一直送 255），不會再有第二次 HIGH→LOW，所以停止後約 10 秒內再啟動的那幾台會一直停著（畫面卻顯示轉動）；單獨關再開剛好補上一次 HIGH→LOW。主機 harness 重現（`firmware/tests` 的 `motor_control_io_host.cpp` 框架）。UDP 丟包、同時送太多訊號都不是原因：馬達值每格（40 FPS）都送，按全部啟動不會增加封包。停止一定有效（HIGH 在任何運轉狀態都會停）。
+- 不能用「連送三次啟動」：中間的 0 會讓已啟動的台進入緩停，接著的啟動又被忽略，結果反而停下。
+- 修正（後端，不用刷 XIAO）：`motor.MotorGate` 在輸出迴圈送出前，每台送 0 滿 `[motor] restart_delay_seconds`（預設 12）才改送 255；第一格與輸出中斷 ≥ 1 秒（WLED 逾時，IO13 已放開）都算停止。`PresetStore.motor_output()` 給輸出迴圈；`GET /api/state` 的 `motor.waiting` = 每台還要等幾秒（null = 沒在等）。前端編號按鈕顯示「等 N 秒」（黃色），狀態列「其中 M 台等前一次緩停結束」，有在等時每秒更新。
+- 未處理：XIAO 開機時 D8 已是 LOW 不會啟動（開機安全規則）；若同時啟動造成電源瞬降讓 XIAO 重開，仍要單獨關再開。現場若再發生，查該台 WLED `/json/info` 的 `moonMotor`（`output: run`、`reason: artnet-run` 但馬達不轉 = XIAO 端）。
+- 驗證：backend 新增 `test_motor.py`（8 個），全部通過；frontend 163 個測試、`tsc`、build 通過。開發機（Art-Net 只送 127.0.0.x）API 實測：停止後 3 秒再啟動 → `waiting` 9.0，12.15 秒後送出 255；Playwright：停止後 7.4 秒再啟動 → 按鈕「等 5 秒」，時間到自動變「轉動」，無頁面錯誤。
+
+### 2026-11-12：馬達依控箱分區啟動
+
+- 同時啟動多台時，`MotorGate` 每 `[motor] start_interval_seconds`（預設 1，0 = 不分區）最多放行一組，依 `[[motor.start_groups]]` 的順序（較前的先）；避免多台的預充電／主繼電器與電容充電同時衝擊電源（也降低 XIAO 因電源瞬降重開而不起動的機會）。停止不分區。沒列入的轉燈各自一組排在最後；沒有 `start_groups` = 全部同時。規則在送出端（每格），所以「全部緩啟動」、連點多台、Art-Net 中斷後恢復都會分區；單獨一台且前一秒沒有其他啟動時立即放行。與「停止後 12 秒」一起作用：每組在兩者都滿足時才放行。
+- `config.example.toml`：12 個控箱（`doc/新北美_ip控箱.pdf`，unit = IP − 200）依編號 101 → 112：101 = 3、4；102 = 7、8；103 = 11、12；104 = 13、14；105 = 1、2；106 = 5、6；107 = 9、10；108 = 15、16；109 = 18、19；110 = 17、20；111 = 21、22；112 = 23、24。**對應與順序待現場確認**。
+- `GET /api/state` 的 `motor.waiting` 改為模擬放行規則推算的剩餘秒數；前端「等 N 秒」、狀態列「其中 M 台排隊啟動」。
+- Pi 升級注意：既有的 `config.toml` 不會自動加入 `start_interval_seconds` 與 `[[motor.start_groups]]`，要手動照 `config.example.toml` 加；沒加時只有「停止後 12 秒」，全部同時啟動。
+- 驗證：backend 234 個測試（`test_motor.py` 新增分區 4 個、設定 1 個；`test_hardware` 檢查範例 24 台各在一個控箱）；frontend 163 個測試、`tsc`、build 通過。開發機（Art-Net 只送 127.0.0.x）API 實測：全停時按全部緩啟動 → 控箱 101…112 依序在 0、1、2 … 11 秒放行；停止 4 秒後再按 → 從 8 秒起每秒一個控箱。

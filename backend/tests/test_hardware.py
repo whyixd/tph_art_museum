@@ -124,7 +124,14 @@ class MuseumSpinnerTests(unittest.TestCase):
         self.assertEqual(129, config["pixels"])
         self.assertEqual(24, config["unit_count"])
         self.assertEqual(64, config["hardware"]["pixel_rotation"])
-        self.assertEqual({"channel": 469}, config["motor"])
+        self.assertEqual(469, config["motor"]["channel"])
+        # 啟動分區：12 個控箱、各 2 台，24 台都在且只出現一次。 / Start groups: 12 boxes of 2, every unit once.
+        groups = config["motor"]["start_groups"]
+        self.assertEqual(1.0, config["motor"]["start_interval_seconds"])
+        self.assertEqual([f"控箱 {box}" for box in range(101, 113)], [group["name"] for group in groups])
+        self.assertEqual(list(range(1, 25)), sorted(unit for group in groups for unit in group["units"]))
+        self.assertEqual([18, 19], groups[8]["units"])   # 控箱 109 / 110 cross over (doc/新北美_ip控箱.pdf)
+        self.assertEqual([17, 20], groups[9]["units"])
         self.assertEqual([470], config["packet_sizes"])
         self.assertEqual("2.0.0.10", config["source_ip"])  # bind to the Art-Net address (safety catch)
         # 現場 IP（doc/新北美_ip控箱.pdf）：unit n = 2.0.0.(200 + n)。 / Site IPs: unit n = 2.0.0.(200 + n).

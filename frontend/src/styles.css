@@ -217,6 +217,7 @@ button.danger:hover { background: #dd4b3d; }
 .motor-units { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.35rem; margin-top: 0.7rem; }
 .motor-units button { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; min-width: 0; padding: 0.35rem 0.2rem; font-variant-numeric: tabular-nums; }
 .motor-units small { font-size: 0.65rem; opacity: 0.8; }
+.motor-units button.waiting { color: #ffd38a; background: #2a2212; border-color: #8a6a2a; }
 .backend-apply { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin-bottom: 0.9rem; padding: 0.6rem 0.7rem; border: 1px solid #2c3a4a; border-radius: 0.5rem; background: #121a24; }
 .backend-apply p { flex: 1 1 12rem; margin: 0; font-size: 0.78rem; color: #9fb0c2; }
 .backend-apply .backend-error { flex-basis: 100%; }

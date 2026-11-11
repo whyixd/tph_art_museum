@@ -124,12 +124,15 @@ function MotorControls({ motor, unitCount, busy, onMotor }: {
   const units = motor.units
   const running = units ? units.filter(Boolean).length : null
   const allRunning = units ? running === unitCount : motor.enabled
+  const waiting = motor.waiting ?? []
+  const held = waiting.filter((seconds) => seconds !== null) as number[]
   return (
     <div className="motor-controls">
       <span className="control-label">馬達控制 · Art-Net Channel {motor.channel}</span>
       <p role="status">
         {running === null ? (motor.enabled ? '開啟命令：255（緩啟動）' : '關閉命令：0（緩停）')
           : `轉動中 ${running}／${unitCount} 台`}
+        {held.length > 0 && `，其中 ${held.length} 台排隊啟動，最慢 ${Math.ceil(Math.max(...held))} 秒後`}
       </p>
       <div className="button-row">
         <button type="button" className="secondary" onClick={() => onMotor(false)}
@@ -138,17 +141,22 @@ function MotorControls({ motor, unitCount, busy, onMotor }: {
       </div>
       {units && (
         <div className="motor-units" role="group" aria-label="每台轉燈的馬達">
-          {units.map((on, index) => (
-            <button type="button" key={index} className={on ? 'active' : 'secondary'} aria-pressed={on}
-              title={on ? `轉燈 ${index + 1} 轉動中：按下緩停` : `轉燈 ${index + 1} 停止：按下緩啟動`}
-              onClick={() => onMotor(!on, [index + 1])} disabled={busy}>
-              {index + 1}<small>{on ? '轉動' : '停止'}</small>
-            </button>
-          ))}
+          {units.map((on, index) => {
+            const wait = on ? waiting[index] ?? null : null
+            return (
+              <button type="button" key={index} className={wait !== null ? 'waiting' : on ? 'active' : 'secondary'}
+                aria-pressed={on}
+                title={wait !== null ? `轉燈 ${index + 1} 排隊中，${Math.ceil(wait)} 秒後啟動：按下取消`
+                  : on ? `轉燈 ${index + 1} 轉動中：按下緩停` : `轉燈 ${index + 1} 停止：按下緩啟動`}
+                onClick={() => onMotor(!on, [index + 1])} disabled={busy}>
+                {index + 1}<small>{wait !== null ? `等 ${Math.ceil(wait)} 秒` : on ? '轉動' : '停止'}</small>
+              </button>
+            )
+          })}
         </div>
       )}
       <p className="control-note">
-        點編號切換該台轉動／停止（亮色 = 轉動中）。後端啟動時全部停止。Channel {motor.channel} 位於 LED 通道之後；斷線時是否停機需由接收端保障。
+        點編號切換該台轉動／停止（亮色 = 轉動中）。後端啟動時全部停止。啟動會排隊、時間到自動送出：停止後要等約 12 秒（馬達控制板緩停中不接受啟動），同時啟動多台時依控箱每秒放行一組（避免同時衝擊電源）。停止不排隊。Channel {motor.channel} 位於 LED 通道之後；斷線時是否停機需由接收端保障。
       </p>
     </div>
   )

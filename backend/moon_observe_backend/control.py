@@ -14,14 +14,17 @@ from typing import Any, Mapping
 from .effects import preset_to_json
 from .fixture_effects import fixture_preset_to_json, parse_preset_document
 from .hardware import default_motor_channel
+from .motor import MotorGate
 
 FIXTURE_GROUPS = ("ball", "wash")
 
 
 
 class PresetStore:
-    def __init__(self, preset_path: str | Path, pixels: int) -> None:
+    def __init__(self, preset_path: str | Path, pixels: int, *, motor_gate: MotorGate | None = None) -> None:
         self.path = Path(preset_path)
+        # 輸出迴圈送出前延後啟動（見 motor.py）；None = 照 motor_units 直接送。 / Holds starts back (motor.py).
+        self.motor_gate = motor_gate
         self.pixels = pixels
         self.lock = Lock()
         document = parse_preset_document(json.loads(self.path.read_text(encoding="utf-8")), pixels)
@@ -70,6 +73,11 @@ class PresetStore:
                 self.blackout = raw["enabled"]
                 self.revision += 1
             return self._state_unlocked(config)
+
+    def motor_output(self, unit_count: int) -> tuple[int, ...]:
+        """What the output loop sends: ``motor_values`` with each start held until the unit has surely stopped."""
+        desired = self.motor_values(unit_count)
+        return self.motor_gate.apply(desired) if self.motor_gate is not None else desired
 
     def apply_motor(self, raw: Any, config: Mapping[str, Any]) -> dict[str, Any]:
         """``{"enabled": bool}`` for every unit, or ``{"enabled": bool, "units": [1, 3, ...]}`` for those only.
@@ -139,7 +147,12 @@ class PresetStore:
             "motor": {"channel": config.get("motor", {}).get("channel", default_motor_channel(config["pixels"])),
                       "enabled": bool(self.motor_units),
                       "value": 255 if self.motor_units else 0,
-                      "units": [unit in self.motor_units for unit in range(1, config["unit_count"] + 1)]},
+                      "units": [unit in self.motor_units for unit in range(1, config["unit_count"] + 1)],
+                      # 每台：要轉但還在等前一次緩停結束的剩餘秒數；null = 沒有在等。
+                      # Per unit: seconds until a held start is sent; null = not held.
+                      **({"waiting": self.motor_gate.waiting(
+                          [unit in self.motor_units for unit in range(1, config["unit_count"] + 1)])}
+                         if self.motor_gate is not None else {})},
             # true：全部燈光關閉（送全黑），蓋過效果、演出與測試。 / true: every light sends black, over effects, shows and tests.
             "blackout": self.blackout,
             "output": {

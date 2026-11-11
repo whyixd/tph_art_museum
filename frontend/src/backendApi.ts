@@ -57,7 +57,11 @@ export type BackendState = {
   /** The spinner's single-effect preset. */
   preset: EffectPreset
   /** enabled／value：有任何一台在轉；units：每台是否轉動（index = 編號 − 1，舊後端沒有）。 / enabled: any unit runs; units: per unit. */
-  motor: { channel: number; enabled: boolean; value: number; units?: boolean[] }
+  /**
+   * waiting：每台要轉但還在排隊（等前一次緩停結束、依控箱分區）的剩餘秒數（null = 沒有在等；舊後端沒有）。
+   * waiting: per unit, seconds until a held start is sent (null = not held; missing on old backends).
+   */
+  motor: { channel: number; enabled: boolean; value: number; units?: boolean[]; waiting?: (number | null)[] }
   /** true：全部燈光關閉（轉燈、球燈、洗牆燈送全黑；舊後端沒有）。 / true: every light sends black (missing on old backends). */
   blackout?: boolean
   output: {

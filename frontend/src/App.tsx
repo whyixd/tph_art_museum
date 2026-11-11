@@ -368,6 +368,19 @@ export function App() {
     return () => { backendRequest.current += 1 }
   }, [controlMode, backendRefresh])
 
+  // 有轉燈在等緩停結束時每秒更新倒數，直到全部送出。 / While starts are held, refresh the countdown every second.
+  const motorWaiting = backendState?.motor.waiting?.some((seconds) => seconds !== null) ?? false
+  useEffect(() => {
+    if (controlMode !== 'backend' || !motorWaiting) return
+    const request = backendRequest.current
+    const timer = window.setTimeout(() => {
+      void getBackendState().then((state) => {
+        if (request === backendRequest.current) setBackendState(state)
+      }).catch(() => {})
+    }, 1_000)
+    return () => window.clearTimeout(timer)
+  }, [backendState, controlMode, motorWaiting])
+
   const applyToBackend = useCallback(async (preset: EffectPreset, fixtures: FixturePresets) => {
     if (controlMode !== 'backend' || backendBusy || backendState === null) return
     const request = backendRequest.current

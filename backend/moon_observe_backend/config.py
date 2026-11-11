@@ -66,13 +66,43 @@ def _hardware(raw: Any, pixels: int) -> dict[str, Any]:
     }
 
 
-def _motor(raw: Any, pixels: int, channels_per_universe: int) -> dict[str, Any]:
-    if not isinstance(raw, dict) or set(raw) - {"channel"}:
+def _motor(raw: Any, pixels: int, channels_per_universe: int, unit_count: int) -> dict[str, Any]:
+    if not isinstance(raw, dict) or set(raw) - {"channel", "restart_delay_seconds", "start_interval_seconds", "start_groups"}:
         raise ValueError("unknown motor config field")
     led_channels = pixels * CHANNELS_PER_PIXEL
     channel = _integer(raw.get("channel", default_motor_channel(pixels)), "motor.channel",
                        led_channels + 1, MAX_UNIVERSES_PER_TARGET * channels_per_universe)
-    return {"channel": channel}
+    result: dict[str, Any] = {"channel": channel}
+    if "restart_delay_seconds" in raw:
+        # 停止後多久才送啟動（XIAO 緩停中收到的啟動會被忽略，見 motor.py）。 / Hold a start this long after a stop.
+        result["restart_delay_seconds"] = float(_coordinate(raw["restart_delay_seconds"],
+                                                            "motor.restart_delay_seconds", 0, 120))
+    if "start_interval_seconds" in raw:
+        # 啟動分區：每隔這麼久放行一組。 / Release one start group per this many seconds.
+        result["start_interval_seconds"] = float(_coordinate(raw["start_interval_seconds"],
+                                                             "motor.start_interval_seconds", 0, 10))
+    if "start_groups" in raw:
+        # [[motor.start_groups]] name = "…", units = [3, 4]：依序啟動的組（控箱）。 / Start groups, in start order.
+        groups = raw["start_groups"]
+        if not isinstance(groups, list) or len(groups) > unit_count:
+            raise ValueError(f"motor.start_groups must be a list of at most {unit_count} groups")
+        seen: set[int] = set()
+        result["start_groups"] = []
+        for index, group in enumerate(groups):
+            label = f"motor.start_groups[{index}]"
+            if not isinstance(group, dict) or "units" not in group or set(group) - {"name", "units"}:
+                raise ValueError(f"{label} requires units (optional: name)")
+            units = group["units"]
+            if not isinstance(units, list) or not units:
+                raise ValueError(f"{label}.units must list unit ids")
+            for unit in units:
+                _integer(unit, f"{label}.units", 1, unit_count)
+                if unit in seen:
+                    raise ValueError(f"{label}.units: unit {unit} is already in another start group")
+                seen.add(unit)
+            name = _name(group["name"], f"{label}.name") if "name" in group else str(index + 1)
+            result["start_groups"].append({"name": name, "units": list(units)})
+    return result
 
 
 def _name(value: Any, name: str) -> str:
@@ -341,7 +371,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
     hardware = _hardware(raw.get("hardware", {}), pixels)
     if pixels * CHANNELS_PER_PIXEL >= MAX_UNIVERSES_PER_TARGET * hardware["channels_per_universe"]:
         raise ValueError(f"render.pixels needs more than {MAX_UNIVERSES_PER_TARGET} universes per unit")
-    motor = _motor(raw.get("motor", {}), pixels, hardware["channels_per_universe"])
+    motor = _motor(raw.get("motor", {}), pixels, hardware["channels_per_universe"], unit_count)
     sizes = packet_sizes(pixels, motor["channel"], hardware["channels_per_universe"])
 
     if "targets" in artnet:
