@@ -34,6 +34,9 @@ class PresetStore:
         self.revision = 0
         # 轉動中的轉燈編號；後端重啟後一律停止。 / Units whose motor runs; all stopped after a backend restart.
         self.motor_units: set[int] = set()
+        # 全部關燈：轉燈、球燈、洗牆燈送全黑，播放在背景照常前進；只在記憶體，後端重啟後恢復亮燈。
+        # Blackout: spinners, balls and washes send black while playback keeps advancing; memory only.
+        self.blackout = False
 
     def snapshot(self) -> Mapping[str, Any]:
         with self.lock:
@@ -52,6 +55,21 @@ class PresetStore:
         """Motor command per unit (index = unit - 1): 255 = soft start / run, 0 = soft stop."""
         with self.lock:
             return tuple(255 if unit in self.motor_units else 0 for unit in range(1, unit_count + 1))
+
+    def blackout_active(self) -> bool:
+        """Called by the output loop every frame."""
+        with self.lock:
+            return self.blackout
+
+    def apply_blackout(self, raw: Any, config: Mapping[str, Any]) -> dict[str, Any]:
+        """``{"enabled": bool}``: all lights off (black) or back to normal. Motors are not touched."""
+        if not isinstance(raw, dict) or set(raw) != {"enabled"} or type(raw["enabled"]) is not bool:
+            raise ValueError("blackout must be {\"enabled\": true|false}")
+        with self.lock:
+            if raw["enabled"] != self.blackout:
+                self.blackout = raw["enabled"]
+                self.revision += 1
+            return self._state_unlocked(config)
 
     def apply_motor(self, raw: Any, config: Mapping[str, Any]) -> dict[str, Any]:
         """``{"enabled": bool}`` for every unit, or ``{"enabled": bool, "units": [1, 3, ...]}`` for those only.
@@ -122,6 +140,8 @@ class PresetStore:
                       "enabled": bool(self.motor_units),
                       "value": 255 if self.motor_units else 0,
                       "units": [unit in self.motor_units for unit in range(1, config["unit_count"] + 1)]},
+            # true：全部燈光關閉（送全黑），蓋過效果、演出與測試。 / true: every light sends black, over effects, shows and tests.
+            "blackout": self.blackout,
             "output": {
                 "ip": config["ip"], "universe": config["universe"],
                 "fps": config["fps"], "rpm": config["rpm"], "pixels": config["pixels"],
@@ -299,6 +319,14 @@ def make_server(
                 fixture_test = fixture_color_store.snapshot() if fixture_color_store is not None else {}
                 if result["active"] and any(entry["active"] for entry in fixture_test.values()):
                     result["fixtureColors"] = {group: entry["colors"] for group, entry in fixture_test.items() if entry["active"]}
+                if result["active"] and store.blackout_active():
+                    # 全部關燈：3D 鏡像也全黑。 / Blackout: the 3D mirror goes dark too.
+                    black = {"r": 0, "g": 0, "b": 0}
+                    dmx_fixtures = (config.get("dmx") or {}).get("fixtures", {})
+                    result["blackout"] = True
+                    result["unitColors"] = [black] * config["unit_count"]
+                    result["fixtureColors"] = {group: [black] * len(dmx_fixtures.get(group, []))
+                                               for group in FIXTURE_GROUPS if dmx_fixtures.get(group)}
                 self._respond(200, result)
             elif self.path == "/api/test/units" and unit_color_store is not None:
                 self._respond(200, unit_color_store.snapshot())
@@ -371,7 +399,7 @@ def make_server(
 
         def do_PUT(self) -> None:
             limits = {
-                "/api/preset": 32768, "/api/motor": 64, "/api/sequence": 262144,
+                "/api/preset": 32768, "/api/motor": 64, "/api/blackout": 64, "/api/sequence": 262144,
                 "/api/weather/override": 256, "/api/weather/palette": 16384,
                 "/api/playback/restart": 64, "/api/weather/visit": 64, "/api/test/units": 4096,
                 "/api/test/fixtures": 8192, "/api/audio/play": 512, "/api/audio/calibration": 128,
@@ -441,6 +469,8 @@ def make_server(
                     result = audio_player.play(raw)
                 elif self.path == "/api/audio/calibration":
                     result = audio_player.set_calibration(raw)
+                elif self.path == "/api/blackout":
+                    result = store.apply_blackout(raw, config)
                 else:
                     result = store.apply_motor(raw, config)
             except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:

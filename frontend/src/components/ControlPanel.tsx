@@ -92,6 +92,8 @@ type ControlPanelProps = {
   onApplyBackend: () => void
   /** units 省略 = 全部轉燈。 / units omitted = every unit. */
   onMotor: (enabled: boolean, units?: number[]) => void
+  /** 全部關燈／恢復。 / All lights off / back on. */
+  onBlackout: (enabled: boolean) => void
   onRestartBackend: (source: 'sequence' | 'single') => void
   onUnitColorTest: () => void
   onSetting: (name: NumericSetting, value: number) => void
@@ -147,6 +149,31 @@ function MotorControls({ motor, unitCount, busy, onMotor }: {
       )}
       <p className="control-note">
         點編號切換該台轉動／停止（亮色 = 轉動中）。後端啟動時全部停止。Channel {motor.channel} 位於 LED 通道之後；斷線時是否停機需由接收端保障。
+      </p>
+    </div>
+  )
+}
+
+/**
+ * 全部關燈：轉燈、球燈、洗牆燈送全黑，蓋過效果、演出與測試；播放在背景照常前進，馬達不受影響。
+ * Blackout: every spinner, ball and wash light sends black over effects, shows and tests; playback keeps going.
+ */
+function BlackoutControls({ blackout, busy, onBlackout }: {
+  blackout: boolean
+  busy: boolean
+  onBlackout: (enabled: boolean) => void
+}) {
+  return (
+    <div className={blackout ? 'blackout-controls on' : 'blackout-controls'}>
+      <span className="control-label">全部燈光</span>
+      <p role="status">{blackout ? '已關閉：轉燈、球燈、洗牆燈全暗' : '照常播放'}</p>
+      <div className="button-row">
+        {blackout
+          ? <button type="button" onClick={() => onBlackout(false)} disabled={busy}>恢復燈光</button>
+          : <button type="button" className="danger" onClick={() => onBlackout(true)} disabled={busy}>關閉全部燈光</button>}
+      </div>
+      <p className="control-note">
+        關燈期間演出、串接、效果在背景照常前進，恢復後接著播放；蓋過單色測試與閃拍。馬達不受影響（要停請用下方的馬達控制）。後端重新啟動後會恢復亮燈。
       </p>
     </div>
   )
@@ -365,6 +392,7 @@ export function ControlPanel({
   onRefreshBackend,
   onApplyBackend,
   onMotor,
+  onBlackout,
   onRestartBackend,
   onUnitColorTest,
   onSetting,
@@ -623,6 +651,9 @@ export function ControlPanel({
           {backendBusy ? '套用中…' : '套用並覆蓋播放'}
         </button>
         <p role="status">{status}轉燈、球燈、洗牆燈的效果與顏色會一起送出。</p>
+        {backendState?.blackout && (
+          <p className="backend-error" role="alert">目前「全部燈光」已關閉，套用後燈仍全暗；到「後端」分頁按〔恢復燈光〕。</p>
+        )}
         {backendError && <p className="backend-error" role="alert">{backendError}</p>}
       </div>
     )
@@ -714,6 +745,9 @@ export function ControlPanel({
             </p>
             {backendError && <p className="backend-error" role="alert">{backendError}</p>}
             {backendState && <OutputStatsLine />}
+            {backendState && backendState.blackout !== undefined && (
+              <BlackoutControls blackout={backendState.blackout} busy={backendBusy} onBlackout={onBlackout} />
+            )}
             <div className="button-row">
               <button type="button" className="secondary" onClick={onRefreshBackend} disabled={backendBusy}>重新讀取</button>
               <button type="button" onClick={onApplyBackend}

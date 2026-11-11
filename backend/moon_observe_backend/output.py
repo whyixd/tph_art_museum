@@ -184,6 +184,7 @@ def stream(
     fixture_colors_provider: Callable[[], Mapping[str, Sequence[Rgb | None]]] | None = None,
     beat_flash_provider: Callable[[], float | None] | None = None,
     show_provider: Callable[[], tuple[tuple[dict[str, Any], ...], int, int] | None] | None = None,
+    blackout_provider: Callable[[], bool] | None = None,
     stats: OutputStats | None = None,
     source_check: Callable[[], bool] | None = None,
     clock: Callable[[], float] = time.perf_counter,
@@ -195,7 +196,10 @@ def stream(
     512-channel frame each frame; ball / wash colours come from the sequence step (or the single-effect
     fixture presets), with the same weather, and a fixture colour test overrides them. On exit every DMX
     universe gets all-zero frames. While a beat-flash test plays (``beat_flash_provider`` returns a level),
-    every spinner and fixture shows that white level instead; motors are unaffected.
+    every spinner and fixture shows that white level instead; motors are unaffected. While ``blackout_provider``
+    returns True every spinner and fixture sends black (over everything else, flash included) and playback keeps
+    advancing underneath; motors are unaffected.
+    全部關燈時所有燈送全黑（蓋過效果、演出、測試與閃拍），播放照常前進，馬達不受影響。
 
     While a show plays (``show_provider`` returns its schedule, frame and generation), the show replaces the
     sequence / single effect and its frame comes from the music time; weather does not apply. When it ends,
@@ -343,6 +347,9 @@ def stream(
             # Beat-flash test (latency calibration): every light flashes white on the beat, over effects and tests.
             flash = beat_flash_provider() if beat_flash_provider is not None else None
             flash_color: Rgb | None = None if flash is None else (flash, flash, flash)
+            # 全部關燈：蓋過一切（含閃拍），轉燈不必渲染。 / Blackout: over everything (flash included); spinners skip rendering.
+            if blackout_provider is not None and blackout_provider():
+                flash_color = BLACK
             # 同一格內畫面相同的燈台共用一次渲染。 / Units showing the same picture share one render per frame.
             shared: dict[Any, list[Rgb]] = {}
             for target, unit_clients in clients:
@@ -590,6 +597,7 @@ def main(argv: list[str] | None = None) -> int:
                                   fixture_colors_provider=fixture_color_store.current,
                                   beat_flash_provider=audio_player.flash,
                                   show_provider=show_player.current,
+                                  blackout_provider=store.blackout_active,
                                   stats=output_stats)
                 finally:
                     playback_monitor.stop()

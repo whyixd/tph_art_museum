@@ -204,6 +204,13 @@ h2 { font-size: 1rem; font-weight: 650; }
 .backend-connection .button-row { margin-top: 0.7rem; flex-wrap: wrap; }
 .backend-connection .control-note { margin-top: 0.7rem; }
 .backend-error { margin-top: 0.5rem; color: #ff9d91; font-size: 0.8rem; }
+button.danger { color: #fff; background: #c23b2e; border-color: #c23b2e; }
+button.danger:hover { background: #dd4b3d; }
+.blackout-controls { margin-top: 1rem; padding: 0.7rem 0.8rem; border: 1px solid #303a48; border-radius: 0.5rem; }
+.blackout-controls.on { border-color: #c23b2e; background: #2a1414; }
+.blackout-controls.on [role="status"] { color: #ff9d91; font-weight: 650; }
+.blackout-controls [role="status"] { margin-top: 0.3rem; font-size: 0.85rem; }
+.blackout-controls .control-note { margin-top: 0.6rem; padding-top: 0; border-top: 0; }
 .restart-controls, .motor-controls { margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid #242c37; }
 .restart-controls .button-row { flex-wrap: wrap; }
 .restart-controls .control-note, .motor-controls .control-note { margin-top: 0.6rem; padding-top: 0; border-top: 0; }

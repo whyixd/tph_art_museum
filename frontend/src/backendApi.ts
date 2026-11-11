@@ -58,6 +58,8 @@ export type BackendState = {
   preset: EffectPreset
   /** enabled／value：有任何一台在轉；units：每台是否轉動（index = 編號 − 1，舊後端沒有）。 / enabled: any unit runs; units: per unit. */
   motor: { channel: number; enabled: boolean; value: number; units?: boolean[] }
+  /** true：全部燈光關閉（轉燈、球燈、洗牆燈送全黑；舊後端沒有）。 / true: every light sends black (missing on old backends). */
+  blackout?: boolean
   output: {
     ip: string
     universe: number
@@ -182,6 +184,15 @@ export async function setBackendMotor(enabled: boolean, units?: number[]): Promi
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(units ? { enabled, units } : { enabled }),
+  }))
+}
+
+/** 全部關燈（轉燈、球燈、洗牆燈送全黑）或恢復；馬達不受影響。 / All lights off or back on; motors untouched. */
+export async function setBackendBlackout(enabled: boolean): Promise<BackendState> {
+  return readState<BackendState>(await fetch('/api/blackout', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
   }))
 }
 
@@ -327,6 +338,8 @@ type ActivePlaybackBase = {
   unitColors?: (RgbColor | null)[]
   /** 球燈／洗牆燈單色測試進行中才有。 / Only during a fixture colour test. */
   fixtureColors?: Partial<Record<BackendFixtureGroup, (RgbColor | null)[]>>
+  /** 全部關燈中才有（unitColors／fixtureColors 此時全黑）。 / Only during a blackout (the colours above are then black). */
+  blackout?: true
 }
 
 export type SequencePlayback = ActivePlaybackBase & {

@@ -453,3 +453,11 @@ M5 已實作（`sequence.py`）：
 - **效果分頁套用**：後端控制時，「效果」「色彩」分頁頂端有〔套用並覆蓋播放〕：送出轉燈、球燈、洗牆燈的 preset（同「後端」分頁的套用到後端），後端停止演出／串接、改播這個效果。狀態列說明後端目前播放什麼（演出／串接 → 會被停止；尚未套用；已在播放）；已在播放且沒有變更時按鈕停用。
 - 驗證：backend 新增 `MotorPerUnitTests`（個別啟停、無變更不加 revision、錯誤的編號清單）與每台馬達的輸出測試；frontend 163 個測試、`tsc`、build 通過。Playwright（`--api-only`）：點 3、7 號 → 後端 `units` 只有 3、7 轉動，「轉動中 2／24 台」；再點 3 → 只剩 7；全部緩停 → 全停。效果分頁改效果後按套用 → 後端 preset 換成該效果、播放模式由串接變成 single。
 
+
+### 2026-11-12：全部關燈
+
+- `PresetStore.blackout`（只在記憶體，後端重啟後恢復亮燈）。`PUT /api/blackout` `{"enabled": true|false}`；`GET /api/state` 多了 `blackout`。
+- 輸出迴圈 `blackout_provider`：開啟時轉燈與球燈、洗牆燈全部送全黑，蓋過效果、演出、單色測試與閃拍；底下的演出／串接照常前進，關閉後接著播放。**馬達不受影響**（另用馬達控制）。
+- `GET /api/playback` 在關燈時回傳 `blackout: true`，並把 `unitColors`／`fixtureColors` 設為全黑，3D 鏡像跟著全暗，左上角顯示「全部關燈中」。
+- 前端「後端」分頁連線資訊下方：〔關閉全部燈光〕／〔恢復燈光〕；關燈時「效果」「色彩」分頁的套用列提示套用後仍全暗。
+- 驗證：backend 221 個測試（新增 `BlackoutOutputTests`、`test_blackout_api_and_playback_mirror`）；frontend 163 個測試、`tsc`、build 通過。開發機以 Art-Net 全改送 127.0.0.x 的設定實際啟動，Playwright 按〔關閉全部燈光〕→ `/api/playback` 為 blackout、24／37／25 全黑、3D 全暗；〔恢復燈光〕→ `blackout: false`，無頁面錯誤。

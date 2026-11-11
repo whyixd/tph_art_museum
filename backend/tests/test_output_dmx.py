@@ -12,6 +12,7 @@ from moon_observe_backend.dmx import build_universes
 from moon_observe_backend.effects import BLACK, default_preset, validate_preset
 from moon_observe_backend.fixture_effects import default_fixture_preset, render_fixture_frame, validate_fixture_preset
 from moon_observe_backend.output import fixture_counts, stream
+from moon_observe_backend.playback import PlaybackMonitor
 from moon_observe_backend.sequence import compile_sequence, render_sequence_fixtures
 from moon_observe_backend.unit_colors import FixtureColorStore
 
@@ -181,7 +182,90 @@ class OutputDmxTests(unittest.TestCase):
         self.assertTrue(all(client.closed for client in clients))
 
 
+class BlackoutOutputTests(unittest.TestCase):
+    """全部關燈：轉燈、球燈、洗牆燈送全黑，蓋過效果、測試與閃拍；馬達照舊。 / Blackout over everything; motors untouched."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.directory = tempfile.TemporaryDirectory()
+        cls.config, cls.preset = load(Path(cls.directory.name))
+        cls.dmx = cls.config["dmx"]
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.directory.cleanup()
+
+    def test_blackout_darkens_every_group_and_keeps_motors(self):
+        tests = FixtureColorStore(fixture_counts(self.config))
+        tests.apply({"group": "wash", "colors": [{"r": 1, "g": 1, "b": 1}] * 3, "seconds": None})
+        blackout = [False]
+        clients = []
+        now = [0.0]
+
+        def factory(*args, **kwargs):
+            clients.append(FakeClient(*args, **kwargs))
+            return clients[-1]
+
+        def sleep(seconds):
+            now[0] += seconds
+            blackout[0] = True  # 第 2 格起關燈。 / Off from the second frame.
+
+        stream(self.config, self.preset, seconds=0.05, client_factory=factory, clock=lambda: now[0], sleep=sleep,
+               fixture_preset_provider=lambda: {"ball": ball_preset(), "wash": None},
+               fixture_colors_provider=tests.current, motor_provider=lambda: 255,
+               beat_flash_provider=lambda: 1.0, blackout_provider=lambda: blackout[0])
+        spinner, ball_node, wash_node = clients
+        self.assertNotEqual(bytes(387), spinner.packets[0][:387])        # frame 0: flash white
+        self.assertEqual(bytes(387), spinner.packets[1][:387])           # frame 1: black
+        self.assertEqual([255, 255, 0], [packet[468] for packet in spinner.packets])  # motor runs, soft stop on exit
+        dark = build_universes({"ball": [BLACK] * 37, "wash": [BLACK] * 3}, self.dmx)
+        self.assertNotEqual(dark[0], ball_node.packets[0])
+        self.assertEqual(dark[0], ball_node.packets[1])
+        self.assertEqual(dark[1], wash_node.packets[1])                  # over the wash colour test
+
+
 class FixtureApiTests(unittest.TestCase):
+    def test_blackout_api_and_playback_mirror(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config, _ = load(root)
+            store = PresetStore(root / "preset.json", 129)
+            monitor = PlaybackMonitor(config["fps"], config["unit_count"])
+            monitor.report("single", store.snapshot(), 0, 0)
+            with make_server(store, config, 0, playback_monitor=monitor) as server:
+                worker = Thread(target=server.serve_forever, daemon=True)
+                worker.start()
+                base = f"http://127.0.0.1:{server.server_address[1]}"
+
+                def call(method, path, body=None):
+                    data = None if body is None else json.dumps(body).encode()
+                    request = Request(base + path, data, {"Content-Type": "application/json"}, method=method)
+                    with urlopen(request) as response:
+                        return json.load(response)
+
+                try:
+                    self.assertFalse(call("GET", "/api/state")["blackout"])
+                    self.assertNotIn("blackout", call("GET", "/api/playback"))
+                    store.apply_motor({"enabled": True, "units": [3]}, config)
+                    state = call("PUT", "/api/blackout", {"enabled": True})
+                    self.assertTrue(state["blackout"])
+                    self.assertTrue(store.blackout_active())
+                    self.assertEqual(255, store.motor_values(24)[2])  # motors untouched
+                    playback = call("GET", "/api/playback")
+                    self.assertTrue(playback["blackout"])
+                    self.assertEqual([{"r": 0, "g": 0, "b": 0}] * 24, playback["unitColors"])
+                    self.assertEqual({"ball": 37, "wash": 3}, {group: len(colors) for group, colors in playback["fixtureColors"].items()})
+                    revision = state["revision"]
+                    self.assertEqual(revision, call("PUT", "/api/blackout", {"enabled": True})["revision"])  # no change
+                    self.assertFalse(call("PUT", "/api/blackout", {"enabled": False})["blackout"])
+                    for bad in ({}, {"enabled": 1}, {"enabled": True, "units": [1]}):
+                        with self.subTest(bad=bad), self.assertRaises(HTTPError) as caught:
+                            call("PUT", "/api/blackout", bad)
+                        self.assertEqual(422, caught.exception.code)
+                finally:
+                    server.shutdown()
+                    worker.join(timeout=2)
+
     def test_presets_tests_and_patch(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
