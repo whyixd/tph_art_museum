@@ -28,3 +28,6 @@ audio/
 
 # firmware host-test binaries
 firmware/tests/*.exe
+
+# Backups pulled from the Pi (config, layout, presets, shows)
+backend/pi-backup/
