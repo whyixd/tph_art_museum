@@ -41,7 +41,7 @@ reference 是「每組一條半圓 156 顆，兩條手臂共用資料」。
 
 **3 條並聯、共用同一份資料**；每條**第 0 顆在最上方，往下繞一整圈**回到頂部，圓周上**沒有空缺**（2026-11-09 確認）。假設 129 顆沿整圈等距：第 i 顆與頂點夾角 θᵢ = i × 360°/129，最底部落在第 64、65 顆之間，第 128 顆與第 0 顆相鄰。
 
-repo 現有的 `firmware/wled/unit_settings.json` 正好是 WLED 一路輸出（IO16）、129 顆、GRB（`order 0`）、Art-Net universe 0、Multi RGB、起始位址 1，不用改。對應的 backend 設定：
+repo 現有的 `firmware/wled/unit_settings.json` 正好是 WLED 一路輸出（IO16）、129 顆、GRB（`order 0`）、Art-Net universe 0、Multi RGB、起始位址 1，不用改。**2026-11-11 更正**：現場燈條是 RGB 色序，`order` 改為 1（見文末）。對應的 backend 設定：
 
 ```toml
 [render]
@@ -439,3 +439,9 @@ M5 已實作（`sequence.py`）：
   - callback 統計 `output_underflow`：`GET /api/audio` 的 `underflows`、`bufferMs`；每分鐘的 `output:` 日誌行加上 `audio underflows N`；前端音樂區顯示緩衝大小與斷音次數。
 - 驗證：backend 216 個測試、frontend 163 個測試、`tsc`、build 通過。
 
+### 2026-11-11：轉燈燈條色序改為 RGB
+
+- 現場單色測試：送紅亮綠、送綠亮紅（WLED `order` 0 = GRB 時紅綠對調），燈條實際色序是 **RGB**。燈條類型維持 WS281x（type 22，每顆 3 bytes）；曾誤以為是 G R B W 而把 2.0.0.201 改成 SK6812 RGBW，送紅出現紅綠藍相間，已改回。
+- `firmware/wled/unit_settings.json` 的 `order` 0 → 1（`COL_ORDER_RGB`）。backend 照送 RGB、`[hardware] color_order` 不用改，Art-Net 內容不變。
+- 由 Pi 以 `flash.py config`（只寫設定、不刷韌體，寫入後重開機並讀回比對）套用到網路上的 21 台（2.0.0.201–206、208–222），先改 201 經使用者單色測試確認紅綠藍正確後再改其餘 20 台。寫入前的設定備份在 Pi 的 `~/wled-config/backups/`。
+- **未套用**：2.0.0.207、223、224 不在網路上（ARP 無回應），接回後要跑 `uv run flash.py config 2.0.0.207 2.0.0.223 2.0.0.224`（服務要先停）。

@@ -356,6 +356,9 @@ class SettingsTests(FlashTestCase):
         self.assertEqual((led["total"], led["maxpwr"], len(led["ins"])), (129, 0, 1))
         self.assertEqual({key: led["ins"][0][key] for key in ("start", "len", "pin", "maxpwr", "ledma")},
                          {"start": 0, "len": 129, "pin": [16], "maxpwr": 0, "ledma": 30})
+        # 燈條是 WS281x、色序 RGB（order 1；2026-11-11 現場確認，GRB 時紅綠對調）。
+        # The strip is WS281x in RGB order (order 1; confirmed on site 2026-11-11, GRB swapped red and green).
+        self.assertEqual((22, 1), (led["ins"][0]["type"], led["ins"][0]["order"]))
 
     def test_flash_writes_settings_then_reboots_and_verifies(self):
         fake = FakeWled()

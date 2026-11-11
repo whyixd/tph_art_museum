@@ -145,7 +145,7 @@ universe = 0
 # 轉燈硬體（整段與各欄位皆可省略；省略時與參考系統的 156 顆、470 bytes 相同）。
 # Spinner hardware; every field is optional (omitting both sections keeps the reference payload).
 [hardware]
-# color_order = "RGB"            # RGB / RBG / GRB / GBR / BRG / BGR (WLED already reorders to the strip's GRB)
+# color_order = "RGB"            # RGB / RBG / GRB / GBR / BRG / BGR. Keep RGB: WLED reorders for the strip (RGB, order 1)
 # brightness = 1.0               # 0..1, applied before quantization
 # channels_per_universe = 510    # multiple of 3, <= 510 (WLED: 170 RGB pixels per universe)
 pixel_rotation = 64              # 實體第 i 顆顯示效果的第 (i+64) mod 129 顆：燈條由頂部起繞一圈，效果中心在頂部、兩端在底部

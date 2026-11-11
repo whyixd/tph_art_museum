@@ -94,7 +94,7 @@ uv run flash.py config 192.168.1.50                  # 不刷韌體，只寫入 
 
 USB 加 `--no-backup` 跳過 `full_flash.bin`（約 2 分鐘），仍會備份 JSON 並比對分割表；沒有 `full_flash.bin` 就無法還原原廠韌體，第一台不要用。加 `--check` 只跑檢查與備份，不寫入；`config --check` 另外列出會變更的設定。
 
-現場設定放在 `unit_settings.json`：Art-Net port 6454、universe 0、Multi RGB、起始位址 1、一路輸出 IO16 共 129 顆、每顆 30 mA（WLED 的 12V 選項）、電流限制關閉。這些值不編進韌體，因為編譯預設值只在 `cfg.json` 沒有該值時生效，而刷機會保留 `cfg.json`。每次網路刷機後會自動寫入（一致時略過）：寫入 → 等 `/cfg.json` 讀回正確 → 重開機 → 再次比對。`--no-ip` 不會寫入，板子回到網路後要另外跑 `config`。
+現場設定放在 `unit_settings.json`：Art-Net port 6454、universe 0、Multi RGB、起始位址 1、一路輸出 IO16 共 129 顆、WS281x **色序 RGB**（`order` 1；2026-11-11 現場確認，原本的 GRB 會紅綠對調）、每顆 30 mA（WLED 的 12V 選項）、電流限制關閉。這些值不編進韌體，因為編譯預設值只在 `cfg.json` 沒有該值時生效，而刷機會保留 `cfg.json`。每次網路刷機後會自動寫入（一致時略過）：寫入 → 等 `/cfg.json` 讀回正確 → 重開機 → 再次比對。`--no-ip` 不會寫入，板子回到網路後要另外跑 `config`。
 
 電流限制關閉後，WLED 不會壓低亮度，電源與保險絲要依燈條全亮的實際電流規劃。
 
