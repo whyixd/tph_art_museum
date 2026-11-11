@@ -38,8 +38,10 @@ describe('site layout', () => {
     const layout = exampleSiteLayout()
     expect(layout.spinners).toHaveLength(24)
     expect(layout.ball).toHaveLength(37)
-    expect(layout.spinners[0]).toEqual({ x: 961, y: 118, z: 565 })
-    expect(layout.ball[35]).toEqual({ id: 36, position: { x: 3455, y: 349, z: 1030 } })
+    // 同一根柱子上由上往下編號（1 號在最上面）。 / Numbered from the top on each pole (unit 1 above unit 2).
+    expect(layout.spinners[0]).toEqual({ x: 961, y: 219, z: 770 })
+    expect(layout.spinners[1]).toEqual({ x: 961, y: 118, z: 565 })
+    expect(layout.ball[35]).toEqual({ id: 36, position: { x: 3420, y: 315, z: 360 } })
     expect(layout.poles).toHaveLength(15)
     expect(layout.poles[0]).toEqual({ x: 961, y: 169, z: 1000 })
   })
@@ -48,9 +50,9 @@ describe('site layout', () => {
     const layout = exampleSiteLayout()
     const arms = poleArms(layout, 35)
     expect(arms).toHaveLength(24 + 37)              // every spinner and ball reaches a pole within 1.2 m
-    const first = arms[0]                            // unit 1 at (961, 118), top 565 + 35 cm; pole at (961, 169)
-    expect(first.from).toEqual([9.61, 6, -1.69])
-    expect(first.to).toEqual([9.61, 6, -1.18])
+    const first = arms[0]                            // unit 1 at (961, 219), top 770 + 35 cm; pole at (961, 169)
+    expect(first.from).toEqual([9.61, 8.05, -1.69])
+    expect(first.to).toEqual([9.61, 8.05, -2.19])
     for (const arm of arms) expect(Math.hypot(arm.to[0] - arm.from[0], arm.to[2] - arm.from[2])).toBeLessThanOrEqual(1.2)
   })
 
@@ -78,9 +80,10 @@ describe('site layout', () => {
 describe('pillar order', () => {
   it('goes pole by pole in layout order, low to high on each pole', () => {
     const layout = exampleSiteLayout()
-    // Pole 6 holds units 11, 12 and 14 (before 13 on pole 7); poles 10, 11 and 12 hold 20, then 18 and 19, then 17.
+    // Numbered from the top, so each pole's pair runs 2, 1. Pole 6 holds 14, 12, 11 low to high (before 13 on
+    // pole 7); poles 10, 11 and 12 hold 20, then 19 and 18, then 17.
     expect(pillarRanks(layout.spinners, layout.poles)).toEqual(
-      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 12, 14, 15, 19, 17, 18, 16, 20, 21, 22, 23])
+      [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 12, 11, 13, 10, 15, 14, 19, 18, 17, 16, 21, 20, 23, 22])
   })
 
   it('puts spinners without a nearby pole last, by unit', () => {

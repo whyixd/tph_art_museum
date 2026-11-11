@@ -75,15 +75,16 @@ class LayoutTests(unittest.TestCase):
     def test_example_layout_gives_ball_heights(self):
         layout = json.loads((BACKEND / "layout.example.json").read_text(encoding="utf-8"))
         dmx = load_with_layout(layout)
-        self.assertEqual({"x": 961.0, "y": 202.0, "z": 340.0}, dmx["positions"]["ball"][0])
+        # 每根柱子由上往下編號：1 號是第一根柱子最上面那顆。 / Numbered from the top: ball 1 is the first pole's highest.
+        self.assertEqual({"x": 926.0, "y": 169.0, "z": 890.0}, dmx["positions"]["ball"][0])
         heights = [row[0] for row in dmx["geometry"]["ball"]]
-        self.assertEqual(0.0, heights[10])        # ball 11, H245 (lowest; ball 17 too)
-        self.assertEqual(1.0, heights[35])        # ball 36, H1030
-        self.assertAlmostEqual((340 - 245) / (1030 - 245), heights[0])
+        self.assertEqual(0.0, heights[12])        # ball 13, H245 (lowest; ball 20 too)
+        self.assertEqual(1.0, heights[33])        # ball 34, H1030
+        self.assertAlmostEqual((890 - 245) / (1030 - 245), heights[0])
         xs = [row[1] for row in dmx["geometry"]["ball"]]
-        self.assertEqual((0.0, 1.0), (xs[3], xs[36]))  # ball 4 is leftmost (x 926), ball 37 rightmost (x 3551)
+        self.assertEqual((0.0, 1.0), (xs[0], xs[36]))  # ball 1 is leftmost (x 926), ball 37 rightmost (x 3551)
         ys = [row[2] for row in dmx["geometry"]["ball"]]
-        self.assertEqual((0.0, 1.0), (ys[21], ys[6]))  # ball 22 nearest the front wall, ball 7 deepest
+        self.assertEqual((0.0, 1.0), (ys[21], ys[4]))  # ball 22 nearest the front wall, ball 5 deepest
         # 範例 layout 有 25 顆洗牆燈，這份設定沒接：忽略。 / The layout's 25 washers are not patched here: ignored.
         self.assertEqual([], dmx["geometry"]["wash"])
 
@@ -110,8 +111,8 @@ class LayoutTests(unittest.TestCase):
             config = load_config(write_config(root, 'unit_count = 24\nlayout = "layout.json"\n'))[0]  # no [dmx]
         self.assertIsNone(config["dmx"])
         self.assertEqual(24, len(config["spinner_positions"]))
-        self.assertEqual({"x": 961.0, "y": 118.0, "z": 565.0}, config["spinner_positions"][0])
-        self.assertEqual({"x": 3370.0, "y": 349.0, "z": 885.0}, config["spinner_positions"][23])
+        self.assertEqual({"x": 961.0, "y": 219.0, "z": 770.0}, config["spinner_positions"][0])   # 1 above 2
+        self.assertEqual({"x": 3420.0, "y": 299.0, "z": 555.0}, config["spinner_positions"][23])  # 24 below 23
         # 中心擴散的水平流動：與前端 fixtureGeometry 算出的位置相同。 / Flow positions match the frontend's fixtureGeometry.
         flow = json.loads((BACKEND / "fixtures" / "effects_v2.json").read_text(encoding="utf-8"))["flowPositions"]["positions"]
         self.assertEqual([(entry["x"], entry["y"]) for entry in flow], config["spinner_flow"])

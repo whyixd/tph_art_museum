@@ -478,3 +478,12 @@ M5 已實作（`sequence.py`）：
 - `GET /api/state` 的 `motor.waiting` 改為模擬放行規則推算的剩餘秒數；前端「等 N 秒」、狀態列「其中 M 台排隊啟動」。
 - Pi 升級注意：既有的 `config.toml` 不會自動加入 `start_interval_seconds` 與 `[[motor.start_groups]]`，要手動照 `config.example.toml` 加；沒加時只有「停止後 12 秒」，全部同時啟動。
 - 驗證：backend 234 個測試（`test_motor.py` 新增分區 4 個、設定 1 個；`test_hardware` 檢查範例 24 台各在一個控箱）；frontend 163 個測試、`tsc`、build 通過。開發機（Art-Net 只送 127.0.0.x）API 實測：全停時按全部緩啟動 → 控箱 101…112 依序在 0、1、2 … 11 秒放行；停止 4 秒後再按 → 從 8 秒起每秒一個控箱。
+
+### 2026-11-12：每根柱子由上往下編號
+
+- 現場測試：球燈、轉燈在同一根柱子上的編號與 `layout.example.json` 上下相反（3D 由上到下 3-2-1，實際 1-2-3）。原本由 `DMX＿線間距` 與「IP 靠前 = 較低那台」（暫定）建立，同柱都是編號越大越高。
+- `layout.example.json`：每根柱子（最近的柱子、手臂 ≤ 1.2 m，同 `_nearest_pole`）上的轉燈與球燈，位置不動、編號上下對調（最小號給最高的位置）；單獨一顆的柱子不變；洗牆燈、柱子不變。Pi 的 `layout.json`（2026-11-12 備份）內容與舊範例相同，部署時要換成新的。
+- 結果（由上到下）：柱 1 轉燈 1、2，球燈 1、2、3、4；…；球燈 17–20 那根的轉燈為 11、12、14 —— **14 號變成該柱最低**，與先前「14 號是那根最高」的暫定說法不同，待現場確認。
+- 依位置的資料跟著變：`pillar_ranks`（pillar-fill 順序）、`pole-rise` 柱內順序、`wave-split`／中心擴散水平流動的轉燈位置；前後端向量 `effects_v2.json`（`wavePositions`、`flowPositions`）、`fixtures_v1.json`（`poleRise`）以 `--write` 重產，其餘段落逐 byte 不變。
+- `doc/spaces05_annotated_top.png`／`_side.png` 仍是舊編號（未重畫），現場檢查清單改為以 3D 畫面為準。
+- 驗證：backend 234、frontend 163 個測試（更新寫死舊位置的 8 個測試期望值）、`tsc`、build 通過。

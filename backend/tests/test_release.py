@@ -69,14 +69,14 @@ class VersionTests(unittest.TestCase):
             config, _ = load_config(root / "config.toml")
         self.assertEqual(str((root / "preset" / "preset.json").resolve()), config["preset_path"])
         self.assertEqual(str((root / "preset" / "sequence.json").resolve()), config["sequence_path"])
-        self.assertEqual({"x": 961.0, "y": 118.0, "z": 565.0}, config["spinner_positions"][0])
+        self.assertEqual({"x": 961.0, "y": 219.0, "z": 770.0}, config["spinner_positions"][0])
         self.assertEqual(15, len(config["poles"]))
         self.assertEqual(190, config["rpm"])  # 範例設定的轉速 / the example config's speed
         # pole-rise：37 顆球燈分在 14 根柱子，第 1–4 顆在第一根由低到高。 / 37 balls on 14 poles, balls 1–4 on the first.
-        self.assertEqual([(0, 0), (0, 1), (0, 2), (0, 3)], config["dmx"]["poles"]["ball"][:4])
+        self.assertEqual([(0, 3), (0, 2), (0, 1), (0, 0)], config["dmx"]["poles"]["ball"][:4])  # 1 on top
         self.assertEqual(14, max(rank for rank, _ in config["dmx"]["poles"]["ball"]) + 1)
         # pillar-fill：柱子依配置順序、每根由低到高（與前端 site.test.ts 相同）。 / Same order as the frontend test.
-        self.assertEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 12, 14, 15, 19, 17, 18, 16, 20, 21, 22, 23],
+        self.assertEqual([1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 12, 11, 13, 10, 15, 14, 19, 18, 17, 16, 21, 20, 23, 22],
                          config["pillar_ranks"])
         self.assertEqual(24, len(config["targets"]))
         # 音檔與延遲校準：音檔在設定目錄的 audio/，校準存在服務可寫的 preset/。

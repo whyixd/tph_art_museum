@@ -20,8 +20,10 @@ unit_count = 24
                            # scene positions (cm): spinners by unit, fixtures by id; see layout.example.json
 
 # 轉燈：unit n = 2.0.0.(200 + n)，WLED universe 0（firmware/wled/unit_settings.json）。
-# 每個控箱兩台，IP 靠前的是較低那台；控箱 104 = 13 號（單獨燈桿）+ 14 號（球燈 17-20 燈桿上最高那台）。暫定。
-# Spinners: unit n = 2.0.0.(200 + n), WLED universe 0. Per control box the lower spinner has the earlier IP (provisional).
+# 每根柱子由上往下編號（2026-11-12 現場確認）：同柱兩台中 IP 靠前的是較高那台。控箱 104 = 13 號（單獨燈桿）+ 14 號
+# （球燈 17-20 那根柱子上，依由上往下的規則是最低那台，待確認）。
+# Spinners: unit n = 2.0.0.(200 + n), WLED universe 0. Numbered from the top on each pole (site check 2026-11-12):
+# of two spinners on a pole the higher one has the earlier IP.
 [[artnet.targets]]
 unit_id = 1
 ip = "2.0.0.201"

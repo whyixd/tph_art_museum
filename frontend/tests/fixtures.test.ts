@@ -122,8 +122,8 @@ describe('fixture effects', () => {
   it('assigns the example layout balls to poles, low to high', () => {
     const layout = exampleSiteLayout()
     const poles = fixturePoles(layout.ball.map((fixture) => fixture.position), layout.poles)
-    // Balls 1–4 on the first pole, low to high; 14 poles hold balls.
-    expect(poles.slice(0, 4)).toEqual([{ rank: 0, step: 0 }, { rank: 0, step: 1 }, { rank: 0, step: 2 }, { rank: 0, step: 3 }])
+    // Balls 1–4 on the first pole, numbered from the top (1 highest, step 3); 14 poles hold balls.
+    expect(poles.slice(0, 4)).toEqual([{ rank: 0, step: 3 }, { rank: 0, step: 2 }, { rank: 0, step: 1 }, { rank: 0, step: 0 }])
     expect(Math.max(...poles.map((pole) => pole.rank)) + 1).toBe(14)
   })
 
