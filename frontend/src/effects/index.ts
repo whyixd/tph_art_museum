@@ -12,9 +12,11 @@ import {
   type EffectPreset,
   type EffectSampleContext,
   type GradientAxis,
+  type EffectColor,
   type RgbColor,
 } from './contract'
 import { movingRings } from './movingRings'
+import { multiColorAt } from './multiColor'
 import { periodicLeds } from './periodicLeds'
 import { pillarFill } from './pillarFill'
 import { reverseTide, wideRings, cometTail, stardustCloud, colorBreathing, sectorSmear, twentyBeat } from './phaseFreeEffects'
@@ -173,6 +175,17 @@ export const DEFAULT_EFFECT_PRESET = createDefaultEffectPreset(
   'center-out-sine',
 )
 
+type MultiColor = Extract<EffectColor, { mode: 'multi' }>
+
+/** 轉燈多色模式的顏色：同一圈的兩顆 LED 同色；每台一色時依台號。 / Spinner multi colour: one per ring, or per unit. */
+export function spinnerMultiColor(color: MultiColor, context: EffectSampleContext, elapsedFrame: number): RgbColor {
+  if (color.per === 'unit') {
+    return multiColorAt(color, context.unitIndex, context.unitIndex, elapsedFrame, context.controllerFps)
+  }
+  const ring = Math.min(context.ledIndex, context.ledCount - 1 - context.ledIndex)
+  return multiColorAt(color, ring, context.unitIndex * 1024 + ring, elapsedFrame, context.controllerFps)
+}
+
 // elapsedFrame 只用於中途切換方向（預設為共同 frame）；raining 時改用效果的雨天線條版本。
 // elapsedFrame only drives the axis change (default: shared frame); raining switches to the effect's rain lines.
 export function sampleEffect(
@@ -190,6 +203,10 @@ export function sampleEffect(
   }
   const brightness = raining && effect.rain ? effect.rain(context, preset.parameters, base) : base()
   if (preset.color.mode === 'solid') return scaleRgb(preset.color.color, brightness)
+  if (preset.color.mode === 'multi') {
+    // 專屬配色不適用：一律「亮度 × 分配到的顏色」。 / No per-effect colouring: brightness × the assigned colour.
+    return scaleRgb(spinnerMultiColor(preset.color, context, elapsedFrame), brightness)
+  }
   const { colors, axis, axisChange } = preset.color
   if (effect.gradientColor && !(raining && effect.rain)) {
     const direct = effect.gradientColor(context, preset.parameters, colors)
@@ -227,6 +244,7 @@ export type {
   UnitVariationDistribution,
 } from './contract'
 export { axisChangeWeight, hexToRgb, rgbToHex, withWeatherPalette } from './color'
+export { multiColorAt, MULTI_FADE_MAX_SECONDS, MULTI_STEP_MAX_SECONDS, type MultiColorFields, type MultiOrder } from './multiColor'
 export {
   createEffectContext,
   EFFECT_SCHEMA_VERSION,

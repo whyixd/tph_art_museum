@@ -942,3 +942,26 @@ CPython、PyPy 都要通過；frontend 加上 `tsc`、build。
 
 - 前端「後端」分頁「關閉燈光」改成：三個勾選框（轉燈、球燈、洗牆燈，預設都勾，旁邊顯示亮／已關）＋〔關閉勾選的燈光〕〔恢復勾選的燈光〕，只作用在勾選的燈組（`PUT /api/blackout` 帶 `groups`）。勾選的燈組都已關時「關閉」停用、都亮著時「恢復」停用、都沒勾時兩個都停用。原本的全部開關與三個獨立切換按鈕拿掉。勾選只存在頁面上。後端沒有改動；舊後端（沒有 `blackoutGroups`）仍顯示全部開關。
 - 驗證：frontend 163 個測試、`tsc` 通過；開發機 Playwright 逐步操作，後端狀態正確。
+
+### 2026-11-13：色彩模式「多色」
+
+- 第三種色彩模式（原有純色、漸層）：`{mode: "multi", colors(2–8), order: "sequence"|"random", per: "point"|"unit", stepSeconds, fadeSeconds}`；球燈／洗牆燈的沒有 `per`（每顆燈一色）。
+  - 照順序：第 n 點第 n 色（循環），每過 `stepSeconds` 整排往前推一格；隨機：每點用 `hash01(步數, 點, 211)` 從清單抽一色，每過一個間隔重新抽。`stepSeconds = 0` 固定不變；`fadeSeconds`（不超過間隔）是換色時由上一色淡入。
+  - 轉燈的「燈點」是同一圈的兩顆 LED（燈條兩半對稱，`min(led, ledCount−1−led)`），轉起來一圈一色；`per: "unit"` 每台一色。換色只看共同影格（串接段落內從段落開始算，同漸層的中途切換方向），不受各台錯開影響。
+  - 多色模式一律「效果亮度 × 分配到的顏色」，不使用各效果的專屬配色（海浪分色、紅藍交替、移動環、雙色拖尾、煙火拖尾變色、隨機填滿）。天氣色盤啟用時照純色處理（被色盤取代）；本案不使用天氣色盤。風流不提供多色。
+- 程式：前端 `effects/multiColor.ts`（`multiColorAt`）、`effects/index.ts`（`spinnerMultiColor`）、`fixtures/index.ts`、`GradientEditor.tsx`（`MultiColorFieldsEditor`）、兩個色彩編輯器；後端 `effects.py`（`multi_color_at`、`spinner_multi_color`、驗證與 `same_on_every_unit`）、`fixture_effects.py`。
+- 對照向量：`npx vite-node scripts/generateMultiColorVectors.ts` → `backend/fixtures/multi_color_v1.json`，前端 `tests/multiColor.test.ts` 與後端 `tests/test_multi_color.py` 都比對（原有 `effects_v2.json`、`fixtures_v1.json` 沒動）。
+- 驗證：backend 260、frontend 168 個測試、`tsc` 通過。尚未在實體燈具上看過。舊後端不認得 `multi`，前後端要一起更新。
+
+### 2026-11-13：演出播放時同時啟動馬達
+
+- 「演出」分頁「在 Pi 上播放」多一個勾選框「播放時同時啟動全部馬達」與「演出延後開始（秒，0–120）」；兩個設定只記在瀏覽器（`localStorage`），不存進演出檔。
+- `PUT /api/show/play` 多收 `startMotors`（bool）、`delaySeconds`（0–120）：立刻 `apply_motor({"enabled": true})`（分區或全部一起依 `MotorGate` 目前的設定，停止後 12 秒的等待照舊），演出延後 `delaySeconds` 開始；等待中 `GET /api/shows` 多一個 `starting: {showId, remainingSeconds}`，燈光維持待機輸出。
+- 馬達跟著停的時機（只限這次播放有帶 `startMotors`）：不循環的演出結尾淡出跑完、或 `DELETE /api/show/play`（〔停止演出〕，等待中按也算）。循環的演出、換播別的演出、套用效果／串接／手動播音樂造成的停止都不停馬達。
+- 程式：`show.py`（`ShowPlayer.on_motors`、`_pending`、`stop(manual)`）、`control.py` 接上 `apply_motor`；前端 `ShowEditor.tsx`、`useShowEditor.ts`、`backendApi.ts`。
+- 驗證：backend 264、frontend 168 個測試、`tsc` 通過；開發機（api-only）實測延後 20 秒：馬達狀態立刻變啟動、`starting` 倒數、按停止後馬達停。尚未在 Pi 與實體馬達上試過。
+
+### 2026-11-13：風流預設配色改成橙、黃、綠
+
+- 前端 `WIND_FLOW_COLORS`、後端 `wind.DEFAULT_COLORS`：無風 → 強風為橙 (1, 0.45, 0.05)、黃 (1, 0.85, 0.1)、綠 (0.1, 1, 0.3)。已存的 `wind-standby.json` 不會跟著預設變，Pi 上的在部署 rc.14 時用 `PUT /api/wind/presets` 改成這三色（其他參數不動）。
+- 風力分頁的保存：後端控制模式每次調整都存到 `wind-standby.json`（重啟、升級後保留；待機開關不保存）；模擬模式只在頁面上，重新整理就回到預設。

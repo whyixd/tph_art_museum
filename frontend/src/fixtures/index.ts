@@ -8,6 +8,7 @@
 import { clamp01, type RgbColor } from '../effects/contract'
 import { sampleGradient } from '../effects/color'
 import { hash01 } from '../effects/rouletteRing'
+import { multiColorAt, type MultiOrder } from '../effects/multiColor'
 import { sampleWindBand, windFlowParameters, WIND_FLOW_COLORS, WIND_FLOW_FIXTURE_DESCRIPTION } from '../wind/windPreview'
 
 export const FIXTURE_SCHEMA_VERSION = 1 as const
@@ -32,6 +33,8 @@ export type FixtureAxis = 'height' | 'x' | 'y' | 'index'
 export type FixtureColor =
   | { mode: 'solid'; color: RgbColor; weatherPalette?: false }
   | { mode: 'gradient'; colors: RgbColor[]; axis: FixtureAxis; weatherPalette?: false }
+  /** 多色：每顆燈一色，照順序（依編號）或隨機；每過 stepSeconds 換一次。 / multi: one colour per fixture, in order or random. */
+  | { mode: 'multi'; colors: RgbColor[]; order: MultiOrder; stepSeconds: number; fadeSeconds: number; weatherPalette?: false }
 
 export type FixturePreset = {
   schemaVersion: typeof FIXTURE_SCHEMA_VERSION
@@ -443,6 +446,8 @@ export function sampleFixture(preset: FixturePreset, context: FixtureContext, ra
   // 水平流動：漸層沿流動方向首尾相接地取色。 / horizontal-flow: the gradient loops along the flow.
   const base = color.mode === 'solid'
     ? color.color
+    : color.mode === 'multi'
+      ? multiColorAt(color, context.fixtureIndex, context.fixtureIndex, context.controllerFrame, context.controllerFps)
     : preset.effectId === 'horizontal-flow'
       ? sampleGradient(color.colors, horizontalFlowPhase(preset.parameters, context), true)
       : preset.effectId === 'wind-flow'

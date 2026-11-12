@@ -72,7 +72,7 @@ function fromBackendWind(presets: BackendWindPresets): WindPresets {
 }
 
 function toBackendWind(presets: WindPresets): BackendWindPresets {
-  const colors = (preset: WindPresets[WindGroup]) => (preset.color.mode === 'gradient' ? preset.color.colors : [preset.color.color, preset.color.color])
+  const colors = (preset: WindPresets[WindGroup]) => (preset.color.mode === 'solid' ? [preset.color.color, preset.color.color] : preset.color.colors)
   return {
     spinner: { parameters: presets.spinner.parameters, colors: colors(presets.spinner) },
     ball: { parameters: presets.ball.parameters, colors: colors(presets.ball), maxLevel: presets.ball.maxLevel ?? 1 },

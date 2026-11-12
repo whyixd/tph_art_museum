@@ -14,7 +14,10 @@ from dataclasses import dataclass
 import math
 from typing import Any, Mapping, Sequence
 
-from .effects import BLACK, TAU, Rgb, _gradient, _number, _rgb, _round_half_up, clamp01, hash01
+from .effects import (
+    BLACK, MULTI_FIELDS, TAU, Rgb, _gradient, _number, _rgb, _round_half_up, clamp01, hash01, multi_color_at,
+    multi_fields, multi_fields_to_json,
+)
 
 FIXTURE_SCHEMA_VERSION = 1
 FIXTURE_AXES = ("height", "x", "y", "index")
@@ -145,6 +148,8 @@ def validate_fixture_preset(value: Any) -> dict[str, Any]:
             "mode": "gradient", "axis": color["axis"],
             "colors": tuple(_rgb(entry, f"colors[{i}]") for i, entry in enumerate(colors)),
         }
+    elif color.get("mode") == "multi" and set(color) == {"mode", *MULTI_FIELDS}:
+        normalized_color = {"mode": "multi", **multi_fields(color)}
     else:
         raise ValueError("invalid color mode/fields")
     if not weather_palette:
@@ -167,6 +172,8 @@ def fixture_preset_to_json(normalized: Mapping[str, Any]) -> dict[str, Any]:
     color = normalized["color"]
     if color["mode"] == "solid":
         normalized_color: dict[str, Any] = {"mode": "solid", "color": dict(zip(("r", "g", "b"), color["color"]))}
+    elif color["mode"] == "multi":
+        normalized_color = {"mode": "multi", **multi_fields_to_json(color)}
     else:
         normalized_color = {"mode": "gradient", "axis": color["axis"],
                             "colors": [dict(zip(("r", "g", "b"), rgb)) for rgb in color["colors"]]}
@@ -389,6 +396,8 @@ def sample_fixture(preset: Mapping[str, Any], ctx: FixtureContext, raining: bool
     color = preset["color"]
     if color["mode"] == "solid":
         base = color["color"]
+    elif color["mode"] == "multi":
+        base = multi_color_at(color, ctx.fixture_index, ctx.fixture_index, ctx.controller_frame, ctx.controller_fps)
     elif preset["effectId"] == "horizontal-flow":
         # 水平流動：漸層沿流動方向首尾相接地取色。 / horizontal-flow: the gradient loops along the flow.
         base = _gradient(color["colors"], horizontal_flow_phase(preset["parameters"], ctx), True)

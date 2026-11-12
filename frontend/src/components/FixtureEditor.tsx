@@ -7,7 +7,7 @@ import {
   type FixtureEffectId,
   type FixturePreset,
 } from '../fixtures'
-import { ColorInput, GradientEditor } from './GradientEditor'
+import { ColorInput, GradientEditor, MultiColorFieldsEditor } from './GradientEditor'
 import { Slider } from './Slider'
 
 export type FixtureGroup = 'ball' | 'wash'
@@ -94,6 +94,7 @@ export function FixtureEditor({ group, tab, preset, count, weatherEnabled, onCha
   const color = preset.color
   const weatherFlag = color.weatherPalette === false ? { weatherPalette: false as const } : {}
   const setColor = (next: FixtureColor) => onChange({ ...preset, color: next })
+  const listColors = color.mode === 'solid' ? [color.color, { r: 1, g: 1, b: 1 }] : color.colors
   return (
     <div className="color-controls">
       {weatherEnabled && (
@@ -114,14 +115,23 @@ export function FixtureEditor({ group, tab, preset, count, weatherEnabled, onCha
       )}
       <div className="segmented-control" aria-label="顏色模式">
         <button type="button" className={color.mode === 'solid' ? 'active' : 'secondary'} aria-pressed={color.mode === 'solid'}
-          onClick={() => color.mode === 'gradient' && setColor({ mode: 'solid', color: color.colors[0], ...weatherFlag })}>純色</button>
+          onClick={() => color.mode !== 'solid' && setColor({ mode: 'solid', color: color.colors[0], ...weatherFlag })}>純色</button>
         <button type="button" className={color.mode === 'gradient' ? 'active' : 'secondary'} aria-pressed={color.mode === 'gradient'}
-          onClick={() => color.mode === 'solid' && setColor({
-            mode: 'gradient', axis: 'height', colors: [color.color, { r: 1, g: 1, b: 1 }], ...weatherFlag,
-          })}>漸層</button>
+          onClick={() => color.mode !== 'gradient' && setColor({ mode: 'gradient', axis: 'height', colors: listColors, ...weatherFlag })}>漸層</button>
+        {preset.effectId !== 'wind-flow' && (
+          <button type="button" className={color.mode === 'multi' ? 'active' : 'secondary'} aria-pressed={color.mode === 'multi'}
+            onClick={() => color.mode !== 'multi' && setColor({
+              mode: 'multi', colors: listColors, order: 'sequence', stepSeconds: 1, fadeSeconds: 0, ...weatherFlag,
+            })}>多色</button>
+        )}
       </div>
       {color.mode === 'solid' ? (
         <ColorInput label="顏色" color={color.color} onChange={(value) => setColor({ mode: 'solid', color: value, ...weatherFlag })} />
+      ) : color.mode === 'multi' ? (
+        <>
+          <MultiColorFieldsEditor value={color} onChange={(fields) => setColor({ ...color, ...fields })} />
+          <p className="control-note">每顆燈一色，照編號順序或隨機。</p>
+        </>
       ) : (
         <>
           <label className="control-field gradient-axis">

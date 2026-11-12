@@ -16,7 +16,7 @@ import {
 import type { BackendPatch, BackendPlayback, BackendState, BlackoutGroup, WeatherState } from '../backendApi'
 import type { FixturePreset } from '../fixtures'
 import type { CompiledSequence, PlaybackRule, SequenceDocument, SequenceEnding, SequenceFrame, SequenceStep, TransitionKind } from '../simulation/sequence'
-import { ColorInput, GradientEditor } from './GradientEditor'
+import { ColorInput, GradientEditor, MultiColorFieldsEditor } from './GradientEditor'
 import { Slider } from './Slider'
 import { PlaybackProgress } from './PlaybackProgress'
 import { SavedSequenceView } from './SavedSequenceView'
@@ -530,15 +530,20 @@ export function ControlPanel({
 
   const changeColorMode = (mode: EffectColor['mode']) => {
     if (mode === colorConfig.mode) return
-    if (colorConfig.mode === 'gradient') {
-      onEffectColor({ mode: 'solid', color: colorConfig.colors[0], ...weatherFlag })
-    } else {
+    // 切換時沿用原本的顏色：純色變成清單的第一色，清單取第一色變純色。
+    // Keep the colours across modes: a solid colour becomes the first of the list, a list gives its first colour.
+    const colors = colorConfig.mode === 'solid' ? [colorConfig.color, { r: 1, g: 1, b: 1 }] : colorConfig.colors
+    if (mode === 'solid') {
+      onEffectColor({ mode: 'solid', color: colors[0], ...weatherFlag })
+    } else if (mode === 'gradient') {
       onEffectColor({
         mode: 'gradient',
         axis: effectPreset.effectId === 'center-out-sine' ? 'radius' : 'strip',
-        colors: [colorConfig.color, { r: 1, g: 1, b: 1 }],
+        colors,
         ...weatherFlag,
       })
+    } else {
+      onEffectColor({ mode: 'multi', colors, order: 'sequence', per: 'point', stepSeconds: 1, fadeSeconds: 0, ...weatherFlag })
     }
   }
 
@@ -550,6 +555,7 @@ export function ControlPanel({
   const changeAxis = (axis: GradientAxis) => {
     onEffectColor(colorConfig.mode === 'gradient'
       ? { ...colorConfig, axis }
+      : colorConfig.mode === 'multi' ? colorConfig
       : { mode: 'gradient', axis, colors: [colorConfig.color, { ...colorConfig.color }], ...weatherFlag })
   }
 
@@ -579,6 +585,11 @@ export function ControlPanel({
           aria-pressed={colorConfig.mode === 'solid'} onClick={() => changeColorMode('solid')}>純色</button>
         <button type="button" className={colorConfig.mode === 'gradient' ? 'active' : 'secondary'}
           aria-pressed={colorConfig.mode === 'gradient'} onClick={() => changeColorMode('gradient')}>漸層</button>
+        {/* 風流的顏色代表風速，只用漸層。 / wind-flow's colour is the wind speed: gradient only. */}
+        {effectPreset.effectId !== 'wind-flow' && (
+          <button type="button" className={colorConfig.mode === 'multi' ? 'active' : 'secondary'}
+            aria-pressed={colorConfig.mode === 'multi'} onClick={() => changeColorMode('multi')}>多色</button>
+        )}
       </div>
       {colorConfig.mode === 'solid' ? (
         <ColorInput
@@ -586,6 +597,19 @@ export function ControlPanel({
           color={colorConfig.color}
           onChange={(color) => onEffectColor({ mode: 'solid', color, ...weatherFlag })}
         />
+      ) : colorConfig.mode === 'multi' ? (
+        <>
+          <div className="segmented-control" aria-label="分配單位">
+            <button type="button" className={colorConfig.per === 'point' ? 'active' : 'secondary'}
+              aria-pressed={colorConfig.per === 'point'} onClick={() => onEffectColor({ ...colorConfig, per: 'point' })}>每個燈點</button>
+            <button type="button" className={colorConfig.per === 'unit' ? 'active' : 'secondary'}
+              aria-pressed={colorConfig.per === 'unit'} onClick={() => onEffectColor({ ...colorConfig, per: 'unit' })}>每台一色</button>
+          </div>
+          <MultiColorFieldsEditor value={colorConfig} onChange={(fields) => onEffectColor({ ...colorConfig, ...fields })} />
+          <p className="control-note">
+            每個燈點：燈條兩半對稱，同一圈的兩顆 LED 同色，轉起來是一圈一色。這個模式不使用各效果自己的配色（例如海浪分色、移動環的每環一色）。
+          </p>
+        </>
       ) : (
         <>
           {showAxis && !IGNORES_AXIS.includes(effectPreset.effectId) && axisSelect(colorConfig.axis)}

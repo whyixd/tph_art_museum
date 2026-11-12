@@ -201,6 +201,9 @@ def same_on_every_unit(preset: Mapping[str, Any], raining: bool) -> bool:
     if preset["effectId"] == "center-out-sine" and center_out_flow_enabled(preset["parameters"]):
         return False  # 水平流動依轉燈位置。 / The horizontal flow depends on the spinner's position.
     color = preset["color"]
+    if color["mode"] == "multi":
+        # 照順序、每個燈點：每台同一排顏色；每台一色或隨機則各台不同。 / Only sequence per point repeats on every unit.
+        return color["order"] == "sequence" and color["per"] == "point"
     return color["mode"] == "solid" or (color["axis"] != "unit" and color.get("axisChange", {}).get("to") != "unit")
 SPECTRUM = (
     (0x47 / 255, 0xD7 / 255, 1.0),
@@ -306,6 +309,10 @@ def validate_preset(value: Any, led_count: int = 156) -> dict[str, Any]:
         }
         if "axisChange" in color:
             normalized_color["axisChange"] = _axis_change(color["axisChange"])
+    elif color.get("mode") == "multi" and set(color) == {"mode", "per", *MULTI_FIELDS}:
+        if color["per"] not in ("point", "unit"):
+            raise ValueError("multi per must be point or unit")
+        normalized_color = {"mode": "multi", "per": color["per"], **multi_fields(color)}
     else:
         raise ValueError("invalid color mode/fields")
     if not weather_palette:
@@ -317,6 +324,64 @@ def validate_preset(value: Any, led_count: int = 156) -> dict[str, Any]:
 
 
 AXIS_CHANGE_MAX_SECONDS = 3600
+MULTI_FIELDS = ("colors", "order", "stepSeconds", "fadeSeconds")
+MULTI_STEP_MAX_SECONDS = 3600
+MULTI_FADE_MAX_SECONDS = 60
+_MULTI_RANDOM_SALT = 211
+
+
+def multi_fields(color: Mapping[str, Any]) -> dict[str, Any]:
+    """多色模式共用欄位的驗證（轉燈與球燈／洗牆燈）。 / Validates the multi-colour fields shared with DMX fixtures."""
+    colors = color["colors"]
+    if color["order"] not in ("sequence", "random") or not isinstance(colors, list) or not 2 <= len(colors) <= 8:
+        raise ValueError("multi requires order sequence/random and 2–8 colors")
+    return {
+        "colors": tuple(_rgb(entry, f"colors[{i}]") for i, entry in enumerate(colors)),
+        "order": color["order"],
+        "stepSeconds": _number(color["stepSeconds"], "stepSeconds", 0, MULTI_STEP_MAX_SECONDS),
+        "fadeSeconds": _number(color["fadeSeconds"], "fadeSeconds", 0, MULTI_FADE_MAX_SECONDS),
+    }
+
+
+def multi_fields_to_json(color: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "colors": [dict(zip(("r", "g", "b"), rgb)) for rgb in color["colors"]],
+        "order": color["order"], "stepSeconds": color["stepSeconds"], "fadeSeconds": color["fadeSeconds"],
+    }
+
+
+def multi_color_at(multi: Mapping[str, Any], point: int, key: int, frame: int, fps: float) -> Rgb:
+    """多色模式某一點在某一影格的顏色（前端 multiColorAt 逐值相同）：point 決定照順序時取第幾色，key 是隨機的種子；
+    每過一個間隔，照順序往前推一格、隨機重新抽，換色時可淡入淡出。
+    The colour of one point at a frame (identical to the frontend's multiColorAt): ``point`` picks the colour in
+    sequence order, ``key`` seeds the random pick; every step the sequence shifts by one and the random pick redraws,
+    optionally crossfading."""
+    colors = multi["colors"]
+    count = len(colors)
+    step_frames = max(1, _round_half_up(multi["stepSeconds"] * fps)) if multi["stepSeconds"] > 0 and fps > 0 else 0
+    now = max(0, int(frame))
+    step = now // step_frames if step_frames > 0 else 0
+    random = multi["order"] == "random"
+
+    def pick(at: int) -> Rgb:
+        if random:
+            return colors[min(count - 1, int(hash01(at, key, _MULTI_RANDOM_SALT) * count))]
+        return colors[(point + at) % count]
+
+    current = pick(step)
+    if step == 0:
+        return current
+    fade_frames = min(step_frames, _round_half_up(multi["fadeSeconds"] * fps))
+    into = now - step * step_frames
+    return current if into >= fade_frames else _mix(pick(step - 1), current, into / fade_frames)
+
+
+def spinner_multi_color(color: Mapping[str, Any], ctx: "EffectContext", frame: int) -> Rgb:
+    """轉燈多色：同一圈的兩顆 LED 同色；每台一色時依台號。 / One colour per ring (both LEDs), or per unit."""
+    if color["per"] == "unit":
+        return multi_color_at(color, ctx.unit_index, ctx.unit_index, frame, ctx.controller_fps)
+    ring = min(ctx.led_index, ctx.led_count - 1 - ctx.led_index)
+    return multi_color_at(color, ring, ctx.unit_index * 1024 + ring, frame, ctx.controller_fps)
 
 
 def _axis_change(value: Any) -> dict[str, Any]:
@@ -417,6 +482,8 @@ def preset_to_json(normalized: Mapping[str, Any]) -> dict[str, Any]:
     color = normalized["color"]
     if color["mode"] == "solid":
         normalized_color = {"mode": "solid", "color": dict(zip(("r", "g", "b"), color["color"]))}
+    elif color["mode"] == "multi":
+        normalized_color = {"mode": "multi", "per": color["per"], **multi_fields_to_json(color)}
     else:
         normalized_color = {
             "mode": "gradient", "axis": color["axis"],
@@ -969,6 +1036,9 @@ def sample_effect(
     brightness = _brightness(preset, ctx) if rain is None else rain
     if color["mode"] == "solid":
         rgb: Rgb = color["color"]
+    elif color["mode"] == "multi":
+        # 專屬配色不適用：一律「亮度 × 分配到的顏色」。 / No per-effect colouring: brightness × the assigned colour.
+        rgb = spinner_multi_color(color, ctx, ctx.global_frame if elapsed_frame is None else elapsed_frame)
     else:
         change = color.get("axisChange")
         weight = 0.0 if change is None else axis_change_weight(

@@ -53,6 +53,16 @@ export type AxisChange = {
 export type EffectColor =
   | { mode: 'solid'; color: RgbColor; weatherPalette?: false }
   | { mode: 'gradient'; colors: RgbColor[]; axis: GradientAxis; axisChange?: AxisChange; weatherPalette?: false }
+  /**
+   * 多色：每個燈點（或每台）顯示清單裡的一個顏色，照順序或隨機；每過 stepSeconds 換一次。轉燈的「燈點」是同一圈
+   * 的兩顆 LED（燈條兩半對稱），轉起來是一圈一色。
+   * multi: each point (or each unit) shows one colour of the list, in order or at random, changing every
+   * stepSeconds. A spinner "point" is the two LEDs of one ring (the strip halves mirror), so a ring has one colour.
+   */
+  | {
+    mode: 'multi'; colors: RgbColor[]; order: 'sequence' | 'random'; per: 'point' | 'unit'
+    stepSeconds: number; fadeSeconds: number; weatherPalette?: false
+  }
 
 export type EffectParameterDefinition = {
   key: string
