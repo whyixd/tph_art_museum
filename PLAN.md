@@ -252,9 +252,10 @@ M5 已實作（`sequence.py`）：
 | M10 🔶 | 音訊播放與同步校準（§9） | Pi 從 USB 音效卡播放 WAV；燈光時間跟著音訊時鐘；節拍器＋閃拍測試；前端延遲校準可儲存；拍點分析腳本 | – |
 | M11 | 拍點資料與拍點效果（§9） | 效果 context 加入拍點資訊；新增拍點效果；前後端一致性向量 | M10 |
 | M12 🔶 | 演出時間軸（Show）取代 Sequence 作為表演（§9.4） | 段落以秒／小節定位、轉場對拍；後端依音訊時鐘播放。2026-11-10：先於 M11 實作（拍點效果之後再補），程式與測試完成，**待 Pi 實機驗證** | M10 |
-| M13 | 排程、待機效果、風力（§9） | 每日表演時段；日期 → 曲目／演出；其餘時段待機效果受風力影響；天氣分類、色盤、造訪移除 | M12 |
+| M13 | 排程、待機效果、風力（§9） | 每日表演時段；日期 → 曲目／演出；其餘時段為待機效果（可指定 M16d 的風力效果）；天氣分類、色盤、造訪移除 | M12 |
 | M14 🔶 | 前端時間軸編輯器與拍點修正工具（§9.5） | 波形、拍點標記可增刪移動、瀏覽器試聽同步預覽。2026-11-10：先於 M11、M13 實作，程式與測試完成，**待 Pi 實機驗證與環境曲實際修正** | M12 |
 | M15 | 清理：刪除不用的效果（含 `roulette-ring`）、舊串接與天氣程式；文件 | 測試與文件一致 | M12–M14 |
+| M16 | 風速風向（§10）：現場 RS485 風速計（經 LoRa DTU）＋Open-Meteo 備援；新增待機專屬的風力效果（依風速變快、變色，依風向流動；既有效果不受影響）；強風自動緩停轉燈（門檻可設定）。2026-11-12 規劃，**尚未實作**；分 M16a 資料、b 前端與校正、c 強風保護、d 風力效果、e 現場（§10.13） | `GET /api/wind` 回報來源、原始值、平滑值；拔掉 FTDI → 約 25 秒內切到 Open-Meteo，接回 → 下一次讀取就切回；測試風超過門檻 → 全部緩停，降低後依控箱恢復；風力效果的前後端一致性向量；既有效果的向量逐 byte 不變；現場 checklist §10.11 | W3、W5–W7 |
 
 ### M2 實作細節
 
@@ -487,3 +488,415 @@ M5 已實作（`sequence.py`）：
 - 依位置的資料跟著變：`pillar_ranks`（pillar-fill 順序）、`pole-rise` 柱內順序、`wave-split`／中心擴散水平流動的轉燈位置；前後端向量 `effects_v2.json`（`wavePositions`、`flowPositions`）、`fixtures_v1.json`（`poleRise`）以 `--write` 重產，其餘段落逐 byte 不變。
 - `doc/spaces05_annotated_top.png`／`_side.png` 仍是舊編號（未重畫），現場檢查清單改為以 3D 畫面為準。
 - 驗證：backend 234、frontend 163 個測試（更新寫死舊位置的 8 個測試期望值）、`tsc`、build 通過。
+
+## 10. 風速風向（M16，2026-11-12 規劃，尚未實作）
+
+現場的風會影響**待機時專屬的風力效果**和**轉燈馬達**：
+- **風力效果**：另外製作待機專用的效果，只有這些效果會讀取風力資料，既有效果不受影響。風越大流動越快、顏色跟著改變；風向決定流動方向。
+- **強風**：自動緩停轉燈馬達，門檻可以設定。
+
+架構參考 `~/Dev/hsz_libary`（新竹縣總圖，`host/api/services/wind_sensor.py`、`modbus.py`、`cwa_wind.py`），一樣有兩個來源：**現場 RS485 風速計為主，Open-Meteo 為備援**。hsz 的網路備援是氣象署 CWA（要 API key）；本案改用 Open-Meteo（不用 key，`weather.py` 已經在用）。
+
+### 10.1 已確認事項（2026-11-12）
+
+| 項目 | 內容 |
+|---|---|
+| 風速計 | 跟 hsz 同型號（Modbus RTU，見 10.2） |
+| 無線 | 兩台 **SX1262-LoRa-DTU-HF**，以透傳模式成對使用：一台在風速計端，一台在 Pi 端 |
+| USB 轉 RS485 | **Dtech FTDI 晶片系列**。Linux 核心內建 `ftdi_sio` 驅動，Pi 插上就是 `/dev/ttyUSB*` |
+| 安裝 | 風速計約 **4 m 高**。**風向的 0° 沒有對準正北**，要做角度校正（10.5） |
+| 場地方位 | 場地座標 +x 軸的方位角**還不知道，要到現場量** |
+| 網路 | 現場 Pi 可以上網（wlan0），Open-Meteo 備援有效 |
+| 效果 | 風越大越快、顏色跟著改變；風向決定流動方向。**做成待機專屬的風力效果，不套用到既有的所有效果**（2026-11-12 修改） |
+| 馬達 | 強風時**要**自動緩停，門檻要可以設定 |
+
+### 10.2 硬體與接線
+
+```
+風速計 ─RS485─ LoRa DTU（風速計端） ~~~ 915 MHz 頻段 ~~~ LoRa DTU（Pi 端） ─RS485─ Dtech FTDI USB 轉 RS485 ─USB─ Pi 5
+```
+
+- **風速計的暫存器**（跟 hsz 相同）：9600 8N1，設備位址 1，功能碼 0x03，從 reg 0 讀 4 個：
+
+  | reg | 內容 | 換算 |
+  |---|---|---|
+  | 0 | 風速 | ÷ 10 = m/s |
+  | 1 | 蒲福風級 | 0–12（不使用，改由風速自己算，兩個來源才會一致） |
+  | 2 | 風向角度 | ÷ 10 = 度（風**吹來**的方向，以風速計自己的 0° 為準） |
+  | 3 | 16 方位代碼 | 0–15（只用來做合理性檢查，看跟角度是否一致） |
+
+- **LoRa DTU 設定**（兩台要一致，用廠商工具設定，設定值記到 `doc/site-checklist.md`）：
+  - 串口參數 9600 8N1，與風速計相同。
+  - 透傳模式。
+  - 兩台的頻道、網路 ID、空中速率相同。
+  - 頻段要在台灣可用的 920–925 MHz 內。
+  - 空中速率越低，傳得越遠，但來回時間越長。一次讀取是要求 8 bytes、回應 13 bytes，加上 LoRa 前導碼與 DTU 的封包間隔，低空速時來回可能要數百 ms。所以 **Modbus 逾時預設 2 秒**（hsz 是 1 秒），現場用 `wind_probe.py` 量實際的來回時間後再調整。
+  - DTU 會把一段資料切成多個 LoRa 封包，或把多段資料合成一個封包送出。所以讀回應時不能只等一次 `read`，要**累積讀到預期長度或逾時**（hsz 用 `serial.read(expected)` 搭配 timeout，效果相同，保留這個做法）。
+- **風速計端的電源**：風速計與 DTU 都要供電，4 m 高的桿子上要有電源與防水盒。**待確認**電源從哪裡來。
+- **FTDI 的裝置路徑**：用 `/dev/serial/by-id/usb-FTDI_…-if00-port0`。Pi 還有 USB 音效卡，`ttyUSB` 的編號不保證固定。FTDI 晶片有唯一序號，by-id 路徑不會變。
+- **讀序列埠的權限**：服務帳號要在 `dialout` 群組。
+
+### 10.3 後端架構
+
+```
+WindReader 執行緒（每 poll_seconds）          OpenMeteo 執行緒（每 openmeteo_minutes）
+   │ Modbus 讀取、合理性檢查                     │ HTTP 取得 current 風速／風向／陣風
+   └──────────────┬─────────────────────────────┘
+                  ▼
+           WindStore（lock）
+           ├─ 原始讀值、來源判定（hw → openmeteo → 離線）
+           ├─ 角度校正：sensor_offset_deg、north_deg
+           ├─ 平滑、陣風視窗
+           ├─ 測試風 override
+           └─ snapshot()（輸出迴圈每格呼叫，只複製數值）
+                  │
+        ┌─────────┴──────────────┐
+        ▼                        ▼
+ WindMotorGuard（10.7）     輸出迴圈：風力效果的相位累積（10.6）
+ 強風 → 馬達緩停            → 只傳給 wind-* 效果
+```
+
+**檔案**
+
+| 檔案 | 內容 |
+|---|---|
+| `modbus.py` | 照搬 hsz 的 CRC16、`build_read_request`、`parse_read_response`，改成同步。`ModbusRTUClient.read_holding_registers()` 會累積讀取到預期長度或逾時；讀之前清空輸入緩衝；開埠失敗時，下次讀取再試開（風速計可以熱插拔） |
+| `wind.py` | `WindStore`、兩條執行緒、平滑、校正、override、`WindSettingsStore`（10.8） |
+| `effects.py`／`fixture_effects.py` 與前端對應檔 | 新增 `wind-*` 效果（前後端雙實作，見 10.6）。相位累積器 `WindPhase` 放在 `wind.py`，由輸出迴圈呼叫 |
+| `motor.py` | 新增 `WindMotorGuard`，接在 `PresetStore.motor_output()` 之前 |
+| `scripts/wind_probe.py` | 現場工具（10.10） |
+
+**來源判定**
+
+- 每 `poll_seconds`（預設 5）讀一次風速計。以下情形都算這次讀取失敗：
+  - 逾時、CRC 錯誤、回應長度不對、Modbus 例外碼。
+  - 合理性檢查不通過：風速 0–60 m/s、角度 0–360、方位代碼與角度相差 ≤ 1 格。
+- **連續失敗 `fail_limit`（預設 5，約 25 秒）次**，就改用 Open-Meteo；只要讀成功一次，就立刻切回 hw。偶爾一次逾時不會切換來源（LoRa 偶爾掉包是常態）。
+- **風速卡住偵測**（hsz 沒有這項）：連續 `stuck_minutes`（預設 30）分鐘風速一直是 0.0，同時 Open-Meteo 的風速 ≥ 3 m/s，就判定風杯卡住或斷線，改用 Open-Meteo，並在 API 與前端標示「風速計疑似異常」。風向固定不變不算卡住，因為無風時風向本來就不動。
+- **Open-Meteo 不論 hw 是否正常都定期抓取**，一方面當備援，一方面拿來比較，作為 10.5 換算係數的依據。
+  - 參數：`current=wind_speed_10m,wind_direction_10m,wind_gusts_10m`、`wind_speed_unit=ms`（預設是 km/h，一定要指定）、`timezone=auto`。
+  - 頻率：每 10 分鐘一次。它的 current 是模型值，約 15 分鐘更新一次。
+  - 抓取失敗時沿用上一筆，超過 `stale_minutes`（60）分鐘就視為沒有資料。
+- 兩個來源都沒有資料時，`online = false`，效果改用 `fallback_speed_ms`（預設 0），風向保留最後一個值；馬達保護依 10.7 的 `offline` 設定處理。
+- 每次切換來源都記一行 log，例如 `wind: source hw → openmeteo (5 failures)`。
+
+**平滑**（在 `snapshot()` 裡依經過的時間計算，前後端只收到結果）
+
+| 用途 | 做法 | 預設 |
+|---|---|---|
+| 風力效果的速度 | 風速一階低通 | `speed_smoothing_seconds` 10 |
+| 風力效果的顏色 | 風速一階低通（較慢，顏色不會隨陣風閃動） | `color_smoothing_seconds` 30 |
+| 風向 | **單位向量**一階低通，再加上轉向速率上限。不能直接平均角度數字：359° 和 1° 的平均是 0°，不是 180° | `direction_smoothing_seconds` 20、`max_turn_deg_per_second` 3 |
+| 無風 | 風速 < 0.3 m/s 時，風向保持不動 | – |
+| 陣風（馬達保護用） | 最近 `gust_window_seconds`（60）秒 hw 讀值的最大值；Open-Meteo 來源直接用 `wind_gusts_10m` | – |
+
+轉向速率上限的原因：`horizontal-flow` 的相位 = 沿流動方向的距離 × 波數 − 已流動距離，方向一變，離中心越遠的燈相位跳得越多。限制每秒最多轉 3°，看起來就是慢慢轉向。
+
+### 10.4 輸出的資料
+
+`WindStore.snapshot()`：
+
+```jsonc
+{
+  "online": true,
+  "source": "hw",              // "hw" | "openmeteo" | "override" | null
+  "speedMs": 4.2,              // 平滑後（風力效果的速度）
+  "colorSpeedMs": 3.9,         // 較慢的平滑（風力效果的顏色）
+  "gustMs": 7.8,               // 陣風（馬達保護用）
+  "beaufort": 3,
+  "fromDeg": 225.0,            // 真北方位，風吹來的方向（校正後）
+  "flowDeg": 117.0,            // 場地座標中，風吹往的方向（風力效果的流動方向）
+  "sensorSuspect": false,
+  "updatedAt": "…"
+}
+```
+
+`GET /api/wind` 除了 snapshot，還會回傳：
+- `raw`：hw 最近一筆讀值，含風速計原始角度與時間。
+- `hw`：`{port, connected, consecutiveFailures, lastOkAt, okCount, failCount, lastRoundTripMs}`。
+- `openmeteo`：`{speedMs, fromDeg, gustMs, observedAt, fetchedAt, error}`。
+- `guard`：見 10.7。
+- `history`：最近 60 分鐘、每 10 秒一筆，給前端畫折線圖。只存在記憶體裡。
+
+### 10.5 角度校正與 Open-Meteo 換算
+
+三種方向要分清楚：
+1. **風速計角度**：風速計自己的 0°，沒有對準正北。
+2. **真北方位**：氣象慣例，風吹來的方向，Open-Meteo 就是這個。
+3. **場地方向**：layout 平面上的角度，0° = +x、90° = +y，跟 `horizontal-flow` 的 `directionDegrees` 一樣。
+
+換算方式：
+- `fromDeg = (風速計角度 + sensor_offset_deg) mod 360`
+- `flowDeg = (north_deg − (fromDeg + 180)) mod 360`
+- **`north_deg` 要先確認 layout 的 y 軸朝哪邊**：+y 是朝向畫面上方還是下方，會影響角度是順時針還是逆時針，正負號可能要反過來。實作前要先確認 layout 的座標慣例，並寫測試固定下來。
+
+**現場量測步驟**（寫進 `doc/site-checklist.md`）：
+1. **`north_deg`**：手機指南針貼著長牆，從 x 小的一端朝 x 大的一端（+x 方向）量方位角。台灣的磁偏角約 4–5° 西，要修正成真北；或改用 Google 地圖衛星圖量長牆的方位，誤差比較小。
+2. **`sensor_offset_deg`**：把風向標轉到指向一個已知方位（例如 +x 方向，真北方位 = `north_deg`），在前端「後端」分頁按〔以目前風向標校正〕，輸入那個已知方位。後端會用「已知方位 − 目前風速計角度」算出 offset 並儲存。
+3. **驗證**：有風時比較 `fromDeg` 和 Open-Meteo 的風向，大致相同就好，兩者本來就會有差異。
+
+**Open-Meteo 的風速換算**：Open-Meteo 給的是 10 m 高、網格平均的模型值；現場風速計在 4 m 高，周圍有建築物，通常比較小。
+- Open-Meteo 的風速、陣風會先乘上 `openmeteo_scale`（預設 0.7，暫定）再使用，切到備援時效果才不會突然變快。
+- hw 正常時兩邊的資料都有記錄（每分鐘 log 一行，含兩邊的值），運轉幾天後依比值調整 `openmeteo_scale`。
+- 前端顯示目前的比值（過去 24 小時 hw 平均 ÷ Open-Meteo 平均）作為參考。
+
+### 10.6 風力效果（待機專屬）
+
+**原則**：
+- 另外製作**待機專用、會讀取風力資料的效果**（效果 ID 以 `wind-` 開頭）。
+- 只有這些效果使用風力資料；**既有效果完全不改**，不會因為風而變快或變色，前後端一致性向量也逐 byte 不變。
+- 效果仍是純函式：風力資料由輸出迴圈算好後當作輸入傳入，前後端可以用同一份向量比對。
+
+#### 傳給效果的風力輸入
+
+效果 context 新增 `wind`。只有 `wind-*` 效果會讀取；其他效果收不到這個欄位。
+
+```jsonc
+"wind": {
+  "phase": 12.84,        // 已流動的圈數，由輸出迴圈累積（見下）
+  "strength": 0.31,      // 依效果參數 calmMs／fullMs 換算的 0–1
+  "colorSpeedMs": 3.9,   // 選顏色用（較慢的平滑）
+  "flowDeg": 117.0       // 場地座標中，風吹往的方向
+}
+```
+
+**為什麼要累積相位（`WindPhase`）**：
+- 既有效果的位置都是用「影格 ÷ FPS × 速度」直接算出來的。如果把速度換成會變動的風速，風速一變，整段相位就會跳一下。
+- 所以由輸出迴圈每格累積：`phase += speedHz × rate ÷ fps`，其中 `rate = minRate + (maxRate − minRate) × strength`。風速變化時，流動只會慢慢加速或減速。
+- 何時歸零：效果開始時、串接每一段開始時。
+- 轉場時，前後兩層各自累積。
+- 前端預覽用同一套累積方式。
+
+**`strength` 的換算**：`strength = clamp((speedMs − calmMs) / (fullMs − calmMs), 0, 1) ^ curve`。這些是效果自己的參數，見下表。
+
+#### 第一個風力效果：`wind-flow`（風流）
+
+轉燈、球燈、洗牆燈三個群組都有，畫面連成一片。
+
+- **畫面**：光帶沿著風吹往的方向（`flowDeg`）流過整個場地，做法類似 `horizontal-flow`。
+  - 位置 = 燈在場地平面上沿 `flowDeg` 的距離 × 波數 − `phase`。
+  - 轉燈用每台的位置，可以再加上像素在球面上的位置，讓光帶在轉燈上也有流動感（實作時決定）。
+- **速度**：風越大，`phase` 累積越快，流動越快。
+- **顏色**：用效果自己的**風速色盤**，依 `colorSpeedMs` 在相鄰兩段之間連續內插。不像溫度色盤直接換段，因為風速常在門檻附近變動，直接換段顏色會一直跳。
+
+**參數**（存在 preset，「效果」分頁可以調整）：
+
+| 參數 | 預設 | 說明 |
+|---|---|---|
+| `speedHz` | 0.2 | 基準流速（rate = 1× 時） |
+| `minRate`／`maxRate` | 0.6／3 | 無風與 `fullMs` 時的倍率 |
+| `calmMs`／`fullMs` | 1／12 | 低於 `calmMs` 視為無風；達到 `fullMs` 時 `strength` = 1 |
+| `curve` | 1 | `strength` 曲線（> 1 = 小風時變化較小） |
+| `waveCount` | 1 | 場地內同時有幾道光帶 |
+| `depth` | 0.5 | 亮暗起伏的深度（同 `horizontal-flow`） |
+
+**風速色盤**：放在 preset 的 `color`，新的 mode `wind-gradient`，只有 `wind-*` 效果可以選。
+
+```jsonc
+"color": { "mode": "wind-gradient", "axis": "radius",
+           "stops": [ {"atMs": 0,  "colors": ["#2444AA", "#72D8FF"]},
+                      {"atMs": 5,  "colors": ["#328BD2", "#8FFFC8"]},
+                      {"atMs": 12, "colors": ["#FFB347", "#FF477E"]} ] }
+```
+
+- 依 `colorSpeedMs` 找出前後兩個 stop，兩組漸層色逐色內插（sRGB 線性內插，前後端一致）。低於第一個 stop 用第一組，高於最後一個用最後一組。
+- 「色彩」分頁加一個風速色盤編輯器：stop 可以增刪、修改風速與顏色，旁邊有預覽風速滑桿。
+- 驗證：`atMs` 嚴格遞增、0–60；至少 2 個、最多 8 個 stop；每個 stop 的顏色數量相同。
+- 溫度色盤（`weatherPalette`）不會套用到 `wind-*` 效果。
+
+**之後可以增加的風力效果**（等 `wind-flow` 在現場看過後再決定，W5）：
+- `wind-gust`：陣風時一道亮帶沿風向掃過全場。需要「陣風事件」（陣風超過平均風速一定比例的時間點），也由輸出迴圈當作輸入傳入。
+- 轉燈專屬：風越大，光點在球面上拖得越長，用流線的感覺表現。
+
+#### 使用範圍
+
+- **待機**：M13 的待機時段可以指定播放風力效果，播放方式跟一般單一效果或串接相同。
+- **「效果」分頁**：風力效果另外歸為「待機（風力）」一類。後端控制時可以套用，方便現場調整。
+- **演出不提供**：演出編輯器不列出 `wind-*`，音樂演出維持每次相同的畫面。
+- **沒有風力資料時**（沒有設定 `[wind]`，或兩個來源都離線）：效果使用 `fallbackSpeedMs`（預設 0），也就是用 `minRate` 慢慢流動、用色盤第一組顏色；`flowDeg` 保留最後一個值，從來沒有資料時用 0°（沿 +x）。
+- **效能**：風力效果依位置運作，不在「各台畫面相同只算一次」的名單（`UNIT_INDEPENDENT_EFFECTS`）內；計算量和 `horizontal-flow` 相近，Pi 上要用 `benchmark_render.py` 確認。
+
+#### 預覽
+
+- 「效果」「色彩」分頁編輯風力效果時，顯示「預覽風力」：風速滑桿、風向轉盤，或〔使用後端即時風力〕。本機預覽也用 `WindPhase` 累積相位。
+- 後端控制時，3D 畫面照現在的方式顯示後端回傳的實際顏色。
+
+### 10.7 強風保護：自動緩停轉燈
+
+`WindMotorGuard`（在 `motor.py`）：
+- 位置：放在使用者的馬達選擇（`motor_units`）與 `MotorGate` 之間。
+- **只蓋過、不修改**使用者的選擇：強風時每台都送 0，解除後恢復成使用者原本選擇的狀態。
+- `MotorGate` 的「停止後 12 秒才能啟動」與控箱分區啟動照常運作。
+- **演出時也生效**（安全優先）。
+
+**狀態**：
+
+```
+normal ──（陣風 ≥ stop_gust_ms，或平均 ≥ stop_speed_ms，持續 trigger_seconds）──▶ stopped
+stopped ──（陣風 < resume_gust_ms，且平均 < resume_speed_ms，持續 resume_seconds）──▶ normal
+```
+
+**判斷用的值**：
+- 「陣風」是 `gust_window_seconds` 內 hw 讀值的最大值；「平均」是 `speedMs`。
+- **停止門檻要用陣風**，反應才夠快：效果用的平滑風速有 10 秒延遲，不適合做安全判斷。
+- 恢復要等**持續一段時間**低於門檻（例如 10 分鐘），而且恢復門檻要低於停止門檻（遲滯），避免陣風一來一去讓馬達反覆啟停。
+
+**可設定項目**（存在 `preset/wind-settings.json`，前端可修改；第一次啟動時的預設值來自 `config.toml`）：
+
+| 欄位 | 預設（暫定，**要依轉燈廠商的耐風規格決定**） | 說明 |
+|---|---|---|
+| `enabled` | true | 關閉 = 不做強風保護 |
+| `stop_gust_ms` | 12 | 陣風達到就停 |
+| `stop_speed_ms` | 8 | 平均風速達到就停 |
+| `trigger_seconds` | 0 | 持續多久才停（0 = 一超過就停） |
+| `resume_gust_ms` | 9 | 低於這個值才開始計時恢復 |
+| `resume_speed_ms` | 6 | – |
+| `resume_seconds` | 600 | 連續低於恢復門檻多久才恢復 |
+| `sources` | `["hw"]` | 哪些來源可以觸發。Open-Meteo 是模型值，預設不觸發停止；勾選後也會依它判斷 |
+| `offline` | `"keep"` | 兩個來源都沒資料時：`keep` = 維持現狀；`stop` = 停止 |
+
+**前端「後端」分頁**：
+- 馬達區塊顯示「強風停止中：陣風 13.2 m/s ≥ 12，風速降低後 8 分鐘恢復」。
+- 24 個編號按鈕仍可以切換，但只會改變恢復後的狀態。
+- 〔強風保護〕設定表單、〔暫停保護 30 分鐘〕：給現場維修時使用，時間到自動恢復保護，並記 log。
+
+**log**：記錄停止與恢復，含觸發的值、來源，以及停止了哪幾台。
+
+**`GET /api/state` 的 `motor`** 多一個欄位 `windGuard: {state, reason, resumeInSeconds, pausedUntil}`。
+
+### 10.8 設定
+
+**`config.toml`**：硬體和第一次啟動時的預設值。
+
+```toml
+[wind]
+# 省略 port = 只用 Open-Meteo
+port = "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_XXXXXXXX-if00-port0"
+baudrate = 9600
+address = 1
+timeout_seconds = 2.0       # 經 LoRa 來回，現場量測後再調
+poll_seconds = 5
+fail_limit = 5
+stuck_minutes = 30
+latitude = 0.0              # 新北市美術館（待填）
+longitude = 0.0
+openmeteo_minutes = 10
+stale_minutes = 60
+settings = "wind-settings.json"
+```
+
+**`preset/wind-settings.json`**：現場會調整的值，前端可以修改，用原子寫檔，`GET/PUT /api/wind/settings`。
+
+```jsonc
+{
+  "schemaVersion": 1,
+  "calibration": { "sensorOffsetDeg": 0, "northDeg": 0, "openmeteoScale": 0.7 },
+  "smoothing": { "speedSeconds": 10, "colorSeconds": 30, "directionSeconds": 20, "maxTurnDegPerSecond": 3, "gustWindowSeconds": 60 },
+  "fallbackSpeedMs": 0,
+  "motorGuard": { "enabled": true, "stopGustMs": 12, "stopSpeedMs": 8, "triggerSeconds": 0,
+                  "resumeGustMs": 9, "resumeSpeedMs": 6, "resumeSeconds": 600,
+                  "sources": ["hw"], "offline": "keep" }
+}
+```
+
+- 驗證規則：
+  - 數值範圍檢查；恢復門檻必須小於停止門檻。
+  - 風速對應效果的參數（`calmMs`、`fullMs`、倍率、色盤）不放這裡，是各個風力效果自己的參數，存在 preset（10.6）。
+  - 不認得的欄位直接報錯。
+- `[weather]`：依 §9.1 決策 6，要在 M15 移除（雨天、陰天分類、溫度色盤、造訪）。過渡期間兩個區段並存；`[wind]` 有自己的座標。
+- installer 不會修改已有的 `config.toml`，Pi 升級時要手動加 `[wind]`；`wind-settings.json` 沒有檔案時用預設值，不需要手動建立。
+
+### 10.9 API 一覽
+
+| 方法 | 路徑 | 內容 |
+|---|---|---|
+| GET | `/api/wind` | snapshot＋`raw`、`hw`、`openmeteo`、`guard`、`history` |
+| PUT／DELETE | `/api/wind/override` | 測試風 `{speedMs, fromDeg}`（真北方位），維持 10 分鐘後自動恢復；`source = "override"`。風力效果與強風保護都會跟著測試風反應，方便現場驗證 |
+| GET／PUT | `/api/wind/settings` | 10.8 |
+| POST | `/api/wind/calibrate` | `{knownFromDeg}` → 用目前的 hw 原始角度算出 `sensorOffsetDeg` 並儲存。沒有 hw 讀值時回傳 409 |
+| PUT | `/api/motor/wind-guard` | `{pauseMinutes}`：暫停保護（0 = 立即恢復保護） |
+
+### 10.10 前端（「後端」分頁新增「風力」區塊）
+
+- **即時**：
+  - 風速、蒲福級數、陣風。
+  - 風向：上視圖的箭頭，畫在場地方向上，同時標示真北。
+  - 來源標籤：現場／Open-Meteo／測試／離線。
+  - 資料多久前更新、hw 成功率、最近一次的來回時間。
+  - 異常提示：風速計疑似異常、正在使用備援。
+- **折線圖**：最近 60 分鐘的 hw 與 Open-Meteo（換算後）風速，兩條線一起畫，可以看出換算係數是否合理。
+- **測試風**：風速滑桿、風向轉盤、剩餘時間。
+- **校正**：〔以目前風向標校正〕、`northDeg`、`openmeteoScale`。
+- **平滑與強風保護的設定表單**：儲存時呼叫 `PUT /api/wind/settings`。風力效果的參數在「效果」分頁調整（10.6）。
+- **馬達區塊**：顯示強風停止的狀態（10.7）。
+- **3D**：在風速計的位置畫一根小桿子和風向箭頭。layout 加 `windSensor: {x, y, z}`，後端驗證，由 `/api/patch` 回傳。
+
+### 10.11 部署與現場工具
+
+- `pyproject.toml` 加 `pyserial`（純 Python，PyPy 可以用），`uv.lock` 跟著更新。**升級到這一版時 Pi 要能連 PyPI**，現場可以上網，沒問題。
+- `tph-art-museum.service` 的 `SupplementaryGroups=audio` 改成 `audio dialout`。
+- `scripts/wind_probe.py`（照 hsz `test_wind.py`）：
+  - 持續讀取，印出原始暫存器、換算值、來回時間。
+  - 結束時印出成功率、來回時間的中位數與最大值。
+  - 參數：`--port`、`--addr`、`--timeout`、`--interval`。
+  - **序列埠同一時間只能給一個程式用，要先停服務再跑。**
+- 每分鐘的 `output:` 統計行加上 `wind 4.2 m/s hw (om 5.1)`。
+- **`doc/site-checklist.md` 新增「風速計」一節**：
+  1. `ls -l /dev/serial/by-id/`：確認有 FTDI 的路徑，填進 `config.toml`。
+  2. 記錄 LoRa DTU 兩台的設定值（頻段、頻道、空中速率、串口參數）。
+  3. `wind_probe.py` 讀 2 分鐘：成功率 ≥ 95%，記下來回時間，並依此設定 `timeout_seconds`（建議來回時間最大值 × 2）。
+  4. 轉動風杯，確認風速會變；把風向標轉一圈，確認角度連續變化。
+  5. 量 `northDeg`，校正 `sensorOffsetDeg`（10.5）。
+  6. 待機播放風力效果，用測試風驗證：風速 0 → 15，流動變快、顏色變化；風向轉一圈，流動方向跟著轉；切到其他效果時不受風力影響。
+  7. 強風保護：用測試風超過停止門檻 → 全部緩停、前端顯示原因；降回門檻以下 → 等 `resumeSeconds`（現場可以暫時調短）→ 依控箱分區恢復。
+  8. 拔掉 FTDI → 約 25 秒內來源切到 Open-Meteo；接回 → 下一次讀取就切回 hw。
+  9. 關掉風速計端的 DTU 電源，結果應該跟第 8 項相同（驗證 LoRa 斷線的處理）。
+
+### 10.12 測試
+
+| 檔案 | 內容 |
+|---|---|
+| `test_modbus.py` | CRC16（拿 hsz 的已知封包比對）、組讀取要求；解析回應：正常、太短、例外碼、CRC 錯、byte count 不符；**回應分兩段到達時能累積讀完**；逾時 |
+| `test_wind.py` | 用假的 reader、fetch 與可注入的時鐘測試：<br>• 來源切換：第 4 次失敗時仍是 hw，第 5 次失敗切到 openmeteo，一次成功就切回<br>• 卡住偵測；Open-Meteo 快取、過期、單位<br>• `online = false`；角度校正與 `flowDeg` 換算（含 y 軸方向）<br>• 平滑：時間常數、風向跨 0°、轉向速率上限、無風時保留風向<br>• 陣風視窗；測試風的到期；設定與色盤的驗證、原子寫檔；`calibrate`；API |
+| `test_wind_serial.py` | 用 `os.openpty()` 建一對 pty 當假的風速計（含故意延遲、分段送出），測真正的 pyserial 讀取路徑。不需要硬體，Linux 與 macOS 都能跑 |
+| `test_wind_guard.py` | 停止、遲滯、恢復計時；中途又超過門檻時重新計時；來源篩選；`offline` 的兩種模式；暫停保護；不修改 `motor_units`；與 `MotorGate` 一起運作：恢復時仍依控箱分區、停止後 12 秒的規則 |
+| `test_wind_effects.py`＋前端 `windEffects.test.ts` | `WindPhase` 累積（風速變化時相位連續、效果開始與每段開始時歸零、轉場時兩層各自累積）；倍率與 `strength` 換算；色盤內插；風向與流動位置；**前後端一致性向量**：給定 `wind` 輸入（相位、colorSpeedMs、flowDeg），兩邊逐值相同 |
+| 既有效果 | 不修改，既有一致性向量逐 byte 不變（確認風力資料沒有漏進其他效果） |
+
+CPython、PyPy 都要通過；frontend 加上 `tsc`、build。
+
+### 10.13 實作順序
+
+| 階段 | 內容 | 需要現場？ |
+|---|---|---|
+| **M16a 資料** | `modbus.py`、`wind.py`（兩個來源、平滑、校正、override）、設定、`GET /api/wind`、`wind_probe.py`、log、測試（含 pty） | 否。可以先在開發機接 FTDI＋風速計（不經 LoRa）實測 |
+| **M16b 前端與校正** | 風力區塊、折線圖、測試風、校正、設定表單、3D 風速計位置 | 否 |
+| **M16c 強風保護** | `WindMotorGuard`、設定、API、前端狀態、測試 | 否。門檻值等廠商規格 |
+| **M16d 風力效果** | `WindPhase`、效果 context 的 `wind` 輸入、第一個風力效果 `wind-flow`（三個群組）、風速色盤（`wind-gradient`）與編輯器、效果分頁的預覽風力、演出編輯器排除 `wind-*`、一致性向量；之後再依現場觀察增加其他風力效果 | 否 |
+| **M16e 現場** | LoRa 安裝與設定、checklist 10.11、`northDeg`、`sensorOffsetDeg` 校正、`timeout_seconds` 調整；運轉數天後調整 `openmeteoScale` 與效果對應的參數 | 是 |
+
+- M16a–c 可以先做，跟 M13（排程、待機時段）互不影響。
+- M16d 只新增效果、不改既有效果，跟 M15 的清理沒有先後關係。M13 的待機排程完成後，待機時段就可以指定播放風力效果。
+
+### 10.14 待確認
+
+| # | 問題 | 影響 |
+|---|---|---|
+| ~~W1~~ | LoRa：SX1262-LoRa-DTU-HF；USB 轉 RS485：Dtech FTDI（2026-11-12 確認）。**仍待確認**：DTU 的頻段、空中速率設定；風速計端的電源 | `timeout_seconds` |
+| ~~W2~~ | 風速計約 4 m 高，風向沒有對準正北（2026-11-12 確認）→ 用 `sensorOffsetDeg` 校正 | – |
+| W3 | 場地 +x 軸的方位角 `northDeg`：要到現場量（10.5）；**layout 的 y 軸朝向**實作前要先確認 | 流動方向 |
+| ~~W4~~ | 現場可以上網（2026-11-12 確認） | – |
+| ~~W5~~ | 風越大越快並改變顏色、風向決定方向（2026-11-12 確認）；做成待機專屬的風力效果，不套用到所有效果（2026-11-12 修改）。**仍待確認**：風力效果的畫面（`wind-flow` 之外還要哪些）、預設色盤的顏色、速度倍率範圍 | M16d |
+| W6 | 強風自動緩停：要做，門檻可以設定（2026-11-12 確認）。**仍待確認**：轉燈廠商的耐風規格，用來決定預設的停止與恢復門檻；Open-Meteo 是否也可以觸發停止 | M16c 預設值 |
+| W7 | 風速計確切的型號／規格書，要確認暫存器是否與 hsz 相同、風速的解析度，以及**有沒有陣風暫存器**（有的話，陣風直接讀風速計的值） | M16a |
+
+### 2026-11-12：風流（`wind-flow`）前端原型
+
+為了先確認畫面，在前端做了 `wind-flow` 的預覽原型（**後端尚未實作**，「後端控制」模式不能套用，演出不要用）。行為經現場討論後與 10.6 的初稿不同，以這裡為準，後端實作時照這個版本：
+
+- **轉燈**：柔和的亮帶（高斯形）沿風吹往的方向流過全場，經過每台時由上往下掃過球面（「球面上下錯開」，0 = 整顆一起亮）；風越大流得越快（基準流速 × 無風倍率 → 強風倍率）。風速**達到**「亮點門檻 X」（預設 3 m/s）時，另有一道隨機亮點帶沿風向週期性掃過全場：開始時鎖定當下風向、一定掃到底，經過的轉燈變成隨機閃爍的亮點（同色偏白），離開後恢復亮帶；風越大掃得越快（門檻風速時 2 秒、最大風速時 0.6 秒，速度線性內插），掃完隔「間隔」再來一道。低於門檻只有亮帶。
+- **顏色**：沿用現有的漸層編輯器，漸層 = 風速（最左 = 無風、最右 = 最大風速），波峰再往風較大那側偏「波峰色偏」。10.6 的 `wind-gradient`（以 m/s 分段的色盤）先不做。
+- **時間**：風流依**實際經過的時間**推進，不看影格編號（`frontend/src/wind/windPreview.ts` 的 `advanceWind`）。串接段落重複、效果週期歸零、3D 殘影回頭取舊影格都會讓影格變小，用影格累積會倒退或卡住。後端實作時同樣要用獨立於播放影格的時間累積（10.6 的 `WindPhase` 改為不在段落開始時歸零）。
+- **預覽風力**面板（效果／色彩分頁，任一群組選了風流才出現）：風速、風往（場地方向）、平滑時間（預設 2 秒，顏色 ×3）、陣風擾動；風向每秒最多轉 3°。
+- 球燈、洗牆燈的 `wind-flow` 目前還是第一版（亮帶沿風向流動，沒有亮點帶）。
+- 驗證：frontend 163 個測試（`effects.test.ts` 的效果 ID 清單加入 `wind-flow`）、`tsc` 通過；風流本身還沒有單元測試與前後端一致性向量。

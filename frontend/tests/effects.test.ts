@@ -62,6 +62,7 @@ describe('effect synchronization contract', () => {
       'pillar-fill',
       'color-alternate',
       'wave-split',
+      'wind-flow',
     ])
     expect(decoded.every(
       (effect) => effect.schemaVersion === EFFECT_SCHEMA_VERSION,

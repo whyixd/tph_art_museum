@@ -29,6 +29,7 @@ import type { ShowEditorState } from '../useShowEditor'
 import { FixtureEditor, GROUP_LABELS, type FixtureGroup } from './FixtureEditor'
 import { FixtureTestPanel, type FixtureSelection } from './FixtureTestPanel'
 import { CATEGORY_LABELS, WeatherPanel } from './WeatherPanel'
+import { WindPreviewPanel } from './WindPreviewPanel'
 import type { SimulationSettings } from '../simulation/model'
 
 export type EditGroup = 'spinner' | FixtureGroup
@@ -680,6 +681,8 @@ export function ControlPanel({
       <div className="control-tabpanel" id="control-tabpanel" role="tabpanel" aria-labelledby={`control-tab-${shownTab}`}>
         {(shownTab === 'effect' || shownTab === 'color') && controlMode === 'backend' && backendApplyBar()}
         {(shownTab === 'effect' || shownTab === 'color') && groupSwitch}
+        {(shownTab === 'effect' || shownTab === 'color') && (effectPreset.effectId === 'wind-flow'
+          || Object.values(fixturePresets).some((preset) => preset?.effectId === 'wind-flow')) && <WindPreviewPanel />}
         {shownTab === 'effect' && editGroup !== 'spinner' && fixtureEditor('effect')}
         {shownTab === 'color' && editGroup !== 'spinner' && fixtureEditor('color')}
         {shownTab === 'effect' && editGroup === 'spinner' && spinnerEffectPanel()}

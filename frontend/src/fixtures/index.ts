@@ -8,6 +8,7 @@
 import { clamp01, type RgbColor } from '../effects/contract'
 import { sampleGradient } from '../effects/color'
 import { hash01 } from '../effects/rouletteRing'
+import { sampleWindFlow, windKey, WIND_FLOW_COLORS, WIND_FLOW_DESCRIPTION, WIND_FLOW_PARAMETERS } from '../wind/windPreview'
 
 export const FIXTURE_SCHEMA_VERSION = 1 as const
 
@@ -24,6 +25,7 @@ export type FixtureEffectId =
   | 'pole-rise'
   | 'base-wave'
   | 'horizontal-flow'
+  | 'wind-flow'
 
 export type FixtureAxis = 'height' | 'x' | 'y' | 'index'
 
@@ -161,6 +163,10 @@ export const FIXTURE_MANIFEST: readonly FixtureManifestEntry[] = [
       parameter('rampSeconds', '加速時間', 's', 0.5, 120, 0.5, 10),
     ],
   },
+  {
+    id: 'wind-flow', label: '風流（風力原型）', description: WIND_FLOW_DESCRIPTION,
+    parameters: WIND_FLOW_PARAMETERS.map((item) => ({ ...item })),
+  },
 ]
 
 /** 雨天：每顆各自隨機相位閃亮後衰減。 / Rain: each fixture flashes at its own random phase, then decays. */
@@ -181,8 +187,16 @@ export function createDefaultFixturePreset(effectId: FixtureEffectId): FixturePr
     schemaVersion: FIXTURE_SCHEMA_VERSION,
     effectId,
     parameters: Object.fromEntries(getFixtureManifest(effectId).parameters.map((item) => [item.key, item.defaultValue])),
-    color: { mode: 'solid', color: { r: 1, g: 1, b: 1 } },
+    color: effectId === 'wind-flow'
+      ? { mode: 'gradient', axis: 'x', colors: WIND_FLOW_COLORS.map((color) => ({ ...color })) }
+      : { mode: 'solid', color: { r: 1, g: 1, b: 1 } },
   }
+}
+
+/** 風流：每顆在場地中的平面位置取樣。 / wind-flow: sampled at the fixture's plan position. */
+function windFlowSample(preset: FixturePreset, context: FixtureContext) {
+  return sampleWindFlow(windKey('fixture', preset.parameters), context.controllerFrame, context.controllerFps,
+    preset.parameters, context.normalizedX, context.normalizedY)
 }
 
 function frames(seconds: number, fps: number): number {
@@ -288,6 +302,8 @@ export function fixtureBrightness(preset: FixturePreset, context: FixtureContext
       const tail = Math.trunc(p.tailCount)
       return behind <= tail ? 1 - behind / (tail + 1) : 0
     }
+    case 'wind-flow':
+      return windFlowSample(preset, context).brightness
     case 'horizontal-flow': {
       // 亮帶跟著顏色一起流：最暗 1 - depth。 / Bright bands flow with the colours; the darkest is 1 - depth.
       const phase = horizontalFlowPhase(p, context)
@@ -401,7 +417,9 @@ export function sampleFixture(preset: FixturePreset, context: FixtureContext, ra
     ? color.color
     : preset.effectId === 'horizontal-flow'
       ? sampleGradient(color.colors, horizontalFlowPhase(preset.parameters, context), true)
-      : sampleGradient(color.colors, gradientPosition(color.axis, context), false)
+      : preset.effectId === 'wind-flow'
+        ? sampleGradient(color.colors, windFlowSample(preset, context).colorPosition, false)
+        : sampleGradient(color.colors, gradientPosition(color.axis, context), false)
   return {
     r: clamp01(base.r * brightness),
     g: clamp01(base.g * brightness),
@@ -454,14 +472,16 @@ export function renderFixtureFrame(
   const active = withFixtureWeatherPalette(preset, options.palette ?? null)
   const poles = options.poles ?? null
   const poleCount = poles ? poles.reduce((most, pole) => Math.max(most, pole.rank + 1), 0) : undefined
-  return geometry.map(([height, x, y], index) => sampleFixture(active, {
+  // 風流不套用天氣（色盤、雨、多雲錯開）。 / wind-flow ignores the weather (palette, rain, cloud offsets).
+  const wind = preset.effectId === 'wind-flow'
+  return geometry.map(([height, x, y], index) => sampleFixture(wind ? preset : active, {
     ...(poles ? { poleRank: poles[index].rank, poleStep: poles[index].step, poleCount } : {}),
-    controllerFrame: effectFrame + Math.round(x * CLOUD_SPREAD_STEPS * frameStep),
+    controllerFrame: effectFrame + (wind ? 0 : Math.round(x * CLOUD_SPREAD_STEPS * frameStep)),
     controllerFps: fps,
     fixtureIndex: index,
     fixtureCount: geometry.length,
     normalizedHeight: height,
     normalizedX: x,
     normalizedY: y,
-  }, options.raining ?? false))
+  }, !wind && (options.raining ?? false)))
 }

@@ -29,6 +29,7 @@ import { unitRandom } from './unitRandom'
 import { twoToneTrail } from './twoToneTrail'
 import { unitVariationValue } from './unitVariation'
 import { waveSplit } from './waveSplit'
+import { WIND_FLOW_SPINNER_KEYS, windFlow } from './windFlow'
 import { worldUpperHalf } from './worldUpperHalf'
 
 const EFFECTS: Record<EffectId, EffectModule> = {
@@ -57,6 +58,7 @@ const EFFECTS: Record<EffectId, EffectModule> = {
   'pillar-fill': pillarFill,
   'color-alternate': colorAlternate,
   'wave-split': waveSplit,
+  'wind-flow': windFlow,
 }
 
 export const EFFECT_MANIFEST = Object.values(EFFECTS).map(
@@ -83,6 +85,8 @@ const FIXED_PARAMETERS: Partial<Record<EffectId, readonly string[]>> = {
   // 錯落順序靠九台共用的整輪長度。 / The stagger order relies on one shared round length.
   'random-fill': ['staggerSeconds'],
   // 水平流動要全部轉燈一起流，不開放各台不同。 / The horizontal flow moves all spinners together, so no per-unit values.
+  // 風流要全部轉燈一起流（原型）。 / wind-flow moves all spinners together (prototype).
+  'wind-flow': WIND_FLOW_SPINNER_KEYS,
   'center-out-sine': [
     'horizontalFlow', 'flowSpeedHz', 'flowBands', 'flowDirectionDegrees', 'flowDepth', 'flowAcceleration', 'flowRampSeconds',
   ],

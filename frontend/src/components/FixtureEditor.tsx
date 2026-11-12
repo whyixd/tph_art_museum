@@ -43,7 +43,9 @@ export function FixtureEditor({ group, tab, preset, count, weatherEnabled, onCha
           <span>{label}效果</span>
           <select value={preset?.effectId ?? 'off'} onChange={(event) => {
             const id = event.target.value as FixtureEffectId
-            onChange(id === 'off' ? null : { ...createDefaultFixturePreset(id), color: preset?.color ?? createDefaultFixturePreset(id).color,
+            // 風流的漸層代表風速，換成風流時用它的預設漸層。 / wind-flow's gradient is wind speed: switch to its default.
+            onChange(id === 'off' ? null : { ...createDefaultFixturePreset(id),
+              color: (id !== 'wind-flow' && preset?.color) || createDefaultFixturePreset(id).color,
               ...(preset?.maxLevel !== undefined ? { maxLevel: preset.maxLevel } : {}) })
           }}>
             {FIXTURE_MANIFEST.map((entry) => (

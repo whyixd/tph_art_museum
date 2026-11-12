@@ -26,6 +26,7 @@ export type EffectId =
   | 'pillar-fill'
   | 'color-alternate'
   | 'wave-split'
+  | 'wind-flow'
 
 export type RgbColor = {
   r: number

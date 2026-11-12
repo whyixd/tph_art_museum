@@ -7,6 +7,7 @@ import {
   type EffectPreset,
   type RgbColor,
 } from './contract'
+import { WIND_FLOW_COLORS } from '../wind/windPreview'
 
 const WHITE: RgbColor = { r: 1, g: 1, b: 1 }
 export const SPECTRUM: readonly RgbColor[] = [
@@ -18,6 +19,10 @@ export const SPECTRUM: readonly RgbColor[] = [
 ]
 
 export function defaultEffectColor(effectId: EffectId): EffectColor {
+  if (effectId === 'wind-flow') {
+    // 漸層代表風速：無風 → 強風。 / The gradient is wind speed, calm to strong.
+    return { mode: 'gradient', axis: 'radius', colors: WIND_FLOW_COLORS.map((color) => ({ ...color })) }
+  }
   if (effectId === 'spectrum-cycle') {
     return { mode: 'gradient', axis: 'strip', colors: SPECTRUM.map((color) => ({ ...color })) }
   }
