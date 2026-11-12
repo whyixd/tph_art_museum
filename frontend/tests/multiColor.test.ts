@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { createEffectContext, multiColorAt, sampleEffect } from '../src/effects'
-import vectors from '../../backend/fixtures/multi_color_v1.json'
 import { buildMultiColorVectors, COLORS, FPS, LED_COUNT, UNIT_COUNT, spinnerPresets } from './multiColorVectors'
 
 describe('multi colour mode', () => {
@@ -37,7 +36,12 @@ describe('multi colour mode', () => {
     }
   })
 
-  it('matches the vectors shared with the backend', () => {
+  it('matches the vectors shared with the backend', async () => {
+    // 路徑放在變數裡：出版時只打包 frontend/，型別檢查不該去找 backend 的檔（專案也沒有 Node 型別）。
+    // The path is a variable: releases build frontend/ alone, so the type check must not resolve the backend file (nor Node types).
+    const moduleName = 'node:fs'
+    const { readFileSync } = await import(/* @vite-ignore */ moduleName)
+    const vectors = JSON.parse(readFileSync(new URL('../../backend/fixtures/multi_color_v1.json', import.meta.url), 'utf-8'))
     expect(JSON.parse(JSON.stringify(buildMultiColorVectors()))).toEqual(vectors)
   })
 })
