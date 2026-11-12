@@ -228,9 +228,10 @@ function MasterLevelControls({ level, onLevel }: { level: number, onLevel: (leve
 const BLACKOUT_GROUPS: readonly [BlackoutGroup, string][] = [['spinner', '轉燈'], ['ball', '球燈'], ['wash', '洗牆燈']]
 
 /**
- * 關燈：全部或個別群組（轉燈、球燈、洗牆燈）送全黑，蓋過效果、演出與測試；播放在背景照常前進，馬達不受影響。
- * Blackout: every light, or single groups (spinners, balls, washes), send black over effects, shows and tests;
- * playback keeps going and motors are untouched.
+ * 關燈：勾選要控制的群組（轉燈、球燈、洗牆燈），〔關閉〕〔恢復〕只作用在勾選的群組。關燈的群組送全黑，蓋過效果、
+ * 演出與測試；播放在背景照常前進，馬達不受影響。
+ * Blackout: tick the groups to control (spinners, balls, washes); the off / on buttons act on the ticked groups only.
+ * Groups that are off send black over effects, shows and tests; playback keeps going and motors are untouched.
  */
 function BlackoutControls({ blackout, groups, busy, onBlackout }: {
   blackout: boolean
@@ -239,29 +240,47 @@ function BlackoutControls({ blackout, groups, busy, onBlackout }: {
   busy: boolean
   onBlackout: (enabled: boolean, groups?: BlackoutGroup[]) => void
 }) {
+  // 勾選的群組只是這個頁面的選擇，預設三種都勾。 / The ticks are this page's selection; all three by default.
+  const [picked, setPicked] = useState<Record<BlackoutGroup, boolean>>({ spinner: true, ball: true, wash: true })
+  const chosen = BLACKOUT_GROUPS.filter(([group]) => picked[group]).map(([group]) => group)
   const off = groups ? BLACKOUT_GROUPS.filter(([group]) => groups[group]).map(([, label]) => label) : []
   const any = blackout || off.length > 0
+  if (!groups) {
+    return (
+      <div className={blackout ? 'blackout-controls on' : 'blackout-controls'}>
+        <span className="control-label">關閉燈光</span>
+        <p role="status">{blackout ? '已關閉：轉燈、球燈、洗牆燈全暗' : '照常播放'}</p>
+        <div className="button-row">
+          {blackout
+            ? <button type="button" onClick={() => onBlackout(false)} disabled={busy}>恢復燈光</button>
+            : <button type="button" className="danger" onClick={() => onBlackout(true)} disabled={busy}>關閉全部燈光</button>}
+        </div>
+      </div>
+    )
+  }
+  // 勾選的群組裡還有亮著的才能關、還有關著的才能恢復。 / Off needs a ticked group still on; on needs one that is off.
+  const canOff = chosen.some((group) => !groups[group])
+  const canOn = chosen.some((group) => groups[group])
   return (
     <div className={any ? 'blackout-controls on' : 'blackout-controls'}>
       <span className="control-label">關閉燈光</span>
       <p role="status">{blackout ? '已關閉：轉燈、球燈、洗牆燈全暗' : off.length > 0 ? `已關閉：${off.join('、')}` : '照常播放'}</p>
-      <div className="button-row">
-        <button type="button" className="danger" onClick={() => onBlackout(true)} disabled={busy || blackout}>關閉全部燈光</button>
-        <button type="button" onClick={() => onBlackout(false)} disabled={busy || !any}>恢復全部燈光</button>
+      <div className="blackout-groups" role="group" aria-label="要控制的燈組">
+        {BLACKOUT_GROUPS.map(([group, label]) => (
+          <label className="scene-toggle" key={group}>
+            <input type="checkbox" checked={picked[group]}
+              onChange={(event) => setPicked((current) => ({ ...current, [group]: event.target.checked }))} />
+            <span>{label}<small>（{groups[group] ? '已關' : '亮'}）</small></span>
+          </label>
+        ))}
       </div>
-      {groups && (
-        <div className="segmented-control" role="group" aria-label="個別關燈">
-          {BLACKOUT_GROUPS.map(([group, label]) => (
-            <button key={group} type="button" className={groups[group] ? 'active' : 'secondary'} aria-pressed={groups[group]}
-              title={groups[group] ? `${label}已關閉：按下恢復` : `${label}亮著：按下關閉`}
-              onClick={() => onBlackout(!groups[group], [group])} disabled={busy}>
-              {groups[group] ? `${label}：關` : `${label}：亮`}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="button-row">
+        <button type="button" className="danger" onClick={() => onBlackout(true, chosen)}
+          disabled={busy || !canOff}>關閉勾選的燈光</button>
+        <button type="button" onClick={() => onBlackout(false, chosen)} disabled={busy || !canOn}>恢復勾選的燈光</button>
+      </div>
       <p className="control-note">
-        可以三種燈一起關，或只關其中幾種（按下面的按鈕切換，亮色 = 已關閉）。關燈期間演出、串接、效果在背景照常前進，恢復後接著播放；蓋過單色測試與閃拍。馬達不受影響（要停請用下方的馬達控制）。後端重新啟動後會恢復亮燈。
+        先勾選要控制的燈組，再按〔關閉〕或〔恢復〕；沒勾選的燈組不受影響。關燈期間演出、串接、效果在背景照常前進，恢復後接著播放；蓋過單色測試與閃拍。馬達不受影響（要停請用下方的馬達控制）。後端重新啟動後會恢復亮燈。
       </p>
     </div>
   )
