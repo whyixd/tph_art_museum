@@ -14,8 +14,10 @@ const GROUPS: readonly [WindGroup, string][] = [['spinner', '轉燈'], ['ball', 
 type WindPanelProps = {
   /** 待機中（全場播風流）。 / Standby: wind-flow on every group. */
   standby: boolean
-  /** null：後端控制模式，不能切換待機。 / null: backend control, standby unavailable. */
+  /** null：不能切換待機（舊後端沒有風流）。 / null: standby unavailable (an old backend without wind-flow). */
   onStandby: ((standby: boolean) => void) | null
+  /** 後端控制：設定與測試風送到後端。 / Backend control: presets and the test wind go to the backend. */
+  backend: boolean
   presets: WindPresets
   onPreset: <G extends WindGroup>(group: G, preset: WindPresets[G]) => void
 }
@@ -25,7 +27,7 @@ type WindPanelProps = {
  * The wind tab: standby toggle, preview wind and the wind-flow (standby effect) settings of the three groups.
  * wind-flow is only set up here, not in the ordinary effect lists.
  */
-export function WindPanel({ standby, onStandby, presets, onPreset }: WindPanelProps) {
+export function WindPanel({ standby, onStandby, backend, presets, onPreset }: WindPanelProps) {
   const [group, setGroup] = useState<WindGroup>('spinner')
   const preset = presets[group]
   const parameters = group === 'spinner' ? getEffectManifest('wind-flow').parameters : getFixtureManifest('wind-flow').parameters
@@ -37,7 +39,7 @@ export function WindPanel({ standby, onStandby, presets, onPreset }: WindPanelPr
   return (
     <>
       <div className="color-controls">
-        <span className="control-label">待機效果：風流（風力原型，只在前端）</span>
+        <span className="control-label">{backend ? '待機效果：風流（後端輸出）' : '待機效果：風流（模擬預覽）'}</span>
         {onStandby ? (
           <div className="segmented-control" aria-label="待機">
             <button type="button" className={standby ? 'active' : 'secondary'} aria-pressed={standby}
@@ -46,13 +48,15 @@ export function WindPanel({ standby, onStandby, presets, onPreset }: WindPanelPr
               onClick={() => onStandby(false)}>原本的播放</button>
           </div>
         ) : (
-          <p className="control-note">後端還沒有風流效果，「後端控制」模式不能切換待機；切到「模擬」可以預覽。</p>
+          <p className="control-note">這個後端版本沒有風流（需要 rc.10 以上），不能切換待機；切到「模擬」可以預覽。</p>
         )}
         <p className="control-note">
-          待機時全場改播風流，不管單一效果、串接或演出。下面的設定隨時可以改，待機中會立即看到。
+          {backend
+            ? '待機時後端全場改送風流，蓋過單一效果、串接、演出（進入待機會停止演出的音樂；開始演出會離開待機）。下面的設定會存到後端，待機中立即生效。後端重新啟動後不會自動進入待機。'
+            : '待機時全場改播風流，不管單一效果、串接或演出。下面的設定隨時可以改，待機中會立即看到。這裡是模擬用的設定，和後端的分開。'}
         </p>
       </div>
-      <WindPreviewPanel />
+      <WindPreviewPanel backend={backend} />
       <div className="segmented-control group-switch" aria-label="風流設定的群組">
         {GROUPS.map(([value, label]) => (
           <button key={value} type="button" className={group === value ? 'active' : 'secondary'}

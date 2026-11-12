@@ -908,3 +908,19 @@ CPython、PyPy 都要通過；frontend 加上 `tsc`、build。
 - **「風力」分頁**（前端）：待機切換、預覽風力、三個群組的風流設定（參數、亮度上限、漸層）都集中在這裡。風流從一般的效果下拉選單拿掉（只當待機效果，串接、演出不能選）；待機用的風流設定獨立保存（`windPresets`），待機中可以直接調。後端仍沒有風流，「後端控制」模式不能切換待機。
 - **全部燈光亮度**（後端＋前端）：`PresetStore.master_level`（0..1，只在記憶體，後端重啟後回到 1）。`PUT /api/master` `{"level": 0..1}`；`GET /api/state`、`GET /api/playback` 多了 `masterLevel`。輸出迴圈 `master_provider`：轉燈在量化成位元組時乘上（`[hardware] brightness × master`），球燈、洗牆燈乘在顏色上；效果、演出、單色測試、閃拍都算，馬達不受影響。前端「後端」分頁（關燈按鈕下方）：滑桿 0–100% 與 0%／40%／80%／100% 按鈕；3D 鏡像跟著變暗。
 - 驗證：backend 236 個測試（新增 `test_master_level_scales_every_group_and_keeps_motors`、`test_master_level_api_and_playback_mirror`）；frontend 163 個測試、`tsc` 通過。開發機（`--api-only`）Playwright：按 40%／0%／80%、滑桿 65 → `/api/state` 的 `masterLevel` 為 0.4／0／0.8／0.65。**未接燈具實測**。
+
+### 2026-11-12：後端的風流與待機（後端控制也能切到待機）
+
+- **`backend/moon_observe_backend/wind.py`**：風流移植到後端（`WindFrame.spinner_pixels`／`fixture_colors`，行為同前端原型：亮帶沿風向、達到門檻時亮點帶、顏色依風速；亮點是隨機的、兩邊各有時鐘，**不逐值相同，沒有一致性向量**）。`WindStandby`：待機開關（只在記憶體，後端重啟後不在待機）、三個群組的風流設定與**測試風**（風速、風往、平滑、擾動；存在 `preset/wind-standby.json`，原子寫檔，檔案壞掉時用預設值並回報 warning）。風速計（M16a）接上前，風力來源就是測試風。
+- **輸出迴圈** `standby_provider`（每格呼叫一次，風流依實際時間推進）：待機時轉燈、球燈、洗牆燈改送風流，蓋過演出、串接、單一效果；單色測試、閃拍、全部關燈仍在它之上，總亮度照乘；底下的播放照常前進，馬達不受影響。
+- **API**：`GET /api/wind`（`standby`、`presets`、`target`、平滑後的 `wind`、`warning`）；`PUT /api/wind/standby` `{"enabled"}`（進入待機會停止演出與音樂）、`PUT /api/wind/presets`、`PUT /api/wind/target`。`PUT /api/show/play` 開始演出時離開待機。`GET /api/playback` 待機時多 `standby: true`。
+- **前端**：「後端控制」模式下，「風力」分頁的待機按鈕、風流設定、測試風都讀寫後端（模擬模式仍是本機的設定，兩邊分開）；工具列的「待機」按鈕在後端控制也有；3D 鏡像在待機時改播風流（用後端的設定與測試風，相位與亮點和實際輸出不同步）。舊後端（沒有 `/api/wind`）時待機按鈕換成說明。
+- **效能**（Apple M4、PyPy，24 台 × 129 顆＋球燈 37＋洗牆燈 25）：每格平均 0.30 ms（無亮點帶）～0.44 ms（有），最長 3.7 ms；Pi 5 估約 1–2 ms。**待 Pi 實測**（看 log 的輸出統計）。
+- 驗證：backend 248 個測試（新增 `test_wind.py` 12 個：風速對應、驗證、亮帶順風移動且風大較快、亮點帶門檻／掃到底／鎖定方向／風越大越快、群組同步、顏色隨風速、平滑與轉向上限、存檔與壞檔、輸出迴圈待機蓋過效果但不蓋過閃拍、API），CPython 與 PyPy 通過；frontend 163 個測試、`tsc` 通過。開發機（`--api-only`）Playwright：後端控制 →「風力」→ 待機 → `/api/wind` 的 `standby` 為 true、標題「待機：風流」；測試風 9、球面上下錯開 0.6 → 後端收到；重新整理後仍在待機；工具列按鈕離開待機。**未接燈具實測。**
+
+### 2026-11-12：Pi 讀風速計（第一次現場測試，尚未讀到）
+
+- **Pi 端正常**：USB 轉 RS485 是 FTDI FT232R，序號 B0029TYY，`/dev/ttyUSB0`；固定路徑 `/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B0029TYY-if00-port0`（之後 `[wind] port` 填這個）。帳號 `whyixd` 在 `dialout` 群組，埠可以開啟與送出。Pi 上沒有 pyserial，測試用只靠標準函式庫（termios）的腳本（Pi 的 `/tmp/wind_probe.py`，重開機後會消失；M16a 的 `scripts/wind_probe.py` 要做成同樣不依賴 pyserial 也能跑，或確認 venv 裡有）。
+- **讀不到**：照 hsz 規格送 `01 03 00 00 00 04 44 09`（位址 1、FC 0x03、reg 0 起 4 個），9600 baud 讀 10 次、每次等 2–3 秒，**0 個位元組**；4800／19200／115200 各 2 次（等 4 秒）也是 0；只聽不送 8 秒也是 0。對調 FTDI 端的 A、B 後再讀 10 次，仍是 0。完全沒有回應（不是亂碼），所以不是 baud／位址，而是訊號沒有到風速計或沒有回來。
+- **使用者現場判斷**：應該是兩台 LoRa DTU 之間的**距離或天線**問題。待處理：檢查天線、縮短距離或直接有線測試；確認兩台 DTU 的頻道、位址、空中速率與串口（9600 8N1）一致。排除後再讀；若 LoRa 通了仍沒回應，再掃風速計位址。建議先把風速計不經 LoRa 直接接 FTDI 測一次，確認風速計本身的 baud 與位址。
+- 這次連續送要求給使用者看 DTU 燈號時，輸出沒有即時寫出（非終端機時 Python 會緩衝），中途停止後沒有留下記錄；之後長時間的探測要用 `python3 -u` 或每行 flush。

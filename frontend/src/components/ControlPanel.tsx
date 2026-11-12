@@ -845,7 +845,7 @@ export function ControlPanel({
         ))}
 
         {shownTab === 'weather' && weather && <WeatherPanel weather={weather} onWeather={onWeather} />}
-        {shownTab === 'wind' && <WindPanel standby={standby} onStandby={onStandby} presets={windPresets} onPreset={onWindPreset} />}
+        {shownTab === 'wind' && <WindPanel standby={standby} onStandby={onStandby} backend={controlMode === 'backend'} presets={windPresets} onPreset={onWindPreset} />}
 
         {shownTab === 'physics' && (
           <>

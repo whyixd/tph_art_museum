@@ -243,6 +243,7 @@ def make_server(
     audio_player: Any = None,
     show_store: Any = None,
     show_player: Any = None,
+    wind_standby: Any = None,
 ) -> ThreadingHTTPServer:
     if not 0 <= port <= 65535:
         raise ValueError("api port must be 0..65535")
@@ -354,6 +355,9 @@ def make_server(
                 fixture_test = fixture_color_store.snapshot() if fixture_color_store is not None else {}
                 if result["active"] and any(entry["active"] for entry in fixture_test.values()):
                     result["fixtureColors"] = {group: entry["colors"] for group, entry in fixture_test.items() if entry["active"]}
+                if result["active"] and wind_standby is not None and wind_standby.active():
+                    # 待機：3D 鏡像改播風流。 / Standby: the 3D mirror plays wind-flow.
+                    result["standby"] = True
                 if result["active"]:
                     # 總亮度：3D 鏡像跟著變暗。 / Master level: the 3D mirror dims with it.
                     result["masterLevel"] = store.master_level_value()
@@ -372,6 +376,8 @@ def make_server(
                 self._respond(200, fixture_color_store.snapshot())
             elif self.path == "/api/patch":
                 self._respond(200, patch_table(config))
+            elif self.path == "/api/wind" and wind_standby is not None:
+                self._respond(200, wind_standby.state())
             elif self.path == "/api/output":
                 # 輸出迴圈的影格時間（--api-only 時沒有輸出）。 / Output loop frame timing (none with --api-only).
                 self._respond(200, output_stats.snapshot() if output_stats is not None else {"active": False})
@@ -437,7 +443,7 @@ def make_server(
 
         def do_PUT(self) -> None:
             limits = {
-                "/api/preset": 32768, "/api/motor": 64, "/api/blackout": 64, "/api/master": 64, "/api/sequence": 262144,
+                "/api/preset": 32768, "/api/motor": 64, "/api/blackout": 64, "/api/master": 64, "/api/wind/standby": 64, "/api/wind/presets": 16384, "/api/wind/target": 256, "/api/sequence": 262144,
                 "/api/weather/override": 256, "/api/weather/palette": 16384,
                 "/api/playback/restart": 64, "/api/weather/visit": 64, "/api/test/units": 4096,
                 "/api/test/fixtures": 8192, "/api/audio/play": 512, "/api/audio/calibration": 128,
@@ -453,7 +459,8 @@ def make_server(
                     or (self.path == "/api/test/units" and unit_color_store is None)
                     or (self.path == "/api/test/fixtures" and fixture_color_store is None)
                     or (route.startswith("/api/audio/") and audio_player is None)
-                    or (self.path == "/api/show/play" and show_player is None)):
+                    or (self.path == "/api/show/play" and show_player is None)
+                    or (self.path.startswith("/api/wind/") and wind_standby is None)):
                 self._respond(404, {"error": "not found"})
                 return
             if self.headers.get_content_type() != "application/json":
@@ -478,6 +485,9 @@ def make_server(
                     result = self._shows_state()
                 elif self.path == "/api/show/play":
                     show_player.play(raw)
+                    # 開始演出就離開待機。 / Starting a show leaves standby.
+                    if wind_standby is not None:
+                        wind_standby.leave_standby()
                     result = self._shows_state()
                 elif self.path == "/api/sequence":
                     sequence_store.apply(raw)
@@ -511,6 +521,15 @@ def make_server(
                     result = store.apply_blackout(raw, config)
                 elif self.path == "/api/master":
                     result = store.apply_master_level(raw, config)
+                elif self.path == "/api/wind/standby":
+                    result = wind_standby.set_standby(raw)
+                    if result["standby"]:
+                        # 進入待機先停止演出（音樂）。 / Entering standby stops the show (and its music).
+                        self._stop_show()
+                elif self.path == "/api/wind/presets":
+                    result = wind_standby.apply_presets(raw)
+                elif self.path == "/api/wind/target":
+                    result = wind_standby.apply_target(raw)
                 else:
                     result = store.apply_motor(raw, config)
             except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:

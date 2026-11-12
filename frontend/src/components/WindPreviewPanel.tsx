@@ -9,7 +9,7 @@ const COMPASS = ['+x（沿長牆）', '', '+y（往後牆）', '', '−x', '', '
  * Preview wind for the wind-effect prototype (frontend only): target speed, direction, smoothing and gustiness, with
  * the smoothed values the effect is actually using.
  */
-export function WindPreviewPanel() {
+export function WindPreviewPanel({ backend = false }: { backend?: boolean }) {
   const [, refresh] = useReducer((value: number) => value + 1, 0)
   useEffect(() => subscribeWindPreview(refresh), [])
   // 平滑值會自己變，每 250 ms 更新顯示。 / The smoothed values drift on their own: refresh the readout.
@@ -22,7 +22,7 @@ export function WindPreviewPanel() {
   const arrow = live.flowDeg
   return (
     <div className="color-controls wind-preview">
-      <span className="control-label">預覽風力（風力原型，只在前端）</span>
+      <span className="control-label">{backend ? '測試風（送到後端，風速計接上前的風力來源）' : '預覽風力（只在前端模擬）'}</span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <svg width="56" height="56" viewBox="-28 -28 56 56" aria-label={`風往 ${arrow.toFixed(0)}°`}>
           <circle r="26" fill="none" stroke="currentColor" strokeOpacity="0.3" />
@@ -47,7 +47,7 @@ export function WindPreviewPanel() {
       <Slider label="陣風擾動" value={target.gustiness} min={0} max={0.6} step={0.05} unit=""
         onChange={(gustiness) => setWindTarget({ gustiness })} />
       <p className="control-note">
-        風向轉動限制每秒 3°（同規劃）；風速低於 0.3 m/s 時風向不動。這裡的風只用於本機預覽，後端還沒有風力效果。
+        風向轉動限制每秒 3°（同規劃）；風速低於 0.3 m/s 時風向不動。{backend ? '這裡的設定會存到後端，待機的風流照這個風力播放。' : '這裡的風只用於本機模擬；後端的測試風要在「後端控制」模式設定。'}
       </p>
     </div>
   )

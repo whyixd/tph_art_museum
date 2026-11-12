@@ -31,6 +31,7 @@ from .playback import PlaybackMonitor
 from .motor import DEFAULT_RESTART_DELAY_SECONDS, DEFAULT_START_INTERVAL_SECONDS, MotorGate
 from .unit_colors import FixtureColorStore, UnitColorStore
 from .weather import WeatherStore
+from .wind import WindStandby
 
 SINGLE_ROUND_SECONDS = 60  # A single effect "round" for weather visits: at least this long.
 DMX_EXIT_REPEATS = 2  # 結束時每個 DMX universe 送幾次全 0。 / All-zero frames per DMX universe on exit.
@@ -187,6 +188,7 @@ def stream(
     show_provider: Callable[[], tuple[tuple[dict[str, Any], ...], int, int] | None] | None = None,
     blackout_provider: Callable[[], bool] | None = None,
     master_provider: Callable[[], float] | None = None,
+    standby_provider: Callable[[], Any] | None = None,
     stats: OutputStats | None = None,
     source_check: Callable[[], bool] | None = None,
     clock: Callable[[], float] = time.perf_counter,
@@ -355,6 +357,11 @@ def stream(
             # 總亮度：轉燈在量化成位元組時乘上（和 [hardware] brightness 相乘），球燈、洗牆燈乘在顏色上；馬達不受影響。
             # Master level: spinners scale when quantized (times [hardware] brightness), fixtures scale their colours.
             master = master_provider() if master_provider is not None else 1.0
+            # 待機：全場改送風流（wind.WindFrame），蓋過演出、串接、單一效果；單色測試、閃拍、關燈仍在它之上。
+            # 底下的播放照常前進。每格呼叫一次，風流依實際時間推進。
+            # Standby: every group sends wind-flow (wind.WindFrame) over the show, sequence or single effect; colour
+            # tests, the beat flash and blackout stay above it. Playback underneath keeps advancing.
+            standby = standby_provider() if standby_provider is not None else None
             frame_hardware = hardware if master == 1 else {**hardware, "brightness": hardware["brightness"] * master}
             # 同一格內畫面相同的燈台共用一次渲染。 / Units showing the same picture share one render per frame.
             shared: dict[Any, list[Rgb]] = {}
@@ -378,6 +385,8 @@ def stream(
                     pixels = [flash_color] * config["pixels"]
                 elif test_color is not None:
                     pixels = [test_color] * config["pixels"]
+                elif standby is not None:
+                    pixels = standby.spinner_pixels(unit_id, config["unit_count"], config["pixels"], unit["flowPosition"])
                 elif sequence_mode:
                     pixels = render_sequence_frame(
                         schedule, unit, playback_frame,
@@ -407,7 +416,9 @@ def stream(
                 fixture_tests = fixture_colors_provider() if fixture_colors_provider is not None else {}
                 colors: dict[str, list[Rgb]] = {}
                 for group in groups:
-                    if sequence_mode:
+                    if standby is not None:
+                        group_colors = standby.fixture_colors(group, geometry[group])
+                    elif sequence_mode:
                         group_colors = render_sequence_fixtures(
                             schedule, group, geometry[group], playback_frame, fps=fps,
                             rain=category == "rain", color_override=color_override, frame_step=frame_step,
@@ -573,6 +584,10 @@ def main(argv: list[str] | None = None) -> int:
         show_store = ShowStore(sequence_path.parent / "shows.json", beat_maps=audio_player.beat_maps,
                                fps=config["fps"], pixels=config["pixels"])
         show_player = ShowPlayer(show_store, audio_player, config["fps"])
+        # 待機的風流設定與測試風，存在 preset 旁（wind-standby.json）。 / Standby wind-flow settings beside the preset.
+        wind_standby = WindStandby(sequence_path.parent / "wind-standby.json")
+        if wind_standby.warning:
+            print(f"warning: {wind_standby.warning}", file=sys.stderr, flush=True)
         if audio_player.available:
             def preload() -> None:
                 for warning in audio_player.preload():
@@ -583,7 +598,7 @@ def main(argv: list[str] | None = None) -> int:
                          weather_store=weather_store, playback_monitor=playback_monitor,
                          unit_color_store=unit_color_store, fixture_color_store=fixture_color_store,
                          output_stats=output_stats, audio_player=audio_player,
-                         show_store=show_store, show_player=show_player) as server:
+                         show_store=show_store, show_player=show_player, wind_standby=wind_standby) as server:
             if weather_store is not None:
                 weather_store.start()
             try:
@@ -610,6 +625,7 @@ def main(argv: list[str] | None = None) -> int:
                                   show_provider=show_player.current,
                                   blackout_provider=store.blackout_active,
                                   master_provider=store.master_level_value,
+                                  standby_provider=wind_standby.frame,
                                   stats=output_stats)
                 finally:
                     playback_monitor.stop()

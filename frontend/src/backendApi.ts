@@ -355,6 +355,8 @@ type ActivePlaybackBase = {
   fixtureColors?: Partial<Record<BackendFixtureGroup, (RgbColor | null)[]>>
   /** 全部關燈中才有（unitColors／fixtureColors 此時全黑）。 / Only during a blackout (the colours above are then black). */
   blackout?: true
+  /** 待機中才有（全場播風流）。 / Only in standby (wind-flow everywhere). */
+  standby?: true
   /** 總亮度 0..1（舊後端沒有）。 / Master level 0..1 (missing on old backends). */
   masterLevel?: number
 }
@@ -581,3 +583,35 @@ export async function saveBeatMap(beatMap: BeatMap): Promise<BeatMap> {
 export async function revertBeatMap(trackId: string): Promise<BeatMap> {
   return readState<BeatMap>(await fetch(`/api/audio/tracks/${encodeURIComponent(trackId)}`, { method: 'DELETE' }))
 }
+
+export type BackendWindGroupPreset = { parameters: Record<string, number>; colors: RgbColor[]; maxLevel?: number }
+export type BackendWindPresets = { spinner: BackendWindGroupPreset; ball: BackendWindGroupPreset; wash: BackendWindGroupPreset }
+export type BackendWindTarget = { speedMs: number; flowDeg: number; smoothingSeconds: number; gustiness: number }
+/** 待機（全場播風流）、風流設定與測試風。 / Standby (wind-flow everywhere), the wind-flow presets and the test wind. */
+export type BackendWind = {
+  standby: boolean
+  presets: BackendWindPresets
+  target: BackendWindTarget
+  /** 後端目前使用的（平滑後）風力。 / The smoothed wind the backend is using. */
+  wind: { speedMs: number; colorSpeedMs: number; flowDeg: number }
+  warning: string | null
+}
+
+/** 舊後端沒有 /api/wind：回傳 null。 / null on backends without /api/wind. */
+export async function getBackendWind(): Promise<BackendWind | null> {
+  const response = await fetch('/api/wind')
+  if (response.status === 404) return null
+  return readState<BackendWind>(response)
+}
+
+async function putWind(path: string, body: unknown): Promise<BackendWind> {
+  return readState<BackendWind>(await fetch(path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }))
+}
+
+export const setBackendStandby = (enabled: boolean) => putWind('/api/wind/standby', { enabled })
+export const setBackendWindPresets = (presets: BackendWindPresets) => putWind('/api/wind/presets', presets)
+export const setBackendWindTarget = (target: BackendWindTarget) => putWind('/api/wind/target', target)

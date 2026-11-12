@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { applyBackendPreset, getBackendPatch, getBackendPlayback, getBackendSequence, getBackendState, getWeatherState, restartBackendPlayback, saveBackendSequence, setBackendBlackout, setBackendMasterLevel, setBackendMotor, type BackendPatch, type BackendPlayback, type BackendState, type WeatherState } from './backendApi'
+import { applyBackendPreset, getBackendPatch, getBackendPlayback, getBackendSequence, getBackendState, getBackendWind, getWeatherState, restartBackendPlayback, saveBackendSequence, setBackendBlackout, setBackendMasterLevel, setBackendMotor, setBackendStandby, setBackendWindPresets, setBackendWindTarget, type BackendPatch, type BackendWind, type BackendWindPresets, type BackendPlayback, type BackendState, type WeatherState } from './backendApi'
 import { ControlPanel, type EditGroup } from './components/ControlPanel'
-import type { WindPresets } from './components/WindPanel'
+import type { WindGroup, WindPresets } from './components/WindPanel'
+import { getWindTarget, setWindTarget, subscribeWindPreview } from './wind/windPreview'
 import type { FixtureGroup } from './components/FixtureEditor'
 import { createDefaultFixturePreset, type FixturePreset } from './fixtures'
 import { EXAMPLE_LAYOUT, siteLayout, type LayoutDocument, type LayoutPosition } from './site/layout'
@@ -49,6 +50,34 @@ const INITIAL_DIAGNOSTICS: Diagnostics = {
   globalFrame: 0,
   cyclePhase: 0,
   simulationTime: 0,
+}
+
+/** 後端的風流設定 ↔ 前端的 preset。 / Backend wind-flow presets to and from frontend presets. */
+function fromBackendWind(presets: BackendWindPresets): WindPresets {
+  const fixture = (group: 'ball' | 'wash'): FixturePreset => {
+    const { parameters, colors, maxLevel } = presets[group]
+    return {
+      schemaVersion: 1, effectId: 'wind-flow', parameters, color: { mode: 'gradient', axis: 'x', colors },
+      ...(maxLevel !== undefined && maxLevel < 1 ? { maxLevel } : {}),
+    }
+  }
+  return {
+    spinner: {
+      ...createDefaultEffectPreset('wind-flow'), parameters: presets.spinner.parameters,
+      color: { mode: 'gradient', axis: 'radius', colors: presets.spinner.colors },
+    },
+    ball: fixture('ball'),
+    wash: fixture('wash'),
+  }
+}
+
+function toBackendWind(presets: WindPresets): BackendWindPresets {
+  const colors = (preset: WindPresets[WindGroup]) => (preset.color.mode === 'gradient' ? preset.color.colors : [preset.color.color, preset.color.color])
+  return {
+    spinner: { parameters: presets.spinner.parameters, colors: colors(presets.spinner) },
+    ball: { parameters: presets.ball.parameters, colors: colors(presets.ball), maxLevel: presets.ball.maxLevel ?? 1 },
+    wash: { parameters: presets.wash.parameters, colors: colors(presets.wash), maxLevel: presets.wash.maxLevel ?? 1 },
+  }
 }
 
 export function App() {
@@ -101,6 +130,9 @@ export function App() {
   const [controlMode, setControlMode] = useState<'simulation' | 'backend'>('simulation')
   const [backendState, setBackendState] = useState<BackendState | null>(null)
   const [backendBusy, setBackendBusy] = useState(false)
+  const [backendWind, setBackendWind] = useState<BackendWind | null>(null)
+  const backendWindRef = useRef(backendWind)
+  backendWindRef.current = backendWind
   const [backendError, setBackendError] = useState<string | null>(null)
   const [backendRefresh, setBackendRefresh] = useState(0)
   const [weather, setWeather] = useState<WeatherState | null>(null)
@@ -200,11 +232,14 @@ export function App() {
   const viewSequence = inBackend
     ? liveMode === 'sequence' ? backendSchedule : liveMode === 'show' ? backendShowSchedule : null
     : previewShow ?? (inSequence ? sequenceSchedule : null)
-  const inStandby = standby && !inBackend
-  const viewPreset = inBackend && backendState ? backendState.preset : inStandby ? windPresets.spinner : effectPreset
+  // 後端控制：待機與風流設定以後端為準。 / Backend control: standby and the wind-flow presets come from the backend.
+  const backendWindPresets = useMemo(() => (backendWind ? fromBackendWind(backendWind.presets) : null), [backendWind])
+  const shownWindPresets = inBackend && backendWindPresets ? backendWindPresets : windPresets
+  const inStandby = inBackend ? backendWind?.standby === true : standby
+  const viewPreset = inStandby ? shownWindPresets.spinner : inBackend && backendState ? backendState.preset : effectPreset
   const backendFixtures: FixturePresets | null = backendState?.fixtures
     ? { ball: backendState.fixtures.ball.preset, wash: backendState.fixtures.wash.preset } : null
-  const viewFixtures = inBackend ? backendFixtures ?? NO_FIXTURES : inStandby ? windPresets : fixturePresets
+  const viewFixtures = inStandby ? shownWindPresets : inBackend ? backendFixtures ?? NO_FIXTURES : fixturePresets
   const playbackRef = useRef(playback)
   playbackRef.current = playback
   const backendFrame = useCallback(() => (
@@ -449,6 +484,68 @@ export function App() {
     }
   }, [backendBusy, backendState, controlMode])
 
+  // 後端的待機、風流設定與測試風（舊後端沒有 /api/wind → null）。進入後端控制、重新整理時讀取。
+  // The backend's standby, wind-flow presets and test wind (null on old backends); read on entering backend control.
+  const windRequest = useRef(0)
+  const sentTarget = useRef('')
+  const adoptWind = useCallback((wind: BackendWind | null) => {
+    setBackendWind(wind)
+    if (wind) {
+      // 本機的預覽風力跟後端的測試風一致（鏡像用）；記下來，避免又送回去。 / Mirror the backend's test wind locally.
+      sentTarget.current = JSON.stringify(wind.target)
+      setWindTarget(wind.target)
+    }
+  }, [])
+  useEffect(() => {
+    if (controlMode !== 'backend') { setBackendWind(null); return }
+    const request = ++windRequest.current
+    void getBackendWind().then((wind) => { if (request === windRequest.current) adoptWind(wind) }).catch(() => undefined)
+  }, [controlMode, backendRefresh, adoptWind])
+  const sendWind = useCallback(async (send: () => Promise<BackendWind>, message: string) => {
+    const request = ++windRequest.current
+    try {
+      const wind = await send()
+      if (request !== windRequest.current) return
+      adoptWind(wind)
+      setBackendError(null)
+      setPlaybackPoll((current) => current + 1)
+    } catch (error) {
+      if (request === windRequest.current) setBackendError(error instanceof Error ? error.message : message)
+    }
+  }, [adoptWind])
+  const changeStandby = useCallback((enabled: boolean) => {
+    if (controlMode === 'backend') void sendWind(() => setBackendStandby(enabled), '待機命令送出失敗')
+    else setStandby(enabled)
+  }, [controlMode, sendWind])
+  const changeWindPreset = useCallback(<G extends WindGroup>(group: G, preset: WindPresets[G]) => {
+    if (controlMode !== 'backend') { setWindPresets((current) => ({ ...current, [group]: preset })); return }
+    if (!backendWindRef.current) return
+    const next = { ...fromBackendWind(backendWindRef.current.presets), [group]: preset }
+    // 先顯示手上的值（拖滑桿時），後端回應後跟上。 / Show the edited value at once; the backend response follows.
+    setBackendWind({ ...backendWindRef.current, presets: toBackendWind(next) })
+    void sendWind(() => setBackendWindPresets(toBackendWind(next)), '風流設定送出失敗')
+  }, [controlMode, sendWind])
+  // 後端控制時，「測試風」面板的變更送到後端。 / In backend control the test-wind panel writes to the backend.
+  useEffect(() => {
+    if (controlMode !== 'backend') return undefined
+    return subscribeWindPreview(() => {
+      const target = getWindTarget()
+      const encoded = JSON.stringify(target)
+      if (!backendWindRef.current || encoded === sentTarget.current) return
+      sentTarget.current = encoded
+      void sendWind(() => setBackendWindTarget(target), '測試風送出失敗')
+    })
+  }, [controlMode, sendWind])
+  // 其他裝置切換了待機：播放狀態回報的待機和手上的不同時重新讀取。 / Another client toggled standby: re-read.
+  const playbackStandby = playback.state?.active ? playback.state.standby === true : null
+  useEffect(() => {
+    if (controlMode !== 'backend' || playbackStandby === null || !backendWindRef.current) return
+    if (playbackStandby !== backendWindRef.current.standby) {
+      const request = ++windRequest.current
+      void getBackendWind().then((wind) => { if (request === windRequest.current) adoptWind(wind) }).catch(() => undefined)
+    }
+  }, [controlMode, playbackStandby, adoptWind])
+
   // 總亮度：拖滑桿時連續送出，只採用最後一次的回應；不擋其他操作。
   // Master level: sent repeatedly while dragging; only the latest response is used, and it does not block other actions.
   const masterRequest = useRef(0)
@@ -646,7 +743,7 @@ export function App() {
   const showPlaying = showEditor.preview === 'playing' || showEditor.preview === 'silent'
   // 演出預覽時，畫面跟著播放／停止；停止時停在目前位置。 / In a show preview the view runs only while playing.
   // 待機不跟演出預覽的播放／停止。 / Standby ignores the show preview's play / stop.
-  const scenePaused = paused || (!standby && previewShow !== null && !showPlaying)
+  const scenePaused = paused || (!inStandby && previewShow !== null && !showPlaying)
   // 模擬中演出的音樂位置（秒）。 / The simulator's position in the show's track, in seconds.
   const showPreviewSeconds = previewShow
     ? (previewShow.loop ? diagnostics.globalFrame % previewShow.totalFrames
@@ -691,10 +788,10 @@ export function App() {
                 setResetToken((current) => current + 1)
                 setDiagnostics(INITIAL_DIAGNOSTICS)
               }}>重設時間</button>
-              {!inBackend && (
-                <button type="button" className={standby ? 'active' : 'secondary'} aria-pressed={standby}
+              {(!inBackend || backendWind) && (
+                <button type="button" className={inStandby ? 'active' : 'secondary'} aria-pressed={inStandby}
                   title="全場改播待機效果（風流，在「風力」分頁設定）；再按一次回到原本的效果／串接／演出"
-                  onClick={() => setStandby((current) => !current)}>{standby ? '待機中' : '待機'}</button>
+                  onClick={() => changeStandby(!inStandby)}>{inStandby ? '待機中' : '待機'}</button>
               )}
             </div>
             <div className="segmented-control view-switch" aria-label="視角">
@@ -737,7 +834,7 @@ export function App() {
               fixturePresets={viewSequence && !inStandby ? NO_FIXTURES : viewFixtures}
               sequence={inStandby ? null : viewSequence}
               sequenceRevision={sequenceRevision}
-              syncFrame={inBackend ? backendFrame : !standby && previewShow && showEditor.preview === 'playing' ? showEditor.previewFrame : null}
+              syncFrame={inBackend ? backendFrame : !inStandby && previewShow && showEditor.preview === 'playing' ? showEditor.previewFrame : null}
               syncTolerance={!inBackend && previewShow && showEditor.preview === 'playing' ? 0 : 2}
               startFrame={previewShow ? sequenceSeekFrame(previewShow, seekTarget.current, settings.controllerFps)
                 : inSequence ? sequenceSeekFrame(sequenceSchedule, seekTarget.current, settings.controllerFps) : 0}
@@ -760,7 +857,7 @@ export function App() {
               fixtureColors={fixtureTestColors}
             />
             <p className="viewport-caption">
-              <strong>{inStandby ? '待機：風流（風力原型）' : activeEffect.label}</strong>
+              <strong>{inStandby ? '待機：風流' : activeEffect.label}</strong>
               <span>{settings.controllerFps} FPS · {settings.rpm} RPM</span>
               {inBackend && (
                 <span>{following
@@ -789,9 +886,9 @@ export function App() {
 
         <ControlPanel
           standby={inStandby}
-          onStandby={inBackend ? null : setStandby}
-          windPresets={windPresets}
-          onWindPreset={(group, preset) => setWindPresets((current) => ({ ...current, [group]: preset }))}
+          onStandby={inBackend && !backendWind ? null : changeStandby}
+          windPresets={shownWindPresets}
+          onWindPreset={changeWindPreset}
           settings={settings}
           weather={weather}
           onWeather={setWeather}
