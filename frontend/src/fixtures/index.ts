@@ -8,7 +8,7 @@
 import { clamp01, type RgbColor } from '../effects/contract'
 import { sampleGradient } from '../effects/color'
 import { hash01 } from '../effects/rouletteRing'
-import { sampleWindFlow, windKey, WIND_FLOW_COLORS, WIND_FLOW_DESCRIPTION, WIND_FLOW_PARAMETERS } from '../wind/windPreview'
+import { sampleWindBand, windFlowParameters, WIND_FLOW_COLORS, WIND_FLOW_FIXTURE_DESCRIPTION } from '../wind/windPreview'
 
 export const FIXTURE_SCHEMA_VERSION = 1 as const
 
@@ -164,8 +164,11 @@ export const FIXTURE_MANIFEST: readonly FixtureManifestEntry[] = [
     ],
   },
   {
-    id: 'wind-flow', label: '風流（風力原型）', description: WIND_FLOW_DESCRIPTION,
-    parameters: WIND_FLOW_PARAMETERS.map((item) => ({ ...item })),
+    id: 'wind-flow', label: '風流（風力原型）', description: WIND_FLOW_FIXTURE_DESCRIPTION,
+    // 每顆只有一個顏色，亮點比例預設比轉燈高。 / One colour per fixture, so a higher default sparkle density.
+    parameters: windFlowParameters(
+      { key: 'heightSpan', label: '高度錯開', unit: '（0 = 不看高度）', min: 0, max: 1, step: 0.05, defaultValue: 0 }, 0.5,
+    ),
   },
 ]
 
@@ -193,10 +196,33 @@ export function createDefaultFixturePreset(effectId: FixtureEffectId): FixturePr
   }
 }
 
+/** 風流的顏色：依風速在漸層上取；亮點帶內偏白（同轉燈）。 / Wind colour from the gradient, whiter inside the sparkle band. */
+function windFlowColor(colors: readonly RgbColor[], s: { colorPosition: number; mix: number }): RgbColor {
+  const base = sampleGradient(colors, s.colorPosition, false)
+  if (s.mix <= 0) return base
+  const amount = 0.5 * s.mix
+  return { r: base.r + (1 - base.r) * amount, g: base.g + (1 - base.g) * amount, b: base.b + (1 - base.b) * amount }
+}
+
 /** 風流：每顆在場地中的平面位置取樣。 / wind-flow: sampled at the fixture's plan position. */
+let lastWindContext: FixtureContext | null = null
+let lastWindPreset: FixturePreset | null = null
+let lastWindSample: ReturnType<typeof sampleWindBand> | null = null
+
 function windFlowSample(preset: FixturePreset, context: FixtureContext) {
-  return sampleWindFlow(windKey('fixture', preset.parameters), context.controllerFrame, context.controllerFps,
-    preset.parameters, context.normalizedX, context.normalizedY)
+  // 亮度與顏色各問一次（同一個 context 物件）：第二次用上一次的結果。 / Brightness then colour: reuse the first.
+  if (lastWindContext === context && lastWindPreset === preset && lastWindSample !== null) return lastWindSample
+  lastWindContext = context
+  lastWindPreset = preset
+  lastWindSample = computeWindFlowSample(preset, context)
+  return lastWindSample
+}
+
+function computeWindFlowSample(preset: FixturePreset, context: FixtureContext) {
+  const p = preset.parameters
+  // 較高的燈先亮（同轉燈由上往下）；亮點的隨機依編號，和轉燈的 LED 錯開。 / Higher fixtures lead; sparkles seeded by the index.
+  return sampleWindBand(context.controllerFrame, context.controllerFps, p, context.normalizedX, context.normalizedY,
+    (p.heightSpan ?? 0) * (1 - context.normalizedHeight), 900000 + context.fixtureIndex)
 }
 
 function frames(seconds: number, fps: number): number {
@@ -302,8 +328,10 @@ export function fixtureBrightness(preset: FixturePreset, context: FixtureContext
       const tail = Math.trunc(p.tailCount)
       return behind <= tail ? 1 - behind / (tail + 1) : 0
     }
-    case 'wind-flow':
-      return windFlowSample(preset, context).brightness
+    case 'wind-flow': {
+      const s = windFlowSample(preset, context)
+      return s.band * (1 - s.mix) + s.sparkle * s.mix
+    }
     case 'horizontal-flow': {
       // 亮帶跟著顏色一起流：最暗 1 - depth。 / Bright bands flow with the colours; the darkest is 1 - depth.
       const phase = horizontalFlowPhase(p, context)
@@ -418,7 +446,7 @@ export function sampleFixture(preset: FixturePreset, context: FixtureContext, ra
     : preset.effectId === 'horizontal-flow'
       ? sampleGradient(color.colors, horizontalFlowPhase(preset.parameters, context), true)
       : preset.effectId === 'wind-flow'
-        ? sampleGradient(color.colors, windFlowSample(preset, context).colorPosition, false)
+        ? windFlowColor(color.colors, windFlowSample(preset, context))
         : sampleGradient(color.colors, gradientPosition(color.axis, context), false)
   return {
     r: clamp01(base.r * brightness),

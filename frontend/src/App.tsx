@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { applyBackendPreset, getBackendPatch, getBackendPlayback, getBackendSequence, getBackendState, getWeatherState, restartBackendPlayback, saveBackendSequence, setBackendBlackout, setBackendMotor, type BackendPatch, type BackendPlayback, type BackendState, type WeatherState } from './backendApi'
 import { ControlPanel, type EditGroup } from './components/ControlPanel'
 import type { FixtureGroup } from './components/FixtureEditor'
-import type { FixturePreset } from './fixtures'
+import { createDefaultFixturePreset, type FixturePreset } from './fixtures'
 import { EXAMPLE_LAYOUT, siteLayout, type LayoutDocument, type LayoutPosition } from './site/layout'
 import { DEFAULT_PIXEL_ROTATION } from './site/spinnerGeometry'
 import {
@@ -57,6 +57,12 @@ export function App() {
     EFFECT_MANIFEST.map(({ id }) => [id, createDefaultEffectPreset(id, DEFAULT_SETTINGS.ledCount)]),
   ) as Record<EffectId, ReturnType<typeof createDefaultEffectPreset>>)
   const [sequenceEnabled, setSequenceEnabled] = useState(false)
+  // 待機：模擬模式下不管單一效果／串接／演出，全場改播風流（風力原型，只在前端）。
+  // Standby: in simulation the whole site plays wind-flow, whatever the single effect / sequence / show is (frontend only).
+  const [standby, setStandby] = useState(false)
+  const [standbyFixtures, setStandbyFixtures] = useState<FixturePresets>(() => ({
+    ball: createDefaultFixturePreset('wind-flow'), wash: createDefaultFixturePreset('wind-flow'),
+  }))
   const [sequenceSteps, setSequenceSteps] = useState<SequenceStep[]>(() => [
     createSequenceStep(1, createDefaultEffectPreset('center-out-sine')),
     createSequenceStep(2, createDefaultEffectPreset('sequential-center-fill')),
@@ -191,10 +197,19 @@ export function App() {
   const viewSequence = inBackend
     ? liveMode === 'sequence' ? backendSchedule : liveMode === 'show' ? backendShowSchedule : null
     : previewShow ?? (inSequence ? sequenceSchedule : null)
-  const viewPreset = inBackend && backendState ? backendState.preset : effectPreset
+  const inStandby = standby && !inBackend
+  const viewPreset = inBackend && backendState ? backendState.preset : inStandby ? effectPresets['wind-flow'] : effectPreset
   const backendFixtures: FixturePresets | null = backendState?.fixtures
     ? { ball: backendState.fixtures.ball.preset, wash: backendState.fixtures.wash.preset } : null
-  const viewFixtures = inBackend ? backendFixtures ?? NO_FIXTURES : fixturePresets
+  const viewFixtures = inBackend ? backendFixtures ?? NO_FIXTURES : inStandby ? standbyFixtures : fixturePresets
+  // 待機用的球燈／洗牆燈風流：記住各群組最後一次調過的風流設定。 / Standby keeps each group's last edited wind-flow.
+  useEffect(() => {
+    setStandbyFixtures((current) => {
+      const ball = fixturePresets.ball?.effectId === 'wind-flow' ? fixturePresets.ball : current.ball
+      const wash = fixturePresets.wash?.effectId === 'wind-flow' ? fixturePresets.wash : current.wash
+      return ball === current.ball && wash === current.wash ? current : { ball, wash }
+    })
+  }, [fixturePresets])
   const playbackRef = useRef(playback)
   playbackRef.current = playback
   const backendFrame = useCallback(() => (
@@ -618,7 +633,8 @@ export function App() {
 
   const showPlaying = showEditor.preview === 'playing' || showEditor.preview === 'silent'
   // 演出預覽時，畫面跟著播放／停止；停止時停在目前位置。 / In a show preview the view runs only while playing.
-  const scenePaused = paused || (previewShow !== null && !showPlaying)
+  // 待機不跟演出預覽的播放／停止。 / Standby ignores the show preview's play / stop.
+  const scenePaused = paused || (!standby && previewShow !== null && !showPlaying)
   // 模擬中演出的音樂位置（秒）。 / The simulator's position in the show's track, in seconds.
   const showPreviewSeconds = previewShow
     ? (previewShow.loop ? diagnostics.globalFrame % previewShow.totalFrames
@@ -663,6 +679,11 @@ export function App() {
                 setResetToken((current) => current + 1)
                 setDiagnostics(INITIAL_DIAGNOSTICS)
               }}>重設時間</button>
+              {!inBackend && (
+                <button type="button" className={standby ? 'active' : 'secondary'} aria-pressed={standby}
+                  title="全場改播待機效果（風流）；再按一次回到原本的效果／串接／演出"
+                  onClick={() => setStandby((current) => !current)}>{standby ? '待機中' : '待機'}</button>
+              )}
             </div>
             <div className="segmented-control view-switch" aria-label="視角">
               {VIEW_LABELS.map(([value, label]) => (
@@ -701,10 +722,10 @@ export function App() {
               settings={settings}
               weather={weather}
               effectPreset={viewPreset}
-              fixturePresets={viewSequence ? NO_FIXTURES : viewFixtures}
-              sequence={viewSequence}
+              fixturePresets={viewSequence && !inStandby ? NO_FIXTURES : viewFixtures}
+              sequence={inStandby ? null : viewSequence}
               sequenceRevision={sequenceRevision}
-              syncFrame={inBackend ? backendFrame : previewShow && showEditor.preview === 'playing' ? showEditor.previewFrame : null}
+              syncFrame={inBackend ? backendFrame : !standby && previewShow && showEditor.preview === 'playing' ? showEditor.previewFrame : null}
               syncTolerance={!inBackend && previewShow && showEditor.preview === 'playing' ? 0 : 2}
               startFrame={previewShow ? sequenceSeekFrame(previewShow, seekTarget.current, settings.controllerFps)
                 : inSequence ? sequenceSeekFrame(sequenceSchedule, seekTarget.current, settings.controllerFps) : 0}
@@ -726,7 +747,7 @@ export function App() {
               fixtureColors={fixtureTestColors}
             />
             <p className="viewport-caption">
-              <strong>{activeEffect.label}</strong>
+              <strong>{inStandby ? '待機：風流（風力原型）' : activeEffect.label}</strong>
               <span>{settings.controllerFps} FPS · {settings.rpm} RPM</span>
               {inBackend && (
                 <span>{following
@@ -754,6 +775,7 @@ export function App() {
         </div>
 
         <ControlPanel
+          standby={inStandby}
           settings={settings}
           weather={weather}
           onWeather={setWeather}

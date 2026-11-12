@@ -100,18 +100,6 @@ export function windFlowRate(speedMs: number, p: Readonly<Record<string, number>
   return (p.speedHz ?? 0.2) * (minRate + (maxRate - minRate) * windStrength(speedMs, p))
 }
 
-const keyCache = new WeakMap<object, string>()
-
-/** 累積器的鍵：群組＋參數（每個參數物件只序列化一次）。 / Accumulator key: group plus parameters, serialized once per object. */
-export function windKey(group: string, parameters: Readonly<Record<string, number>>): string {
-  let key = keyCache.get(parameters)
-  if (key === undefined) {
-    key = JSON.stringify(parameters)
-    keyCache.set(parameters, key)
-  }
-  return group + ':' + key
-}
-
 export type WindAdvance = {
   turns: number
   /** 亮點帶進度 0–1（null = 沒有亮點帶）。 / Sparkle sweep progress 0–1 (null: no sweep). */
@@ -210,11 +198,6 @@ export function advanceWind(key: string, frame: number, fps: number, p: Readonly
   return accumulator.result
 }
 
-/** 流過的圈數（球燈、洗牆燈的風流）。 / Turns travelled (fixture wind-flow). */
-export function windFlowTurns(key: string, frame: number, fps: number, p: Readonly<Record<string, number>>): number {
-  return advanceWind(key, frame, fps, p).turns
-}
-
 /**
  * 沿風向的場地位置 0–1：把單位方格的四個角投影到風向上，最上風處 = 0、最下風處 = 1。
  * Position along the wind, 0–1: the unit square's corners projected on the direction, most upwind = 0.
@@ -228,41 +211,161 @@ export function alongWind(x: number, y: number, flowDeg: number): number {
   return high === low ? 0.5 : (x * c + y * s - low) / (high - low)
 }
 
-export type WindFlowSample = { brightness: number; colorPosition: number }
-
-/**
- * 風流（wind-flow）：亮帶沿風吹往的方向流過場地，風越大流得越快；顏色依（較慢平滑的）風速在漸層上取色，
- * 亮帶波峰再往「風較大」那一側偏 colorSpread。
- * wind-flow: bright bands travel across the site toward where the wind blows, faster in stronger wind; the colour is
- * picked along the gradient by the (slower smoothed) wind speed, with crests shifted colorSpread toward stronger wind.
- */
-export function sampleWindFlow(
-  key: string, frame: number, fps: number, p: Readonly<Record<string, number>>, x: number, y: number,
-): WindFlowSample {
-  const wind = getWindPreview()
-  const turns = windFlowTurns(key, frame, fps, p)
-  const angle = (wind.flowDeg * Math.PI) / 180
-  const along = x * Math.cos(angle) + y * Math.sin(angle)
-  const phase = (p.waveCount ?? 1) * along - turns
-  const crest = 0.5 + 0.5 * Math.cos(2 * Math.PI * phase)
-  const depth = p.depth ?? 0.6
-  const brightness = 1 - depth * (1 - crest)
-  const colorPosition = clamp01(windStrength(wind.colorSpeedMs, p) + (p.colorSpread ?? 0.15) * (crest - 0.5))
-  return { brightness, colorPosition }
+export type WindBandSample = {
+  /** 柔和亮帶的亮度。 / Soft band brightness. */
+  band: number
+  /** 隨機亮點的亮度。 / Sparkle brightness. */
+  sparkle: number
+  /** 0 = 純亮帶、1 = 純亮點。 / 0: band only, 1: sparkles only. */
+  mix: number
+  colorPosition: number
 }
 
-/** 風力效果共用的參數（前後端預設值同 PLAN.md §10.6）。 / Shared wind-flow parameters. */
-export const WIND_FLOW_PARAMETERS = [
-  { key: 'speedHz', label: '基準流速', unit: '圈/秒', min: 0.02, max: 1, step: 0.02, defaultValue: 0.2 },
-  { key: 'minRate', label: '無風倍率', unit: '倍', min: 0, max: 2, step: 0.1, defaultValue: 0.6 },
-  { key: 'maxRate', label: '強風倍率', unit: '倍', min: 1, max: 8, step: 0.25, defaultValue: 3 },
-  { key: 'calmMs', label: '無風門檻', unit: 'm/s', min: 0, max: 5, step: 0.5, defaultValue: 1 },
-  { key: 'fullMs', label: '最大風速', unit: 'm/s', min: 3, max: 25, step: 0.5, defaultValue: 12 },
-  { key: 'curve', label: '風速曲線', unit: '（>1 小風變化小）', min: 0.5, max: 3, step: 0.1, defaultValue: 1 },
-  { key: 'waveCount', label: '色帶數', unit: '', min: 0.5, max: 6, step: 0.5, defaultValue: 1 },
-  { key: 'depth', label: '亮度起伏', unit: '', min: 0, max: 1, step: 0.05, defaultValue: 0.6 },
-  { key: 'colorSpread', label: '波峰色偏', unit: '', min: 0, max: 0.5, step: 0.05, defaultValue: 0.15 },
+/** 決定流動與亮點帶時間的參數；這些值相同的群組共用同一個狀態，所以轉燈和球燈的亮帶、亮點帶同步。 */
+/** Parameters that set the timing; groups with the same values share one state, so spinners and balls stay in step. */
+const TIMING_KEYS = [
+  'speedHz', 'minRate', 'maxRate', 'calmMs', 'fullMs', 'curve', 'sparkleBelowMs', 'sweepSeconds', 'sweepFastSeconds', 'gapSeconds',
 ] as const
+const timingKeyCache = new WeakMap<object, string>()
+
+function timingKey(p: Readonly<Record<string, number>>): string {
+  let key = timingKeyCache.get(p)
+  if (key === undefined) {
+    key = TIMING_KEYS.map((name) => p[name]).join(',')
+    timingKeyCache.set(p, key)
+  }
+  return key
+}
+
+function hash01(a: number, b: number, salt: number): number {
+  let h = (Math.imul(a | 0, 0x9e3779b1) ^ Math.imul(b | 0, 0x85ebca6b) ^ Math.imul(salt | 0, 0xc2b2ae35)) >>> 0
+  h = Math.imul(h ^ (h >>> 16), 0x7feb352d) >>> 0
+  h = Math.imul(h ^ (h >>> 15), 0x846ca68b) >>> 0
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296
+}
+
+/**
+ * 風流（wind-flow）一個點的取樣，轉燈的 LED 與球燈、洗牆燈共用：
+ * - 柔和的亮帶沿風吹往的方向流過全場：相位 = 沿風向的位置 × 亮帶數 + vertical − 流過的圈數，離亮帶中心越遠越暗（高斯形）。
+ * - 風速達到門檻時，一道亮點帶沿（開始時鎖定的）風向掃過；帶內平順地由亮帶換成隨機閃爍的亮點。
+ * - 顏色依（較慢平滑的）風速在漸層上取，波峰再往風較大那側偏 colorSpread。
+ * x、y 是群組內的平面位置 0–1；vertical 是額外的相位（轉燈：球面由上到下；球燈：依高度）；id 決定各點亮點的隨機。
+ *
+ * One wind-flow sample, shared by spinner LEDs and ball / wash fixtures: a soft Gaussian band travelling along the
+ * wind, a sparkle band sweeping along the locked direction at or above the threshold, and a colour picked along the
+ * gradient by the slower smoothed wind speed. vertical adds phase (sphere top to bottom, or fixture height); id seeds
+ * each point's sparkle.
+ */
+type BurstState = {
+  burst: number
+  turns: number
+  sweep: number | null
+  played: number
+  colorStrength: number
+  /** 沿風向位置的係數：along = (x × c + y × s − low) × scale。 / along = (x × c + y × s − low) × scale. */
+  flow: [c: number, s: number, low: number, scale: number]
+  sweepFlow: [c: number, s: number, low: number, scale: number]
+}
+
+function alongCoefficients(flowDeg: number): [number, number, number, number] {
+  const angle = (flowDeg * Math.PI) / 180
+  const c = Math.cos(angle)
+  const s = Math.sin(angle)
+  const low = Math.min(0, c) + Math.min(0, s)
+  const high = Math.max(0, c) + Math.max(0, s)
+  return [c, s, low, high === low ? 0 : 1 / (high - low)]
+}
+
+// 同一次畫面更新（同一個 JS 工作）內，風力狀態對每個取樣點都相同：只算一次，工作結束後（microtask）作廢。
+// 原本每顆 LED 都重讀時間、重算平滑與亮點帶，24 台 × 129 顆每格上萬次，在 iPad 上會卡。
+// Within one render pass (one JS task) the wind state is the same for every sample: computed once, invalidated by a
+// microtask when the task ends. Re-reading the clock and smoothing for every LED (over 10,000 times a frame) janked
+// on an iPad.
+let burst = 0
+let burstQueued = false
+const burstStates = new WeakMap<object, BurstState>()
+let lastParameters: object | null = null
+let lastState: BurstState | null = null
+
+function burstState(frame: number, fps: number, p: Readonly<Record<string, number>>): BurstState {
+  if (lastParameters === p && lastState !== null && lastState.burst === burst) return lastState
+  let state = burstStates.get(p)
+  if (!state || state.burst !== burst) {
+    if (!burstQueued) {
+      burstQueued = true
+      queueMicrotask(() => { burst += 1; burstQueued = false })
+    }
+    const wind = getWindPreview()
+    const { turns, sweep, sweepDeg, played } = advanceWind(timingKey(p), frame, fps, p)
+    state = {
+      burst, turns, sweep, played,
+      colorStrength: windStrength(wind.colorSpeedMs, p),
+      flow: alongCoefficients(wind.flowDeg),
+      sweepFlow: alongCoefficients(sweepDeg),
+    }
+    burstStates.set(p, state)
+  }
+  lastParameters = p
+  lastState = state
+  return state
+}
+
+export function sampleWindBand(
+  frame: number, fps: number, p: Readonly<Record<string, number>>, x: number, y: number, vertical: number, id: number,
+): WindBandSample {
+  const state = burstState(frame, fps, p)
+  const flow = state.flow
+  const along = flow[3] === 0 ? 0.5 : (x * flow[0] + y * flow[1] - flow[2]) * flow[3]
+  const cycle = (p.waveCount ?? 1) * along + vertical - state.turns
+  const distance = Math.abs(cycle - Math.round(cycle)) * 2
+  const crest = Math.exp(-((distance / (p.bandSoftness ?? 0.5)) ** 2) * 2)
+  const minLevel = p.minLevel ?? 0.2
+  const band = minLevel + (1 - minLevel) * crest
+  const colorPosition = clamp01(state.colorStrength + (p.colorSpread ?? 0.15) * (crest - 0.5))
+  if (state.sweep === null) return { band, sparkle: 0, mix: 0, colorPosition }
+  // 亮點帶：前緣由最上風處前一個帶寬掃到最下風處後一個帶寬。 / From one band width upwind to one past the far end.
+  const width = p.bandWidth ?? 0.3
+  const centre = -width / 2 + state.sweep * (1 + width)
+  const sweepFlow = state.sweepFlow
+  const sweepAlong = sweepFlow[3] === 0 ? 0.5 : (x * sweepFlow[0] + y * sweepFlow[1] - sweepFlow[2]) * sweepFlow[3]
+  const inside = clamp01(1 - Math.abs(sweepAlong - centre) / (width / 2))
+  const mix = inside * inside * (3 - 2 * inside)
+  if (mix <= 0) return { band, sparkle: 0, mix: 0, colorPosition }
+  // 每個點各自錯開的閃爍（依播放時間）：每 twinkleFrames 一格，依比例亮起，格內以半個正弦亮起再熄。
+  // Each point twinkles on its own offset (by played time): one cell per twinkleFrames, lit by density.
+  const length = Math.max(1, Math.round(p.twinkleFrames ?? 6))
+  const local = Math.floor(state.played * 40) + Math.floor(hash01(0, id, 67) * length)
+  const cell = Math.floor(local / length)
+  const within = local - cell * length
+  const sparkle = hash01(cell, id, 71) < (p.density ?? 0.15) ? Math.sin((Math.PI * (within + 0.5)) / length) : 0
+  return { band, sparkle, mix, colorPosition }
+}
+
+type WindParameter = { key: string; label: string; unit: string; min: number; max: number; step: number; defaultValue: number }
+
+/** 風流的參數；vertical 是各群組自己的「上下錯開」參數，density 預設依群組不同。 / wind-flow parameters per group. */
+export function windFlowParameters(vertical: WindParameter, density: number): WindParameter[] {
+  return [
+    { key: 'speedHz', label: '基準流速', unit: '圈/秒', min: 0.02, max: 1, step: 0.02, defaultValue: 0.15 },
+    { key: 'minRate', label: '無風倍率', unit: '倍', min: 0, max: 2, step: 0.1, defaultValue: 0.6 },
+    { key: 'maxRate', label: '強風倍率', unit: '倍', min: 1, max: 8, step: 0.25, defaultValue: 3 },
+    { key: 'calmMs', label: '無風門檻', unit: 'm/s', min: 0, max: 5, step: 0.5, defaultValue: 1 },
+    { key: 'fullMs', label: '最大風速', unit: 'm/s', min: 3, max: 25, step: 0.5, defaultValue: 12 },
+    { key: 'curve', label: '風速曲線', unit: '（>1 小風變化小）', min: 0.5, max: 3, step: 0.1, defaultValue: 1 },
+    { key: 'waveCount', label: '場地亮帶數', unit: '', min: 0.5, max: 4, step: 0.5, defaultValue: 1 },
+    vertical,
+    { key: 'bandSoftness', label: '亮帶寬度', unit: '（越大越柔和）', min: 0.1, max: 1, step: 0.05, defaultValue: 0.5 },
+    { key: 'minLevel', label: '最低亮度', unit: '', min: 0, max: 0.9, step: 0.05, defaultValue: 0.2 },
+    { key: 'colorSpread', label: '波峰色偏', unit: '', min: 0, max: 0.5, step: 0.05, defaultValue: 0.15 },
+    { key: 'sparkleBelowMs', label: '亮點門檻 X', unit: 'm/s（達到時亮點帶掃過）', min: 0, max: 15, step: 0.5, defaultValue: 3 },
+    { key: 'sweepSeconds', label: '亮點帶掃過時間（門檻風速）', unit: 's', min: 0.3, max: 30, step: 0.1, defaultValue: 2 },
+    { key: 'sweepFastSeconds', label: '亮點帶掃過時間（最大風速）', unit: 's', min: 0.2, max: 30, step: 0.1, defaultValue: 0.6 },
+    { key: 'gapSeconds', label: '亮點帶間隔', unit: 's', min: 0, max: 60, step: 0.5, defaultValue: 6 },
+    { key: 'bandWidth', label: '亮點帶寬度', unit: '（場地 0–1）', min: 0.05, max: 1, step: 0.05, defaultValue: 0.3 },
+    { key: 'density', label: '亮點比例', unit: '', min: 0.02, max: 1, step: 0.02, defaultValue: density },
+    { key: 'twinkleFrames', label: '亮點閃爍長度', unit: '影格', min: 1, max: 40, step: 1, defaultValue: 6 },
+  ]
+}
 
 /** 預設漸層：無風 → 強風。 / Default gradient, calm to strong. */
 export const WIND_FLOW_COLORS = [
@@ -273,7 +376,14 @@ export const WIND_FLOW_COLORS = [
   { r: 1, g: 0.28, b: 0.49 },
 ]
 
-export const WIND_FLOW_DESCRIPTION =
-  '【風力效果原型，只在前端預覽】亮帶沿風吹往的方向流過整個場地，風越大流得越快（基準流速 × 無風倍率 → 強風倍率）；'
-  + '漸層代表風速：最左邊的顏色 = 無風、最右邊 = 最大風速，波峰再往風較大那側偏「波峰色偏」。純色時只有亮帶流動。'
-  + '風速、風向用「預覽風力」調整。'
+const DESCRIPTION_TAIL = '風越大流得越快（基準流速 × 無風倍率 → 強風倍率）。風速達到「亮點門檻 X」時，另有一道隨機亮點帶沿風向'
+  + '週期性掃過全場（風越大掃得越快：門檻風速時花「掃過時間（門檻風速）」、最大風速時花「掃過時間（最大風速）」；之後隔「間隔」再來一道），'
+  + '經過的燈變成隨機閃爍的亮點，離開後恢復亮帶；每道開始時鎖定當下的風向，一定掃到底。低於門檻時只有亮帶。'
+  + '效果依實際時間進行，不受串接段落重複、重設時間影響；流速、門檻、掃過時間、間隔都相同的群組（轉燈、球燈、洗牆燈）會同步。'
+  + '漸層代表風速：最左邊 = 無風、最右邊 = 最大風速。風速、風向用「預覽風力」調整。'
+
+export const WIND_FLOW_SPINNER_DESCRIPTION = '【風力效果原型，只在前端預覽】柔和的亮帶沿風吹往的方向流過全場的轉燈，'
+  + '經過每台時由上往下掃過（「球面上下錯開」設 0 = 整顆一起亮），' + DESCRIPTION_TAIL
+
+export const WIND_FLOW_FIXTURE_DESCRIPTION = '【風力效果原型，只在前端預覽】柔和的亮帶沿風吹往的方向流過全場的燈，'
+  + '「高度錯開」大於 0 時較高的燈先亮、較低的晚一點（同轉燈由上往下），' + DESCRIPTION_TAIL

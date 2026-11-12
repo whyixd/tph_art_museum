@@ -38,6 +38,8 @@ type NumericSetting = Exclude<keyof SimulationSettings, 'ledCount'>
 type ControlTab = 'effect' | 'color' | 'sequence' | 'show' | 'backend' | 'weather' | 'physics'
 
 type ControlPanelProps = {
+  /** 待機中（全場播風流）：顯示預覽風力。 / Standby (wind-flow everywhere): show the preview wind. */
+  standby?: boolean
   settings: SimulationSettings
   weather: WeatherState | null
   onWeather: (weather: WeatherState) => void
@@ -349,6 +351,7 @@ function effectParameterMax(
 
 export function ControlPanel({
   settings,
+  standby = false,
   weather,
   onWeather,
   effectPreset,
@@ -681,7 +684,10 @@ export function ControlPanel({
       <div className="control-tabpanel" id="control-tabpanel" role="tabpanel" aria-labelledby={`control-tab-${shownTab}`}>
         {(shownTab === 'effect' || shownTab === 'color') && controlMode === 'backend' && backendApplyBar()}
         {(shownTab === 'effect' || shownTab === 'color') && groupSwitch}
-        {(shownTab === 'effect' || shownTab === 'color') && (effectPreset.effectId === 'wind-flow'
+        {(shownTab === 'effect' || shownTab === 'color') && standby && (
+          <p className="control-note">待機中：全場播放風流（轉燈用「風流」的設定，球燈、洗牆燈用各自最後調過的風流設定）。要調整風流，先按一次「待機中」離開待機，在各群組選「風流」調好後再切回來。</p>
+        )}
+        {(shownTab === 'effect' || shownTab === 'color') && (standby || effectPreset.effectId === 'wind-flow'
           || Object.values(fixturePresets).some((preset) => preset?.effectId === 'wind-flow')) && <WindPreviewPanel />}
         {shownTab === 'effect' && editGroup !== 'spinner' && fixtureEditor('effect')}
         {shownTab === 'color' && editGroup !== 'spinner' && fixtureEditor('color')}
