@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { applyBackendPreset, getBackendPatch, getBackendPlayback, getBackendSequence, getBackendState, getWeatherState, restartBackendPlayback, saveBackendSequence, setBackendBlackout, setBackendMotor, type BackendPatch, type BackendPlayback, type BackendState, type WeatherState } from './backendApi'
+import { applyBackendPreset, getBackendPatch, getBackendPlayback, getBackendSequence, getBackendState, getWeatherState, restartBackendPlayback, saveBackendSequence, setBackendBlackout, setBackendMasterLevel, setBackendMotor, type BackendPatch, type BackendPlayback, type BackendState, type WeatherState } from './backendApi'
 import { ControlPanel, type EditGroup } from './components/ControlPanel'
+import type { WindPresets } from './components/WindPanel'
 import type { FixtureGroup } from './components/FixtureEditor'
 import { createDefaultFixturePreset, type FixturePreset } from './fixtures'
 import { EXAMPLE_LAYOUT, siteLayout, type LayoutDocument, type LayoutPosition } from './site/layout'
@@ -60,7 +61,9 @@ export function App() {
   // 待機：模擬模式下不管單一效果／串接／演出，全場改播風流（風力原型，只在前端）。
   // Standby: in simulation the whole site plays wind-flow, whatever the single effect / sequence / show is (frontend only).
   const [standby, setStandby] = useState(false)
-  const [standbyFixtures, setStandbyFixtures] = useState<FixturePresets>(() => ({
+  // 風流（待機效果）三個群組的設定，在「風力」分頁調整。 / wind-flow (standby) presets, edited in the wind tab.
+  const [windPresets, setWindPresets] = useState<WindPresets>(() => ({
+    spinner: createDefaultEffectPreset('wind-flow', DEFAULT_SETTINGS.ledCount),
     ball: createDefaultFixturePreset('wind-flow'), wash: createDefaultFixturePreset('wind-flow'),
   }))
   const [sequenceSteps, setSequenceSteps] = useState<SequenceStep[]>(() => [
@@ -198,18 +201,10 @@ export function App() {
     ? liveMode === 'sequence' ? backendSchedule : liveMode === 'show' ? backendShowSchedule : null
     : previewShow ?? (inSequence ? sequenceSchedule : null)
   const inStandby = standby && !inBackend
-  const viewPreset = inBackend && backendState ? backendState.preset : inStandby ? effectPresets['wind-flow'] : effectPreset
+  const viewPreset = inBackend && backendState ? backendState.preset : inStandby ? windPresets.spinner : effectPreset
   const backendFixtures: FixturePresets | null = backendState?.fixtures
     ? { ball: backendState.fixtures.ball.preset, wash: backendState.fixtures.wash.preset } : null
-  const viewFixtures = inBackend ? backendFixtures ?? NO_FIXTURES : inStandby ? standbyFixtures : fixturePresets
-  // 待機用的球燈／洗牆燈風流：記住各群組最後一次調過的風流設定。 / Standby keeps each group's last edited wind-flow.
-  useEffect(() => {
-    setStandbyFixtures((current) => {
-      const ball = fixturePresets.ball?.effectId === 'wind-flow' ? fixturePresets.ball : current.ball
-      const wash = fixturePresets.wash?.effectId === 'wind-flow' ? fixturePresets.wash : current.wash
-      return ball === current.ball && wash === current.wash ? current : { ball, wash }
-    })
-  }, [fixturePresets])
+  const viewFixtures = inBackend ? backendFixtures ?? NO_FIXTURES : inStandby ? windPresets : fixturePresets
   const playbackRef = useRef(playback)
   playbackRef.current = playback
   const backendFrame = useCallback(() => (
@@ -454,6 +449,23 @@ export function App() {
     }
   }, [backendBusy, backendState, controlMode])
 
+  // 總亮度：拖滑桿時連續送出，只採用最後一次的回應；不擋其他操作。
+  // Master level: sent repeatedly while dragging; only the latest response is used, and it does not block other actions.
+  const masterRequest = useRef(0)
+  const setMasterLevel = useCallback(async (level: number) => {
+    if (controlMode !== 'backend') return
+    const request = ++masterRequest.current
+    try {
+      const state = await setBackendMasterLevel(level)
+      if (request !== masterRequest.current) return
+      setBackendState(state)
+      setBackendError(null)
+      setPlaybackPoll((current) => current + 1)
+    } catch (error) {
+      if (request === masterRequest.current) setBackendError(error instanceof Error ? error.message : '亮度命令送出失敗')
+    }
+  }, [controlMode])
+
   const restartBackend = useCallback(async (source: 'sequence' | 'single') => {
     if (controlMode !== 'backend' || backendBusy || backendState === null) return
     const request = backendRequest.current
@@ -681,7 +693,7 @@ export function App() {
               }}>重設時間</button>
               {!inBackend && (
                 <button type="button" className={standby ? 'active' : 'secondary'} aria-pressed={standby}
-                  title="全場改播待機效果（風流）；再按一次回到原本的效果／串接／演出"
+                  title="全場改播待機效果（風流，在「風力」分頁設定）；再按一次回到原本的效果／串接／演出"
                   onClick={() => setStandby((current) => !current)}>{standby ? '待機中' : '待機'}</button>
               )}
             </div>
@@ -743,6 +755,7 @@ export function App() {
               onSelectUnit={(unit) => { if (editingOverride) showEditor.toggleOverrideUnit(unit + 1); else setSelectedUnit(unit) }}
               onSelectFixture={setSelectedFixture}
               onDiagnostics={setDiagnostics}
+              masterLevel={inBackend ? backendState?.masterLevel ?? 1 : 1}
               unitColors={unitTestColors}
               fixtureColors={fixtureTestColors}
             />
@@ -776,6 +789,9 @@ export function App() {
 
         <ControlPanel
           standby={inStandby}
+          onStandby={inBackend ? null : setStandby}
+          windPresets={windPresets}
+          onWindPreset={(group, preset) => setWindPresets((current) => ({ ...current, [group]: preset }))}
           settings={settings}
           weather={weather}
           onWeather={setWeather}
@@ -830,6 +846,7 @@ export function App() {
           onApplyBackend={() => { void applyToBackend(effectPreset, fixturePresets) }}
           onMotor={(enabled, units) => { void setMotor(enabled, units) }}
           onBlackout={(enabled) => { void setBlackout(enabled) }}
+          onMasterLevel={(level) => { void setMasterLevel(level) }}
           onRestartBackend={(source) => { void restartBackend(source) }}
           onUnitColorTest={() => setPlaybackPoll((current) => current + 1)}
           onSetting={updateSetting}

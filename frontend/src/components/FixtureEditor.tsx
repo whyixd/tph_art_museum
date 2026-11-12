@@ -48,7 +48,8 @@ export function FixtureEditor({ group, tab, preset, count, weatherEnabled, onCha
               color: (id !== 'wind-flow' && preset?.color) || createDefaultFixturePreset(id).color,
               ...(preset?.maxLevel !== undefined ? { maxLevel: preset.maxLevel } : {}) })
           }}>
-            {FIXTURE_MANIFEST.map((entry) => (
+            {/* 風流只在「風力」分頁設定。 / wind-flow is set up in the wind tab only. */}
+            {FIXTURE_MANIFEST.filter((entry) => entry.id !== 'wind-flow').map((entry) => (
               <option key={entry.id} value={entry.id}>{entry.id === 'off' ? '關閉（全暗）' : entry.label}</option>
             ))}
           </select>

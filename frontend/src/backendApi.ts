@@ -64,6 +64,8 @@ export type BackendState = {
   motor: { channel: number; enabled: boolean; value: number; units?: boolean[]; waiting?: (number | null)[] }
   /** true：全部燈光關閉（轉燈、球燈、洗牆燈送全黑；舊後端沒有）。 / true: every light sends black (missing on old backends). */
   blackout?: boolean
+  /** 總亮度 0..1（轉燈、球燈、洗牆燈；舊後端沒有）。 / Master level 0..1 for every light (missing on old backends). */
+  masterLevel?: number
   output: {
     ip: string
     universe: number
@@ -188,6 +190,15 @@ export async function setBackendMotor(enabled: boolean, units?: number[]): Promi
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(units ? { enabled, units } : { enabled }),
+  }))
+}
+
+/** 總亮度 0..1：轉燈、球燈、洗牆燈一起調暗；馬達不受影響。 / Master level 0..1 for every light; motors untouched. */
+export async function setBackendMasterLevel(level: number): Promise<BackendState> {
+  return readState<BackendState>(await fetch('/api/master', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ level }),
   }))
 }
 
@@ -344,6 +355,8 @@ type ActivePlaybackBase = {
   fixtureColors?: Partial<Record<BackendFixtureGroup, (RgbColor | null)[]>>
   /** 全部關燈中才有（unitColors／fixtureColors 此時全黑）。 / Only during a blackout (the colours above are then black). */
   blackout?: true
+  /** 總亮度 0..1（舊後端沒有）。 / Master level 0..1 (missing on old backends). */
+  masterLevel?: number
 }
 
 export type SequencePlayback = ActivePlaybackBase & {

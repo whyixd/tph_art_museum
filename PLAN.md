@@ -902,3 +902,9 @@ CPython、PyPy 都要通過；frontend 加上 `tsc`、build。
 - **效能**：風力狀態每次畫面更新只算一次（同一個 JS 工作內共用，microtask 作廢），每顆 LED 的亮度與顏色共用一次取樣。24 台 × 129 顆每格 1.65 ms → 0.46 ms（Apple M4；中心擴散 0.37 ms），iPad mini 上預覽不再卡頓（使用者確認）。
 - **待機按鈕**（模擬模式，畫面上方）：全場改播風流，不管單一效果／串接／演出；再按一次回到原本的內容。轉燈用「風流」目前的設定，球燈、洗牆燈用各群組最後調過的風流設定。只在前端；現場的待機排程仍待 M13 與後端的風流。
 - 驗證：frontend 163 個測試（`effects.test.ts` 的效果 ID 清單加入 `wind-flow`）、`tsc` 通過；風流本身還沒有單元測試與前後端一致性向量。
+
+### 2026-11-12：「風力」分頁、全部燈光亮度
+
+- **「風力」分頁**（前端）：待機切換、預覽風力、三個群組的風流設定（參數、亮度上限、漸層）都集中在這裡。風流從一般的效果下拉選單拿掉（只當待機效果，串接、演出不能選）；待機用的風流設定獨立保存（`windPresets`），待機中可以直接調。後端仍沒有風流，「後端控制」模式不能切換待機。
+- **全部燈光亮度**（後端＋前端）：`PresetStore.master_level`（0..1，只在記憶體，後端重啟後回到 1）。`PUT /api/master` `{"level": 0..1}`；`GET /api/state`、`GET /api/playback` 多了 `masterLevel`。輸出迴圈 `master_provider`：轉燈在量化成位元組時乘上（`[hardware] brightness × master`），球燈、洗牆燈乘在顏色上；效果、演出、單色測試、閃拍都算，馬達不受影響。前端「後端」分頁（關燈按鈕下方）：滑桿 0–100% 與 0%／40%／80%／100% 按鈕；3D 鏡像跟著變暗。
+- 驗證：backend 236 個測試（新增 `test_master_level_scales_every_group_and_keeps_motors`、`test_master_level_api_and_playback_mirror`）；frontend 163 個測試、`tsc` 通過。開發機（`--api-only`）Playwright：按 40%／0%／80%、滑桿 65 → `/api/state` 的 `masterLevel` 為 0.4／0／0.8／0.65。**未接燈具實測**。

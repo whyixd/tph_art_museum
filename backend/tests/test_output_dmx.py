@@ -224,7 +224,71 @@ class BlackoutOutputTests(unittest.TestCase):
         self.assertEqual(dark[1], wash_node.packets[1])                  # over the wash colour test
 
 
+    def test_master_level_scales_every_group_and_keeps_motors(self):
+        level = [1.0]
+        clients = []
+        now = [0.0]
+
+        def factory(*args, **kwargs):
+            clients.append(FakeClient(*args, **kwargs))
+            return clients[-1]
+
+        def sleep(seconds):
+            now[0] += seconds
+            level[0] = 0.4  # 第 2 格起 40%。 / 40% from the second frame.
+
+        # 閃拍全白，方便比對位元組。 / Beat flash is full white, easy to compare bytes.
+        stream(self.config, self.preset, seconds=0.05, client_factory=factory, clock=lambda: now[0], sleep=sleep,
+               fixture_preset_provider=lambda: {"ball": ball_preset(), "wash": None}, motor_provider=lambda: 255,
+               beat_flash_provider=lambda: 1.0, master_provider=lambda: level[0])
+        spinner, ball_node, _wash_node = clients
+        self.assertEqual(bytes([255]) * 387, spinner.packets[0][:387])   # frame 0: 100%
+        self.assertEqual(bytes([102]) * 387, spinner.packets[1][:387])   # frame 1: 40% of 255
+        self.assertEqual([255, 255, 0], [packet[468] for packet in spinner.packets])  # motor untouched
+        white = [(1.0, 1.0, 1.0)] * 37
+        dimmed = [(0.4, 0.4, 0.4)] * 37
+        self.assertEqual(build_universes({"ball": white, "wash": [BLACK] * 3}, self.dmx)[0], ball_node.packets[0])
+        self.assertEqual(build_universes({"ball": dimmed, "wash": [BLACK] * 3}, self.dmx)[0], ball_node.packets[1])
+
+
 class FixtureApiTests(unittest.TestCase):
+    def test_master_level_api_and_playback_mirror(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config, _ = load(root)
+            store = PresetStore(root / "preset.json", 129)
+            monitor = PlaybackMonitor(config["fps"], config["unit_count"])
+            monitor.report("single", store.snapshot(), 0, 0)
+            with make_server(store, config, 0, playback_monitor=monitor) as server:
+                worker = Thread(target=server.serve_forever, daemon=True)
+                worker.start()
+                base = f"http://127.0.0.1:{server.server_address[1]}"
+
+                def call(method, path, body=None):
+                    data = None if body is None else json.dumps(body).encode()
+                    request = Request(base + path, data, {"Content-Type": "application/json"}, method=method)
+                    with urlopen(request) as response:
+                        return json.load(response)
+
+                try:
+                    self.assertEqual(1.0, call("GET", "/api/state")["masterLevel"])
+                    self.assertEqual(1.0, call("GET", "/api/playback")["masterLevel"])
+                    store.apply_motor({"enabled": True, "units": [3]}, config)
+                    state = call("PUT", "/api/master", {"level": 0.4})
+                    self.assertEqual(0.4, state["masterLevel"])
+                    self.assertEqual(0.4, store.master_level_value())
+                    self.assertEqual(255, store.motor_values(24)[2])  # motors untouched
+                    self.assertEqual(0.4, call("GET", "/api/playback")["masterLevel"])
+                    self.assertEqual(state["revision"], call("PUT", "/api/master", {"level": 0.4})["revision"])  # no change
+                    self.assertEqual(0.0, call("PUT", "/api/master", {"level": 0})["masterLevel"])
+                    for bad in ({}, {"level": 1.5}, {"level": -0.1}, {"level": "0.5"}, {"level": True}, {"level": 0.5, "x": 1}):
+                        with self.subTest(bad=bad), self.assertRaises(HTTPError) as caught:
+                            call("PUT", "/api/master", bad)
+                        self.assertEqual(422, caught.exception.code)
+                finally:
+                    server.shutdown()
+                    worker.join()
+
     def test_blackout_api_and_playback_mirror(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

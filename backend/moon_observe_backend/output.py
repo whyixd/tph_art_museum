@@ -186,6 +186,7 @@ def stream(
     beat_flash_provider: Callable[[], float | None] | None = None,
     show_provider: Callable[[], tuple[tuple[dict[str, Any], ...], int, int] | None] | None = None,
     blackout_provider: Callable[[], bool] | None = None,
+    master_provider: Callable[[], float] | None = None,
     stats: OutputStats | None = None,
     source_check: Callable[[], bool] | None = None,
     clock: Callable[[], float] = time.perf_counter,
@@ -351,6 +352,10 @@ def stream(
             # 全部關燈：蓋過一切（含閃拍），轉燈不必渲染。 / Blackout: over everything (flash included); spinners skip rendering.
             if blackout_provider is not None and blackout_provider():
                 flash_color = BLACK
+            # 總亮度：轉燈在量化成位元組時乘上（和 [hardware] brightness 相乘），球燈、洗牆燈乘在顏色上；馬達不受影響。
+            # Master level: spinners scale when quantized (times [hardware] brightness), fixtures scale their colours.
+            master = master_provider() if master_provider is not None else 1.0
+            frame_hardware = hardware if master == 1 else {**hardware, "brightness": hardware["brightness"] * master}
             # 同一格內畫面相同的燈台共用一次渲染。 / Units showing the same picture share one render per frame.
             shared: dict[Any, list[Rgb]] = {}
             for target, unit_clients in clients:
@@ -389,7 +394,7 @@ def stream(
                 motor_value = (motor_command[unit_id - 1] if unit_id <= len(motor_command) else 0) \
                     if motor_per_unit else motor_command
                 last_motor_values[unit_id] = motor_value
-                packets = build_packets(pixels, hardware=hardware, motor_channel=motor_channel, motor_value=motor_value)
+                packets = build_packets(pixels, hardware=frame_hardware, motor_channel=motor_channel, motor_value=motor_value)
                 for client, packet in zip(unit_clients, packets, strict=True):
                     client.send(packet)
                     sent += 1
@@ -422,6 +427,8 @@ def stream(
                         group_colors = [own if override is None else override
                                         for own, override in zip(group_colors, test, strict=True)]
                     colors[group] = group_colors if flash_color is None else [flash_color] * len(group_colors)
+                    if master != 1:
+                        colors[group] = [(r * master, g * master, b * master) for r, g, b in colors[group]]
                 for client, data in zip(dmx_clients, build_universes(colors, dmx), strict=True):
                     client.send(data)
                     sent += 1
@@ -602,6 +609,7 @@ def main(argv: list[str] | None = None) -> int:
                                   beat_flash_provider=audio_player.flash,
                                   show_provider=show_player.current,
                                   blackout_provider=store.blackout_active,
+                                  master_provider=store.master_level_value,
                                   stats=output_stats)
                 finally:
                     playback_monitor.stop()

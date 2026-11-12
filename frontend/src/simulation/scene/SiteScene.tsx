@@ -83,6 +83,8 @@ export type SiteSceneProps = {
   /** Backend colour tests: one colour or null per spinner / fixture. */
   unitColors?: (RgbColor | null)[] | null
   fixtureColors?: FixtureTestColors | null
+  /** 後端的總亮度 0..1（鏡像時跟著變暗）；預設 1。 / Backend master level 0..1 for the mirror; default 1. */
+  masterLevel?: number
 }
 
 const BALL_RADIUS = 0.2
@@ -343,6 +345,7 @@ function spinnerFrameStep({ weather, settings }: Pick<SiteSceneProps, 'weather' 
 
 function Spinners(props: SiteSceneProps & { placements: UnitPlacement[]; unitCount: number; clock: Clock; unknownPhases: number[] }) {
   const { settings, placements, unitCount, view, pixelRotation, clock, unknownPhases } = props
+  const master = props.masterLevel ?? 1
   const ledCount = settings.ledCount
   const rotorRefs = useRef<Array<THREE.Group | null>>([])
   const lightRefs = useRef<Array<THREE.InstancedMesh | null>>([])
@@ -393,7 +396,7 @@ function Spinners(props: SiteSceneProps & { placements: UnitPlacement[]; unitCou
           )
           const base = led.effectIndex * 3
           color.setRGB(frameColors[base], frameColors[base + 1], frameColors[base + 2], THREE.SRGBColorSpace)
-          const energy = sample.weight * samples.length * 0.25 * facing
+          const energy = sample.weight * samples.length * 0.25 * facing * master
           colors[cursor] = color.r * energy
           colors[cursor + 1] = color.g * energy
           colors[cursor + 2] = color.b * energy
@@ -415,7 +418,8 @@ function Spinners(props: SiteSceneProps & { placements: UnitPlacement[]; unitCou
             camera.position.x, camera.position.y, camera.position.z,
           )
           const base = led.effectIndex * 3
-          color.setRGB(frameColors[base] * facing, frameColors[base + 1] * facing, frameColors[base + 2] * facing,
+          const level = facing * master
+          color.setRGB(frameColors[base] * level, frameColors[base + 1] * level, frameColors[base + 2] * level,
             THREE.SRGBColorSpace)
           lights.setColorAt(index, color)
           glow.setColorAt(index, color)
@@ -493,6 +497,7 @@ export function fixtureColorsAt(
 
 function Fixtures(props: SiteSceneProps & { group: FixtureGroup; points: ScenePoint[]; clock: Clock }) {
   const { group, points, layout, settings, sequence, weather, fixturePresets, fixtureColors, selectedFixture, clock } = props
+  const master = props.masterLevel ?? 1
   const meshRef = useRef<THREE.InstancedMesh | null>(null)
   const glowRef = useRef<THREE.InstancedMesh | null>(null)
   const wallRef = useRef<THREE.InstancedMesh | null>(null)
@@ -534,7 +539,7 @@ function Fixtures(props: SiteSceneProps & { group: FixtureGroup; points: ScenePo
     })
     colors.forEach((own, index) => {
       const value = test?.[index] ?? own
-      color.setRGB(value.r, value.g, value.b, THREE.SRGBColorSpace)
+      color.setRGB(value.r * master, value.g * master, value.b * master, THREE.SRGBColorSpace)
       glow.setColorAt(index, color)
       wallRef.current?.setColorAt(index, color)
       // 暗的球仍看得到外殼。 / A dark ball still shows its shell.
@@ -547,7 +552,7 @@ function Fixtures(props: SiteSceneProps & { group: FixtureGroup; points: ScenePo
     if (glow.instanceColor) glow.instanceColor.needsUpdate = true
     if (wallRef.current?.instanceColor) wallRef.current.instanceColor.needsUpdate = true
   })
-  useEffect(() => { lastFrame.current = -1 }, [fixturePresets, sequence, weather, fixtureColors, geometry])
+  useEffect(() => { lastFrame.current = -1 }, [fixturePresets, sequence, weather, fixtureColors, geometry, master])
   const selectedIndex = selectedFixture?.group === group
     ? layout[group].findIndex((fixture) => fixture.id === selectedFixture.id) : -1
   const radius = group === 'ball' ? BALL_RADIUS : 0.15

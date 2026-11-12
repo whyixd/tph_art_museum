@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   EFFECT_MANIFEST,
   getEffectManifest,
@@ -29,17 +29,20 @@ import type { ShowEditorState } from '../useShowEditor'
 import { FixtureEditor, GROUP_LABELS, type FixtureGroup } from './FixtureEditor'
 import { FixtureTestPanel, type FixtureSelection } from './FixtureTestPanel'
 import { CATEGORY_LABELS, WeatherPanel } from './WeatherPanel'
-import { WindPreviewPanel } from './WindPreviewPanel'
+import { WindPanel, type WindGroup, type WindPresets } from './WindPanel'
 import type { SimulationSettings } from '../simulation/model'
 
 export type EditGroup = 'spinner' | FixtureGroup
 
 type NumericSetting = Exclude<keyof SimulationSettings, 'ledCount'>
-type ControlTab = 'effect' | 'color' | 'sequence' | 'show' | 'backend' | 'weather' | 'physics'
+type ControlTab = 'effect' | 'color' | 'sequence' | 'show' | 'backend' | 'weather' | 'wind' | 'physics'
 
 type ControlPanelProps = {
-  /** 待機中（全場播風流）：顯示預覽風力。 / Standby (wind-flow everywhere): show the preview wind. */
-  standby?: boolean
+  /** 「風力」分頁：待機、風流設定。 / The wind tab: standby and the wind-flow presets. */
+  standby: boolean
+  onStandby: ((standby: boolean) => void) | null
+  windPresets: WindPresets
+  onWindPreset: <G extends WindGroup>(group: G, preset: WindPresets[G]) => void
   settings: SimulationSettings
   weather: WeatherState | null
   onWeather: (weather: WeatherState) => void
@@ -97,6 +100,7 @@ type ControlPanelProps = {
   onMotor: (enabled: boolean, units?: number[]) => void
   /** 全部關燈／恢復。 / All lights off / back on. */
   onBlackout: (enabled: boolean) => void
+  onMasterLevel: (level: number) => void
   onRestartBackend: (source: 'sequence' | 'single') => void
   onUnitColorTest: () => void
   onSetting: (name: NumericSetting, value: number) => void
@@ -160,6 +164,42 @@ function MotorControls({ motor, unitCount, busy, onMotor }: {
       )}
       <p className="control-note">
         點編號切換該台轉動／停止（亮色 = 轉動中）。後端啟動時全部停止。啟動會排隊、時間到自動送出：停止後要等約 12 秒（馬達控制板緩停中不接受啟動），同時啟動多台時依控箱每秒放行一組（避免同時衝擊電源）。停止不排隊。Channel {motor.channel} 位於 LED 通道之後；斷線時是否停機需由接收端保障。
+      </p>
+    </div>
+  )
+}
+
+const MASTER_PRESETS = [0, 0.4, 0.8, 1] as const
+
+/**
+ * 全部燈光亮度：轉燈、球燈、洗牆燈送出前一起乘上；效果、演出、單色測試、閃拍都算，馬達不受影響。
+ * Master level: scales every spinner, ball and wash light at output (effects, shows, tests, beat flash); motors untouched.
+ */
+function MasterLevelControls({ level, onLevel }: { level: number, onLevel: (level: number) => void }) {
+  // 拖動時先顯示手上的值，後端回應後跟上。 / Show the dragged value at once; the backend response follows.
+  const [dragging, setDragging] = useState<number | null>(null)
+  useEffect(() => { setDragging(null) }, [level])
+  const shown = Math.round((dragging ?? level) * 100)
+  const send = (percent: number) => {
+    setDragging(percent / 100)
+    onLevel(percent / 100)
+  }
+  return (
+    <div className="color-controls master-level">
+      <span className="control-label">全部燈光亮度</span>
+      <label className="control-field">
+        <span>轉燈、球燈、洗牆燈<output>{shown} %</output></span>
+        <input type="range" min={0} max={100} step={1} value={shown} aria-label="全部燈光亮度"
+          onChange={(event) => send(Number(event.target.value))} />
+      </label>
+      <div className="segmented-control" aria-label="亮度預設值">
+        {MASTER_PRESETS.map((preset) => (
+          <button key={preset} type="button" className={shown === preset * 100 ? 'active' : 'secondary'}
+            aria-pressed={shown === preset * 100} onClick={() => send(preset * 100)}>{preset * 100}%</button>
+        ))}
+      </div>
+      <p className="control-note">
+        乘在所有輸出上（效果、演出、單色測試、閃拍），馬達不受影響；0% 等於全暗但播放照常前進。後端重新啟動後回到 100%。
       </p>
     </div>
   )
@@ -351,7 +391,10 @@ function effectParameterMax(
 
 export function ControlPanel({
   settings,
-  standby = false,
+  standby,
+  onStandby,
+  windPresets,
+  onWindPreset,
   weather,
   onWeather,
   effectPreset,
@@ -405,6 +448,7 @@ export function ControlPanel({
   onApplyBackend,
   onMotor,
   onBlackout,
+  onMasterLevel,
   onRestartBackend,
   onUnitColorTest,
   onSetting,
@@ -510,6 +554,7 @@ export function ControlPanel({
     { id: 'show', label: '演出' },
     { id: 'backend', label: '後端' },
     ...(weather ? [{ id: 'weather' as const, label: '天氣' }] : []),
+    { id: 'wind' as const, label: '風力' },
     { id: 'physics', label: '物理' },
   ]
   const shownTab = tab === 'weather' && !weather ? 'effect' : tab
@@ -538,7 +583,8 @@ export function ControlPanel({
                 value={effectPreset.effectId}
                 onChange={(event) => onEffectChange(event.target.value as EffectId)}
               >
-                {EFFECT_MANIFEST.map((effect) => (
+                {/* 風流只在「風力」分頁設定。 / wind-flow is set up in the wind tab only. */}
+                {EFFECT_MANIFEST.filter((effect) => effect.id !== 'wind-flow').map((effect) => (
                   <option key={effect.id} value={effect.id}>{effect.label}</option>
                 ))}
               </select>
@@ -684,11 +730,6 @@ export function ControlPanel({
       <div className="control-tabpanel" id="control-tabpanel" role="tabpanel" aria-labelledby={`control-tab-${shownTab}`}>
         {(shownTab === 'effect' || shownTab === 'color') && controlMode === 'backend' && backendApplyBar()}
         {(shownTab === 'effect' || shownTab === 'color') && groupSwitch}
-        {(shownTab === 'effect' || shownTab === 'color') && standby && (
-          <p className="control-note">待機中：全場播放風流（轉燈用「風流」的設定，球燈、洗牆燈用各自最後調過的風流設定）。要調整風流，先按一次「待機中」離開待機，在各群組選「風流」調好後再切回來。</p>
-        )}
-        {(shownTab === 'effect' || shownTab === 'color') && (standby || effectPreset.effectId === 'wind-flow'
-          || Object.values(fixturePresets).some((preset) => preset?.effectId === 'wind-flow')) && <WindPreviewPanel />}
         {shownTab === 'effect' && editGroup !== 'spinner' && fixtureEditor('effect')}
         {shownTab === 'color' && editGroup !== 'spinner' && fixtureEditor('color')}
         {shownTab === 'effect' && editGroup === 'spinner' && spinnerEffectPanel()}
@@ -765,6 +806,9 @@ export function ControlPanel({
             {backendState && backendState.blackout !== undefined && (
               <BlackoutControls blackout={backendState.blackout} busy={backendBusy} onBlackout={onBlackout} />
             )}
+            {backendState && backendState.masterLevel !== undefined && (
+              <MasterLevelControls level={backendState.masterLevel} onLevel={onMasterLevel} />
+            )}
             <div className="button-row">
               <button type="button" className="secondary" onClick={onRefreshBackend} disabled={backendBusy}>重新讀取</button>
               <button type="button" onClick={onApplyBackend}
@@ -801,6 +845,7 @@ export function ControlPanel({
         ))}
 
         {shownTab === 'weather' && weather && <WeatherPanel weather={weather} onWeather={onWeather} />}
+        {shownTab === 'wind' && <WindPanel standby={standby} onStandby={onStandby} presets={windPresets} onPreset={onWindPreset} />}
 
         {shownTab === 'physics' && (
           <>

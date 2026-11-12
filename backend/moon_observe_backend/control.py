@@ -40,6 +40,9 @@ class PresetStore:
         # 全部關燈：轉燈、球燈、洗牆燈送全黑，播放在背景照常前進；只在記憶體，後端重啟後恢復亮燈。
         # Blackout: spinners, balls and washes send black while playback keeps advancing; memory only.
         self.blackout = False
+        # 總亮度 0..1：轉燈、球燈、洗牆燈送出前一起乘上（效果、演出、單色測試、閃拍都算）；只在記憶體，後端重啟後回到 1。
+        # Master level 0..1: scales spinners, balls and washes at output (effects, shows, tests and beat flash); memory only.
+        self.master_level = 1.0
 
     def snapshot(self) -> Mapping[str, Any]:
         with self.lock:
@@ -63,6 +66,23 @@ class PresetStore:
         """Called by the output loop every frame."""
         with self.lock:
             return self.blackout
+
+    def master_level_value(self) -> float:
+        """Called by the output loop every frame."""
+        with self.lock:
+            return self.master_level
+
+    def apply_master_level(self, raw: Any, config: Mapping[str, Any]) -> dict[str, Any]:
+        """``{"level": 0..1}``: brightness of every light. Motors are not touched."""
+        if not isinstance(raw, dict) or set(raw) != {"level"} or type(raw["level"]) not in (int, float) \
+                or not 0 <= raw["level"] <= 1:
+            raise ValueError("master level must be {\"level\": 0..1}")
+        with self.lock:
+            level = float(raw["level"])
+            if level != self.master_level:
+                self.master_level = level
+                self.revision += 1
+            return self._state_unlocked(config)
 
     def apply_blackout(self, raw: Any, config: Mapping[str, Any]) -> dict[str, Any]:
         """``{"enabled": bool}``: all lights off (black) or back to normal. Motors are not touched."""
@@ -155,6 +175,8 @@ class PresetStore:
                          if self.motor_gate is not None else {})},
             # true：全部燈光關閉（送全黑），蓋過效果、演出與測試。 / true: every light sends black, over effects, shows and tests.
             "blackout": self.blackout,
+            # 總亮度 0..1（全部燈光）。 / Master level 0..1 for every light.
+            "masterLevel": self.master_level,
             "output": {
                 "ip": config["ip"], "universe": config["universe"],
                 "fps": config["fps"], "rpm": config["rpm"], "pixels": config["pixels"],
@@ -332,6 +354,9 @@ def make_server(
                 fixture_test = fixture_color_store.snapshot() if fixture_color_store is not None else {}
                 if result["active"] and any(entry["active"] for entry in fixture_test.values()):
                     result["fixtureColors"] = {group: entry["colors"] for group, entry in fixture_test.items() if entry["active"]}
+                if result["active"]:
+                    # 總亮度：3D 鏡像跟著變暗。 / Master level: the 3D mirror dims with it.
+                    result["masterLevel"] = store.master_level_value()
                 if result["active"] and store.blackout_active():
                     # 全部關燈：3D 鏡像也全黑。 / Blackout: the 3D mirror goes dark too.
                     black = {"r": 0, "g": 0, "b": 0}
@@ -412,7 +437,7 @@ def make_server(
 
         def do_PUT(self) -> None:
             limits = {
-                "/api/preset": 32768, "/api/motor": 64, "/api/blackout": 64, "/api/sequence": 262144,
+                "/api/preset": 32768, "/api/motor": 64, "/api/blackout": 64, "/api/master": 64, "/api/sequence": 262144,
                 "/api/weather/override": 256, "/api/weather/palette": 16384,
                 "/api/playback/restart": 64, "/api/weather/visit": 64, "/api/test/units": 4096,
                 "/api/test/fixtures": 8192, "/api/audio/play": 512, "/api/audio/calibration": 128,
@@ -484,6 +509,8 @@ def make_server(
                     result = audio_player.set_calibration(raw)
                 elif self.path == "/api/blackout":
                     result = store.apply_blackout(raw, config)
+                elif self.path == "/api/master":
+                    result = store.apply_master_level(raw, config)
                 else:
                     result = store.apply_motor(raw, config)
             except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
