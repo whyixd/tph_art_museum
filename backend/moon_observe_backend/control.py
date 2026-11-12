@@ -40,6 +40,9 @@ class PresetStore:
         # 全部關燈：轉燈、球燈、洗牆燈送全黑，播放在背景照常前進；只在記憶體，後端重啟後恢復亮燈。
         # Blackout: spinners, balls and washes send black while playback keeps advancing; memory only.
         self.blackout = False
+        # 分開關燈：哪些群組（spinner／ball／wash）送全黑；全部關燈 = 三個都在。
+        # Per-group blackout: which of spinner / ball / wash send black; all three = the full blackout.
+        self.blackout_groups: set[str] = set()
         # 總亮度 0..1：轉燈、球燈、洗牆燈送出前一起乘上（效果、演出、單色測試、閃拍都算）；只在記憶體，後端重啟後回到 1。
         # Master level 0..1: scales spinners, balls and washes at output (effects, shows, tests and beat flash); memory only.
         self.master_level = 1.0
@@ -63,9 +66,14 @@ class PresetStore:
             return tuple(255 if unit in self.motor_units else 0 for unit in range(1, unit_count + 1))
 
     def blackout_active(self) -> bool:
-        """Called by the output loop every frame."""
+        """True while every group is off."""
         with self.lock:
             return self.blackout
+
+    def blackout_off_groups(self) -> frozenset[str]:
+        """Groups sending black; called by the output loop every frame."""
+        with self.lock:
+            return frozenset(self.blackout_groups)
 
     def master_level_value(self) -> float:
         """Called by the output loop every frame."""
@@ -85,12 +93,25 @@ class PresetStore:
             return self._state_unlocked(config)
 
     def apply_blackout(self, raw: Any, config: Mapping[str, Any]) -> dict[str, Any]:
-        """``{"enabled": bool}``: all lights off (black) or back to normal. Motors are not touched."""
-        if not isinstance(raw, dict) or set(raw) != {"enabled"} or type(raw["enabled"]) is not bool:
-            raise ValueError("blackout must be {\"enabled\": true|false}")
+        """``{"enabled": bool}`` for every light, or ``{"enabled": bool, "groups": ["spinner" | "ball" | "wash", …]}``
+        for those groups only (the others keep their state). Off = black; motors are not touched."""
+        if not isinstance(raw, dict) or "enabled" not in raw or set(raw) - {"enabled", "groups"} \
+                or type(raw["enabled"]) is not bool:
+            raise ValueError("blackout must be {\"enabled\": true|false, \"groups\"?: [spinner|ball|wash]}")
+        every = ("spinner", *FIXTURE_GROUPS)
+        if "groups" in raw:
+            groups = raw["groups"]
+            if not isinstance(groups, list) or not groups or len(set(groups)) != len(groups) \
+                    or any(group not in every for group in groups):
+                raise ValueError("blackout groups must list spinner, ball and/or wash")
+            chosen = set(groups)
+        else:
+            chosen = set(every)
         with self.lock:
-            if raw["enabled"] != self.blackout:
-                self.blackout = raw["enabled"]
+            updated = self.blackout_groups | chosen if raw["enabled"] else self.blackout_groups - chosen
+            if updated != self.blackout_groups:
+                self.blackout_groups = updated
+                self.blackout = updated == set(every)
                 self.revision += 1
             return self._state_unlocked(config)
 
@@ -189,6 +210,8 @@ class PresetStore:
                          if self.motor_gate is not None else {})},
             # true：全部燈光關閉（送全黑），蓋過效果、演出與測試。 / true: every light sends black, over effects, shows and tests.
             "blackout": self.blackout,
+            # 各群組是否關燈（送全黑）。 / Whether each group is off (sending black).
+            "blackoutGroups": {group: group in self.blackout_groups for group in ("spinner", *FIXTURE_GROUPS)},
             # 總亮度 0..1（全部燈光）。 / Master level 0..1 for every light.
             "masterLevel": self.master_level,
             "output": {
@@ -375,14 +398,20 @@ def make_server(
                 if result["active"]:
                     # 總亮度：3D 鏡像跟著變暗。 / Master level: the 3D mirror dims with it.
                     result["masterLevel"] = store.master_level_value()
-                if result["active"] and store.blackout_active():
-                    # 全部關燈：3D 鏡像也全黑。 / Blackout: the 3D mirror goes dark too.
+                off = store.blackout_off_groups()
+                if result["active"] and off:
+                    # 關燈的群組：3D 鏡像也全黑（蓋過單色測試）。 / Groups that are off go dark in the 3D mirror too.
                     black = {"r": 0, "g": 0, "b": 0}
                     dmx_fixtures = (config.get("dmx") or {}).get("fixtures", {})
-                    result["blackout"] = True
-                    result["unitColors"] = [black] * config["unit_count"]
-                    result["fixtureColors"] = {group: [black] * len(dmx_fixtures.get(group, []))
-                                               for group in FIXTURE_GROUPS if dmx_fixtures.get(group)}
+                    if store.blackout_active():
+                        result["blackout"] = True
+                    result["blackoutGroups"] = sorted(off)
+                    if "spinner" in off:
+                        result["unitColors"] = [black] * config["unit_count"]
+                    dark = {group: [black] * len(dmx_fixtures.get(group, []))
+                            for group in FIXTURE_GROUPS if group in off and dmx_fixtures.get(group)}
+                    if dark:
+                        result["fixtureColors"] = {**result.get("fixtureColors", {}), **dark}
                 self._respond(200, result)
             elif self.path == "/api/test/units" and unit_color_store is not None:
                 self._respond(200, unit_color_store.snapshot())

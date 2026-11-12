@@ -930,3 +930,10 @@ CPython、PyPy 都要通過；frontend 加上 `tsc`、build。
 - **啟動方式**：`MotorGate.staggered`（預設 true，只在記憶體，後端重啟後回到分區）。`PUT /api/motor` `{"stagger": true|false}` 切換：分區（依 `[[motor.start_groups]]` 每 `start_interval_seconds` 放行一個控箱）或全部一起；不改變馬達的轉動／停止。兩種方式都保留「停止後 `restart_delay_seconds`（12 秒）才送啟動」（XIAO 緩停中會忽略啟動）。切到全部一起時，排隊中的立刻一起放行。`GET /api/state` 的 `motor` 多了 `stagger`、`staggerAvailable`（設定檔有控箱分組且間隔 > 0 才是 true）。
 - **前端**（「後端」分頁馬達控制）：「啟動方式」兩個選項；「全部緩停」不再在全停時停用，可以重複按，狀態列顯示「已送出全部緩停 N 次」（再次啟動後歸零）。後端本來就每格對停止的轉燈送 0，重複按不會增加封包，只是讓操作的人確認有送出。
 - 驗證：backend 252 個測試（`test_motor.py` 新增 4 個：全部一起時同時啟動、仍等緩停結束、切換時放行排隊中的、經 store 切換且不動馬達）；frontend 163 個測試、`tsc` 通過。開發機（`--api-only`）Playwright：全停時緩停可按、連按 3 次顯示次數；切換啟動方式後端收到；全部緩啟動 24 台、緩停後全停。**未接馬達實測**；全部一起啟動時 24 台的啟動電流同時發生，現場第一次使用要留意電源。
+
+### 2026-11-12：關燈可以分開三種燈
+
+- `PresetStore.blackout_groups`（`spinner`／`ball`／`wash` 的集合，只在記憶體）；`blackout` = 三個都關。`PUT /api/blackout` `{"enabled", "groups"?: [...]}`：省略 `groups` = 三種一起，有給時只動那些群組（其他不變）。`GET /api/state` 多了 `blackoutGroups: {spinner, ball, wash}`；`GET /api/playback` 有群組關燈時多 `blackoutGroups: [...]`，關燈的群組在 `unitColors`／`fixtureColors` 為全黑（`blackout: true` 只在三個都關時）。
+- 輸出迴圈的 `blackout_provider` 回傳 True（全部）或關燈的群組集合；關燈的群組送全黑，蓋過效果、演出、待機、單色測試與閃拍，其他群組照常。馬達不受影響。
+- 前端「後端」分頁「關閉燈光」：〔關閉全部燈光〕〔恢復全部燈光〕＋轉燈／球燈／洗牆燈三個切換按鈕；3D 鏡像與左上角提示、效果分頁的套用列都顯示關了哪些。
+- 驗證：backend 253 個測試（新增 `test_blackout_of_one_group_leaves_the_others`，API 測試加上個別開關）；frontend 163 個測試、`tsc` 通過。開發機（`--api-only`）Playwright 逐步操作，後端狀態都正確。**未接燈具實測。**

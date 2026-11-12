@@ -224,6 +224,33 @@ class BlackoutOutputTests(unittest.TestCase):
         self.assertEqual(dark[1], wash_node.packets[1])                  # over the wash colour test
 
 
+    def test_blackout_of_one_group_leaves_the_others(self):
+        clients = []
+        now = [0.0]
+
+        def factory(*args, **kwargs):
+            clients.append(FakeClient(*args, **kwargs))
+            return clients[-1]
+
+        def run(off):
+            clients.clear()
+            now[0] = 0.0
+            # 閃拍全白：沒關的群組應該是全白。 / Beat flash is white: groups that stay on are white.
+            stream(self.config, self.preset, seconds=0.02, client_factory=factory, clock=lambda: now[0],
+                   sleep=lambda seconds: now.__setitem__(0, now[0] + seconds),
+                   fixture_preset_provider=lambda: {"ball": ball_preset(), "wash": None},
+                   beat_flash_provider=lambda: 1.0, blackout_provider=lambda: frozenset(off))
+            return [client.packets[0] for client in clients]
+
+        white = build_universes({"ball": [(1.0, 1.0, 1.0)] * 37, "wash": [(1.0, 1.0, 1.0)] * 3}, self.dmx)
+        dark = build_universes({"ball": [BLACK] * 37, "wash": [BLACK] * 3}, self.dmx)
+        spinner, ball, wash = run({"spinner"})
+        self.assertEqual((bytes(387), white[0], white[1]), (spinner[:387], ball, wash))
+        spinner, ball, wash = run({"ball"})
+        self.assertEqual((bytes([255]) * 387, dark[0], white[1]), (spinner[:387], ball, wash))
+        spinner, ball, wash = run({"wash", "ball"})
+        self.assertEqual((bytes([255]) * 387, dark[0], dark[1]), (spinner[:387], ball, wash))
+
     def test_master_level_scales_every_group_and_keeps_motors(self):
         level = [1.0]
         clients = []
@@ -322,6 +349,24 @@ class FixtureApiTests(unittest.TestCase):
                     revision = state["revision"]
                     self.assertEqual(revision, call("PUT", "/api/blackout", {"enabled": True})["revision"])  # no change
                     self.assertFalse(call("PUT", "/api/blackout", {"enabled": False})["blackout"])
+                    # 分開關燈。 / Per-group blackout.
+                    state = call("PUT", "/api/blackout", {"enabled": True, "groups": ["ball"]})
+                    self.assertFalse(state["blackout"])
+                    self.assertEqual({"spinner": False, "ball": True, "wash": False}, state["blackoutGroups"])
+                    playback = call("GET", "/api/playback")
+                    self.assertNotIn("blackout", playback)
+                    self.assertEqual(["ball"], playback["blackoutGroups"])
+                    self.assertNotIn("unitColors", playback)
+                    self.assertEqual(["ball"], list(playback["fixtureColors"]))
+                    state = call("PUT", "/api/blackout", {"enabled": True, "groups": ["spinner", "wash"]})
+                    self.assertTrue(state["blackout"])                       # all three off = the full blackout
+                    state = call("PUT", "/api/blackout", {"enabled": False, "groups": ["wash"]})
+                    self.assertEqual((False, {"spinner": True, "ball": True, "wash": False}), (state["blackout"], state["blackoutGroups"]))
+                    self.assertEqual({"spinner": False, "ball": False, "wash": False},
+                                     call("PUT", "/api/blackout", {"enabled": False})["blackoutGroups"])
+                    for bad in ({"enabled": True, "groups": []}, {"enabled": True, "groups": ["lamp"]}, {"enabled": True, "groups": ["ball", "ball"]}):
+                        with self.subTest(bad=bad), self.assertRaises(HTTPError):
+                            call("PUT", "/api/blackout", bad)
                     for bad in ({}, {"enabled": 1}, {"enabled": True, "units": [1]}):
                         with self.subTest(bad=bad), self.assertRaises(HTTPError) as caught:
                             call("PUT", "/api/blackout", bad)

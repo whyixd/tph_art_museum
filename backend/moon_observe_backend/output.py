@@ -186,7 +186,7 @@ def stream(
     fixture_colors_provider: Callable[[], Mapping[str, Sequence[Rgb | None]]] | None = None,
     beat_flash_provider: Callable[[], float | None] | None = None,
     show_provider: Callable[[], tuple[tuple[dict[str, Any], ...], int, int] | None] | None = None,
-    blackout_provider: Callable[[], bool] | None = None,
+    blackout_provider: Callable[[], Any] | None = None,
     master_provider: Callable[[], float] | None = None,
     standby_provider: Callable[[], Any] | None = None,
     stats: OutputStats | None = None,
@@ -352,8 +352,11 @@ def stream(
             flash = beat_flash_provider() if beat_flash_provider is not None else None
             flash_color: Rgb | None = None if flash is None else (flash, flash, flash)
             # 全部關燈：蓋過一切（含閃拍），轉燈不必渲染。 / Blackout: over everything (flash included); spinners skip rendering.
-            if blackout_provider is not None and blackout_provider():
-                flash_color = BLACK
+            # blackout_provider 回傳 True（全部）或關燈的群組集合（spinner／ball／wash）。
+            # blackout_provider returns True (everything) or the set of groups that are off.
+            blackout = blackout_provider() if blackout_provider is not None else False
+            dark_groups = ("spinner", *GROUPS) if blackout is True else tuple(blackout or ())
+            spinners_dark = "spinner" in dark_groups
             # 總亮度：轉燈在量化成位元組時乘上（和 [hardware] brightness 相乘），球燈、洗牆燈乘在顏色上；馬達不受影響。
             # Master level: spinners scale when quantized (times [hardware] brightness), fixtures scale their colours.
             master = master_provider() if master_provider is not None else 1.0
@@ -381,7 +384,9 @@ def stream(
                     "flowPosition": (config.get("spinner_flow") or [])[unit_id - 1] if unit_id <= len(config.get("spinner_flow") or []) else None,
                 }
                 color_override = weather.get("color") if category is not None else None
-                if flash_color is not None:
+                if spinners_dark:
+                    pixels = [BLACK] * config["pixels"]
+                elif flash_color is not None:
                     pixels = [flash_color] * config["pixels"]
                 elif test_color is not None:
                     pixels = [test_color] * config["pixels"]
@@ -438,6 +443,8 @@ def stream(
                         group_colors = [own if override is None else override
                                         for own, override in zip(group_colors, test, strict=True)]
                     colors[group] = group_colors if flash_color is None else [flash_color] * len(group_colors)
+                    if group in dark_groups:
+                        colors[group] = [BLACK] * len(group_colors)
                     if master != 1:
                         colors[group] = [(r * master, g * master, b * master) for r, g, b in colors[group]]
                 for client, data in zip(dmx_clients, build_universes(colors, dmx), strict=True):
@@ -623,7 +630,7 @@ def main(argv: list[str] | None = None) -> int:
                                   fixture_colors_provider=fixture_color_store.current,
                                   beat_flash_provider=audio_player.flash,
                                   show_provider=show_player.current,
-                                  blackout_provider=store.blackout_active,
+                                  blackout_provider=store.blackout_off_groups,
                                   master_provider=store.master_level_value,
                                   standby_provider=wind_standby.frame,
                                   stats=output_stats)

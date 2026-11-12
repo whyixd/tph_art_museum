@@ -69,6 +69,8 @@ export type BackendState = {
   }
   /** true：全部燈光關閉（轉燈、球燈、洗牆燈送全黑；舊後端沒有）。 / true: every light sends black (missing on old backends). */
   blackout?: boolean
+  /** 各群組是否關燈（舊後端沒有）。 / Whether each group is off (missing on old backends). */
+  blackoutGroups?: Record<BlackoutGroup, boolean>
   /** 總亮度 0..1（轉燈、球燈、洗牆燈；舊後端沒有）。 / Master level 0..1 for every light (missing on old backends). */
   masterLevel?: number
   output: {
@@ -217,11 +219,14 @@ export async function setBackendMasterLevel(level: number): Promise<BackendState
 }
 
 /** 全部關燈（轉燈、球燈、洗牆燈送全黑）或恢復；馬達不受影響。 / All lights off or back on; motors untouched. */
-export async function setBackendBlackout(enabled: boolean): Promise<BackendState> {
+export type BlackoutGroup = 'spinner' | 'ball' | 'wash'
+
+/** groups 省略 = 三種燈全部；有給時只動這些群組。 / groups omitted: every light; otherwise only those groups. */
+export async function setBackendBlackout(enabled: boolean, groups?: BlackoutGroup[]): Promise<BackendState> {
   return readState<BackendState>(await fetch('/api/blackout', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ enabled }),
+    body: JSON.stringify(groups ? { enabled, groups } : { enabled }),
   }))
 }
 
@@ -369,6 +374,8 @@ type ActivePlaybackBase = {
   fixtureColors?: Partial<Record<BackendFixtureGroup, (RgbColor | null)[]>>
   /** 全部關燈中才有（unitColors／fixtureColors 此時全黑）。 / Only during a blackout (the colours above are then black). */
   blackout?: true
+  /** 有群組關燈時才有：關燈的群組。 / Only while some groups are off: which ones. */
+  blackoutGroups?: BlackoutGroup[]
   /** 待機中才有（全場播風流）。 / Only in standby (wind-flow everywhere). */
   standby?: true
   /** 總亮度 0..1（舊後端沒有）。 / Master level 0..1 (missing on old backends). */

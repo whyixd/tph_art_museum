@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { applyBackendPreset, getBackendPatch, getBackendPlayback, getBackendSequence, getBackendState, getBackendWind, getWeatherState, restartBackendPlayback, saveBackendSequence, setBackendBlackout, setBackendMasterLevel, setBackendMotor, setBackendMotorStagger, setBackendStandby, setBackendWindPresets, setBackendWindTarget, type BackendPatch, type BackendWind, type BackendWindPresets, type BackendPlayback, type BackendState, type WeatherState } from './backendApi'
+import { applyBackendPreset, getBackendPatch, getBackendPlayback, getBackendSequence, getBackendState, getBackendWind, getWeatherState, restartBackendPlayback, saveBackendSequence, setBackendBlackout, setBackendMasterLevel, setBackendMotor, setBackendMotorStagger, setBackendStandby, setBackendWindPresets, setBackendWindTarget, type BackendPatch, type BackendWind, type BackendWindPresets, type BlackoutGroup, type BackendPlayback, type BackendState, type WeatherState } from './backendApi'
 import { ControlPanel, type EditGroup } from './components/ControlPanel'
 import type { WindGroup, WindPresets } from './components/WindPanel'
 import { getWindTarget, setWindTarget, subscribeWindPreview } from './wind/windPreview'
@@ -466,13 +466,13 @@ export function App() {
     }
   }, [backendBusy, backendState, controlMode])
 
-  const setBlackout = useCallback(async (enabled: boolean) => {
+  const setBlackout = useCallback(async (enabled: boolean, groups?: BlackoutGroup[]) => {
     if (controlMode !== 'backend' || backendBusy || backendState === null) return
     const request = backendRequest.current
     setBackendBusy(true)
     setBackendError(null)
     try {
-      const state = await setBackendBlackout(enabled)
+      const state = await setBackendBlackout(enabled, groups)
       if (request === backendRequest.current) setBackendState(state)
       // 讓 3D 鏡像立刻反映。 / Refresh the 3D mirror right away.
       setPlaybackPoll((current) => current + 1)
@@ -866,8 +866,9 @@ export function App() {
                   : '後端未播放 · 本地模擬'}</span>
               )}
               {previewShow && <span>演出預覽{showEditor.preview === 'playing' ? ' · 跟隨音樂' : ''}</span>}
-              {inBackend && playback.state?.active && playback.state.blackout
-                ? <span className="viewport-test">全部關燈中</span>
+              {inBackend && playback.state?.active && (playback.state.blackout || playback.state.blackoutGroups?.length)
+                ? <span className="viewport-test">{playback.state.blackout ? '全部關燈中'
+                  : `關燈中：${playback.state.blackoutGroups!.map((group) => ({ spinner: '轉燈', ball: '球燈', wash: '洗牆燈' }[group])).join('、')}`}</span>
                 : (unitTestColors || fixtureTestColors) && <span className="viewport-test">單色測試中</span>}
               {selectedFixture && (
                 <span>選取：{selectedFixture.group === 'ball' ? '球燈' : '洗牆燈'} {selectedFixture.id}</span>
@@ -944,7 +945,7 @@ export function App() {
           onApplyBackend={() => { void applyToBackend(effectPreset, fixturePresets) }}
           onMotor={(enabled, units) => { void setMotor(enabled, units) }}
           onMotorStagger={(stagger) => { void setMotor(stagger ? 'stagger' : 'together') }}
-          onBlackout={(enabled) => { void setBlackout(enabled) }}
+          onBlackout={(enabled, groups) => { void setBlackout(enabled, groups) }}
           onMasterLevel={(level) => { void setMasterLevel(level) }}
           onRestartBackend={(source) => { void restartBackend(source) }}
           onUnitColorTest={() => setPlaybackPoll((current) => current + 1)}
