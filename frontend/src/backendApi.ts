@@ -541,7 +541,13 @@ export type ShowsState = {
     durationSeconds: number
     loop: boolean
   } | null
+  /** 馬達已啟動、演出還在等延後時間；沒有在等時不存在。 / Motors started, the show still waiting out its delay. */
+  starting?: { showId: string; remainingSeconds: number }
 }
+
+/** 播放演出時同時啟動全部馬達，演出延後 delaySeconds 開始。 / Start every motor with the show, the show delaySeconds later. */
+export type ShowMotorOptions = { startMotors: boolean; delaySeconds: number }
+export const SHOW_DELAY_MAX_SECONDS = 120
 
 async function readShows(response: Response): Promise<ShowsState> {
   const state = await readState<Omit<ShowsState, 'shows'> & { shows: BackendShowDocument[] }>(response)
@@ -567,11 +573,13 @@ export async function deleteShow(id: string): Promise<ShowsState> {
   return readShows(await fetch(`/api/shows/${encodeURIComponent(id)}`, { method: 'DELETE' }))
 }
 
-export async function playShow(showId: string, startSeconds = 0): Promise<ShowsState> {
+export async function playShow(showId: string, startSeconds = 0, motors?: ShowMotorOptions): Promise<ShowsState> {
+  // 沒勾啟動馬達時不帶新欄位，舊後端照常收。 / Without startMotors the request stays as old backends expect.
+  const extra = motors?.startMotors ? { startMotors: true, delaySeconds: motors.delaySeconds } : {}
   return readShows(await fetch('/api/show/play', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ showId, startSeconds }),
+    body: JSON.stringify({ showId, startSeconds, ...extra }),
   }))
 }
 

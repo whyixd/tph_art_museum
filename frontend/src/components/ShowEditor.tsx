@@ -6,6 +6,19 @@ import { barBeatAt, describeStart, startSeconds, type ShowSection, type ShowTran
 import type { ShowEditorState } from '../useShowEditor'
 import { GROUP_LABELS } from './FixtureEditor'
 import { EditableNumberInput } from './SequenceEditor'
+import { SHOW_DELAY_MAX_SECONDS, type ShowMotorOptions } from '../backendApi'
+
+const MOTOR_OPTIONS_KEY = 'tph.showMotorOptions'
+
+function readMotorOptions(): ShowMotorOptions {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(MOTOR_OPTIONS_KEY) ?? 'null')
+    if (stored && typeof stored.startMotors === 'boolean' && Number.isFinite(stored.delaySeconds)) {
+      return { startMotors: stored.startMotors, delaySeconds: Math.min(SHOW_DELAY_MAX_SECONDS, Math.max(0, stored.delaySeconds)) }
+    }
+  } catch { /* 讀不到就用預設 */ }
+  return { startMotors: false, delaySeconds: 0 }
+}
 
 const TRANSITION_LABELS: Record<TransitionKind, string> = {
   cut: '直接切換', crossfade: '交叉淡化', 'fade-black': '淡出至黑再淡入', 'unit-fade-black': '逐台淡出至黑再淡入',
@@ -59,6 +72,13 @@ export function ShowEditor({ editor, controlMode, enabled, onEnabled, currentInd
   const draftTrack = draft ? trackFor(draft.trackId) : undefined
   const hasBeats = (beatMap?.beats.length ?? 0) >= 2
   const playingOnBackend = shows.playing
+  const startingOnBackend = shows.starting
+  // 只記在這台瀏覽器。 / Remembered in this browser only.
+  const [motorOptions, setMotorOptions] = useState<ShowMotorOptions>(readMotorOptions)
+  const changeMotorOptions = (next: ShowMotorOptions) => {
+    setMotorOptions(next)
+    try { window.localStorage.setItem(MOTOR_OPTIONS_KEY, JSON.stringify(next)) } catch { /* 不能存就只用這一次 */ }
+  }
 
   const setStart = (section: ShowSection, start: ShowSection['start']) => editor.updateSection(section.id, (current) => ({ ...current, start }))
   const setTransition = (section: ShowSection, transition: ShowTransition) =>
@@ -346,11 +366,36 @@ export function ShowEditor({ editor, controlMode, enabled, onEnabled, currentInd
             播放中：{shows.shows.find((show) => show.id === playingOnBackend.showId)?.title ?? playingOnBackend.showId}
             {playingOnBackend.silent ? '（沒有音效卡，無聲）' : ''} · {formatClock(playingOnBackend.positionSeconds)} / {formatClock(playingOnBackend.durationSeconds)}
           </p>
+        ) : startingOnBackend ? (
+          <p className="weather-override" role="status">
+            馬達已啟動，{Math.ceil(startingOnBackend.remainingSeconds)} 秒後開始：
+            {shows.shows.find((show) => show.id === startingOnBackend.showId)?.title ?? startingOnBackend.showId}
+          </p>
         ) : <p className="control-note">目前沒有播放演出；燈光為待機輸出（串接或單一效果）。</p>}
+        <label className="blackout-groups">
+          <span>
+            <input type="checkbox" checked={motorOptions.startMotors}
+              onChange={(event) => changeMotorOptions({ ...motorOptions, startMotors: event.target.checked })} />
+            {' '}播放時同時啟動全部馬達
+          </span>
+        </label>
+        {motorOptions.startMotors && (
+          <>
+            <label className="control-field">
+              <span>演出延後開始（秒，0 = 同時開始）</span>
+              <EditableNumberInput value={motorOptions.delaySeconds} min={0} max={SHOW_DELAY_MAX_SECONDS} step={1}
+                onValue={(delaySeconds) => changeMotorOptions({ ...motorOptions, delaySeconds })} />
+            </label>
+            <p className="control-note">
+              按下播放就啟動全部馬達（分區或全部一起，依「後端」分頁的設定），演出延後上面的秒數開始。
+              不循環的演出結束、或按〔停止演出〕時馬達一起停；循環的演出、換播別的演出、套用效果時馬達不停。
+            </p>
+          </>
+        )}
         <div className="button-row">
           <button type="button" disabled={editor.busy || !draft || editor.savedNew || editor.dirty}
-            onClick={() => { if (draft) void editor.playOnBackend(draft.id) }}>在 Pi 上播放這個演出</button>
-          <button type="button" className="secondary" disabled={editor.busy || !playingOnBackend}
+            onClick={() => { if (draft) void editor.playOnBackend(draft.id, 0, motorOptions) }}>在 Pi 上播放這個演出</button>
+          <button type="button" className="secondary" disabled={editor.busy || (!playingOnBackend && !startingOnBackend)}
             onClick={() => { void editor.stopOnBackend() }}>停止演出</button>
         </div>
         <p className="control-note">Pi 從 USB 音效卡播放音樂，燈光跟著音訊時鐘；套用效果、串接或手動播放音樂會停止演出。</p>

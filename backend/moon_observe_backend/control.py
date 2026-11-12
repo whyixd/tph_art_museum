@@ -293,6 +293,10 @@ def make_server(
     if static_dir is not None and not (static_dir.is_dir() and (static_dir / "index.html").is_file()):
         raise ValueError("frontend directory must contain index.html")
 
+    if show_player is not None:
+        # 演出可以帶著啟動／停止全部馬達（分區或一起依 MotorGate 的設定）。 / Shows may start and stop every motor.
+        show_player.on_motors = lambda enabled: store.apply_motor({"enabled": enabled}, config)
+
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             super().__init__(*args, directory=str(static_dir) if static_dir else None, **kwargs)
@@ -454,7 +458,8 @@ def make_server(
                 self._stop_show()
                 self._respond(200, audio_player.stop())
             elif self.path == "/api/show/play" and show_player is not None:
-                show_player.stop()
+                # 手動停止：這次播放啟動的馬達一起停。 / The stop button also stops motors the play started.
+                show_player.stop(manual=True)
                 self._respond(200, self._shows_state())
             elif self._track_id() is not None:
                 try:

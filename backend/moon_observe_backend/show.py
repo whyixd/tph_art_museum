@@ -19,7 +19,7 @@ import os
 from pathlib import Path
 import re
 import tempfile
-from threading import Lock
+from threading import Lock, Timer
 import time
 from typing import Any, Callable, Mapping
 
@@ -360,12 +360,18 @@ class ShowStore:
                 Path(temporary).unlink(missing_ok=True)
 
 
+SHOW_DELAY_MAX_SECONDS = 120
+
+
 class _Active:
-    def __init__(self, compiled: tuple[dict[str, Any], ...], start: float, started_at: float, audio: bool) -> None:
+    def __init__(self, compiled: tuple[dict[str, Any], ...], start: float, started_at: float, audio: bool,
+                 motors: bool = False) -> None:
         self.compiled = compiled
         self.start = start
         self.started_at = started_at
         self.audio = audio
+        # 這次播放啟動了馬達：演出結束（不循環）或手動停止時一起停。 / This play started the motors: stop them with it.
+        self.motors = motors
         # 最後一次讀到的音樂時間與當時時刻；音樂結束後由此推算淡出。 / Last music time read, to run the ending fade on.
         self.last: tuple[float, float] | None = None
 
@@ -385,28 +391,86 @@ class ShowPlayer:
         self.lock = Lock()
         self.generation = 0
         self._active: _Active | None = None
+        # 啟動／停止全部馬達（由 control 接上；None 時 startMotors 不可用）。
+        # Starts or stops every motor (wired by control; without it startMotors is refused).
+        self.on_motors: Callable[[bool], None] | None = None
+        # 馬達已啟動、等 delaySeconds 後才開始的演出：(showId, 起點, 開始時刻, 計時器)。
+        # A show waiting delaySeconds after its motor start: (showId, start, due time, timer).
+        self._pending: tuple[str, float, float, Timer] | None = None
 
     def play(self, raw: Any) -> dict[str, Any]:
-        if not isinstance(raw, dict) or "showId" not in raw or set(raw) - {"showId", "startSeconds"}:
-            raise ValueError("show play request must be {showId, startSeconds?}")
-        compiled = self.store.compiled(raw["showId"])
-        info = compiled[0]["show"]
+        """``{showId, startSeconds?, startMotors?, delaySeconds?}``. With ``startMotors`` every motor starts now (staggered
+        or together as the motor gate is set) and the show begins ``delaySeconds`` later; the motors then stop when a
+        non-looping show ends or the show is stopped by hand, but not when another show or effect takes over.
+
+        startMotors：立刻啟動全部馬達，演出延後 delaySeconds 開始；不循環的演出結束或手動停止時馬達一起停，
+        換演出或套用效果時不停。"""
+        allowed = {"showId", "startSeconds", "startMotors", "delaySeconds"}
+        if not isinstance(raw, dict) or "showId" not in raw or set(raw) - allowed:
+            raise ValueError("show play request must be {showId, startSeconds?, startMotors?, delaySeconds?}")
+        motors = raw.get("startMotors", False)
+        if type(motors) is not bool:
+            raise ValueError("startMotors must be true or false")
+        if motors and self.on_motors is None:
+            raise ValueError("startMotors is not available")
+        delay = float(_number(raw.get("delaySeconds", 0), "delaySeconds", 0, SHOW_DELAY_MAX_SECONDS))
+        show_id = raw["showId"]
+        info = self.store.compiled(show_id)[0]["show"]
         start = float(_number(raw.get("startSeconds", 0), "startSeconds", 0, info["durationSeconds"]))
+        self._cancel_pending()
+        if motors:
+            self.on_motors(True)
+        if motors and delay > 0:
+            timer = Timer(delay, lambda: self._begin_pending(timer))
+            timer.daemon = True
+            with self.lock:
+                self._pending = (show_id, start, self.clock() + delay, timer)
+            timer.start()
+        else:
+            self._begin(show_id, start, motors)
+        return self.state()
+
+    def _begin(self, show_id: str, start: float, motors: bool) -> None:
+        compiled = self.store.compiled(show_id)
+        info = compiled[0]["show"]
         with_audio = self.audio is not None and self.audio.available
         if with_audio:
             self.audio.play({"trackId": info["trackId"], "startSeconds": start, "loop": info["loop"]})
         with self.lock:
-            self._active = _Active(compiled, start, self.clock(), with_audio)
+            self._active = _Active(compiled, start, self.clock(), with_audio, motors)
             self.generation += 1
-        return self.state()
 
-    def stop(self) -> dict[str, Any]:
+    def _begin_pending(self, timer: Timer) -> None:
+        with self.lock:
+            pending = self._pending
+            if pending is None or pending[3] is not timer:
+                return  # 已取消或被新的播放取代。 / Cancelled, or replaced by a newer play.
+            self._pending = None
+        try:
+            self._begin(pending[0], min(pending[1], self.store.compiled(pending[0])[0]["show"]["durationSeconds"]), True)
+        except (KeyError, ValueError):
+            # 等待中演出被刪除：不播，馬達也停。 / The show was deleted while waiting: no show, stop the motors.
+            if self.on_motors is not None:
+                self.on_motors(False)
+
+    def _cancel_pending(self) -> bool:
+        with self.lock:
+            pending, self._pending = self._pending, None
+        if pending is not None:
+            pending[3].cancel()
+        return pending is not None
+
+    def stop(self, manual: bool = False) -> dict[str, Any]:
+        """Stops the show (and a waiting one). ``manual`` (the stop button) also stops motors this play started."""
+        waiting = self._cancel_pending()
         with self.lock:
             active, self._active = self._active, None
             if active is not None:
                 self.generation += 1
         if active is not None and active.audio:
             self.audio.stop()
+        if manual and (waiting or (active is not None and active.motors)) and self.on_motors is not None:
+            self.on_motors(False)
         return self.state()
 
     def replace(self, compiled: tuple[dict[str, Any], ...]) -> None:
@@ -448,13 +512,21 @@ class ShowPlayer:
             # 結尾淡出跑完：演出結束，回到待機輸出。 / Ending fade done: the show is over, back to standby output.
             self._active = None
             self.generation += 1
-            return None
+        # 這次播放啟動的馬達跟著停（循環的演出不會走到這裡）。 / Motors this play started stop with it (loops never end).
+        if active.motors and self.on_motors is not None:
+            self.on_motors(False)
+        return None
 
     def state(self) -> dict[str, Any]:
         with self.lock:
             active = self._active
             if active is None:
-                return {"playing": None}
+                if self._pending is None:
+                    return {"playing": None}
+                # 馬達已啟動，演出還在等。 / Motors started, the show is still waiting.
+                return {"playing": None, "starting": {
+                    "showId": self._pending[0], "remainingSeconds": max(0.0, self._pending[2] - self.clock()),
+                }}
             info = active.compiled[0]["show"]
             seconds = self._seconds(active, self.clock())
             return {"playing": {

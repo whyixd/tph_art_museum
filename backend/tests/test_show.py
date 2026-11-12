@@ -232,6 +232,80 @@ class PlayerTests(unittest.TestCase):
             self.assertIsNone(player.state()["playing"])
             self.assertGreater(player.generation, generation)
 
+    def motor_player(self, directory, **overrides):
+        audio, clock, calls = FakeAudio(), FakeClock(), []
+        player = ShowPlayer(self.store(directory, **overrides), audio, 40, clock=clock)
+        player.on_motors = calls.append
+        return player, audio, clock, calls
+
+    def test_start_motors_with_the_show_and_stop_them_when_it_ends(self):
+        with tempfile.TemporaryDirectory() as directory:
+            player, audio, clock, calls = self.motor_player(directory, ending={"kind": "fade-black", "seconds": 1})
+            player.play({"showId": "demo", "startMotors": True})
+            self.assertEqual([True], calls)
+            self.assertEqual(1, len(audio.played))
+            audio.time = 59.9
+            player.current()
+            audio.time = None
+            clock.now += 1.2
+            self.assertIsNone(player.current())
+            self.assertEqual([True, False], calls)
+            # 沒勾啟動馬達的播放，結束時不動馬達。 / A play without startMotors leaves the motors alone.
+            player.play({"showId": "demo"})
+            player.stop(manual=True)
+            self.assertEqual([True, False], calls)
+
+    def test_motors_stop_on_the_stop_button_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            player, audio, clock, calls = self.motor_player(directory)
+            player.play({"showId": "demo", "startMotors": True})
+            # 循環演出不會結束；換演出、套用效果（非手動的停止）都不停馬達。
+            # A looping show never ends; another show or an effect (a non-manual stop) leaves the motors running.
+            audio.time = 59.9
+            clock.now += 500
+            self.assertIsNotNone(player.current())
+            player.play({"showId": "demo", "startMotors": True})
+            player.stop()
+            self.assertEqual([True, True], calls)
+            player.play({"showId": "demo", "startMotors": True})
+            player.stop(manual=True)
+            self.assertEqual([True, True, True, False], calls)
+
+    def test_delay_starts_the_motors_first(self):
+        with tempfile.TemporaryDirectory() as directory:
+            player, audio, clock, calls = self.motor_player(directory)
+            state = player.play({"showId": "demo", "startSeconds": 2, "startMotors": True, "delaySeconds": 30})
+            self.assertEqual([True], calls)
+            self.assertEqual([], audio.played)
+            self.assertIsNone(state["playing"])
+            self.assertEqual({"showId": "demo", "remainingSeconds": 30.0}, state["starting"])
+            self.assertIsNone(player.current())
+            timer = player._pending[3]
+            player._begin_pending(timer)
+            self.assertEqual([{"trackId": CLICK_TRACK_ID, "startSeconds": 2.0, "loop": True}], audio.played)
+            self.assertNotIn("starting", player.state())
+            self.assertEqual("demo", player.state()["playing"]["showId"])
+            # 等待中按停止：不播，馬達停；過期的計時器不再啟動演出。
+            # Stop while waiting: no show, motors stop; a stale timer no longer starts anything.
+            player.stop()
+            player.play({"showId": "demo", "startMotors": True, "delaySeconds": 30})
+            stale = player._pending[3]
+            self.assertEqual({"playing": None}, player.stop(manual=True))
+            player._begin_pending(stale)
+            self.assertEqual(1, len(audio.played))
+            self.assertEqual([True, True, False], calls)
+
+    def test_rejects_bad_motor_options(self):
+        with tempfile.TemporaryDirectory() as directory:
+            player, _, _, calls = self.motor_player(directory)
+            for bad in ({"startMotors": 1}, {"delaySeconds": -1}, {"delaySeconds": 121}, {"motors": True}):
+                with self.assertRaises(ValueError):
+                    player.play({"showId": "demo", **bad})
+            player.on_motors = None
+            with self.assertRaises(ValueError):
+                player.play({"showId": "demo", "startMotors": True})
+            self.assertEqual([], calls)
+
     def test_silent_without_audio(self):
         with tempfile.TemporaryDirectory() as directory:
             clock = FakeClock()

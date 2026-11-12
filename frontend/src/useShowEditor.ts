@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   deleteShow, getAudioState, getBeatMap, getShows, playShow, revertBeatMap, saveBeatMap, saveShow, stopShow,
-  type AudioTrack, type ShowsState,
+  type AudioTrack, type ShowMotorOptions, type ShowsState,
 } from './backendApi'
 import { computePeaks, finishBeatMap, type Peaks } from './simulation/beatEdit'
 import { createDefaultEffectPreset } from './effects'
@@ -76,6 +76,14 @@ export function useShowEditor(fps: number, onEdited: (sectionId: number | null) 
     }).catch(() => { if (active) setShows(null) })
     return () => { active = false }
   }, [refresh])
+
+  // 演出在等延後時間（馬達已啟動）時每秒更新，直到開始播放。 / While a show waits out its delay, refresh every second.
+  const starting = shows?.starting !== undefined
+  useEffect(() => {
+    if (!starting) return
+    const timer = window.setInterval(() => setRefresh((current) => current + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [starting])
 
   // 播放中的演出需要拍點檔（3D 鏡像）；編輯中的也是。 / The playing and the edited show need their beat maps.
   useEffect(() => {
@@ -388,7 +396,7 @@ export function useShowEditor(fps: number, onEdited: (sectionId: number | null) 
     saveBeats: () => beatDraft ? beatRequest(() => saveBeatMap(finishBeatMap(beatDraft))) : Promise.resolve(),
     revertBeats: () => draft ? beatRequest(() => revertBeatMap(draft.trackId)) : Promise.resolve(),
     reload: () => setRefresh((current) => current + 1),
-    playOnBackend: (showId: string, from = 0) => run(() => playShow(showId, from)),
+    playOnBackend: (showId: string, from = 0, motors?: ShowMotorOptions) => run(() => playShow(showId, from, motors)),
     stopOnBackend: () => run(stopShow),
     savedNew: saved === null,
   }
