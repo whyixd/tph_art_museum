@@ -104,9 +104,19 @@ class PresetStore:
 
         全部或指定的轉燈轉動／停止。 / Start or stop every unit, or only the listed ones.
         """
+        if isinstance(raw, dict) and set(raw) == {"stagger"}:
+            # 分區啟動（依控箱）或全部一起啟動；只在記憶體，後端重啟後回到分區。
+            # Staggered starts (by control box) or all together; memory only, staggered again after a restart.
+            if type(raw["stagger"]) is not bool:
+                raise ValueError("motor stagger must be true or false")
+            if self.motor_gate is not None:
+                self.motor_gate.set_staggered(raw["stagger"])
+            with self.lock:
+                self.revision += 1
+                return self._state_unlocked(config)
         if not isinstance(raw, dict) or "enabled" not in raw or set(raw) - {"enabled", "units"} \
                 or type(raw["enabled"]) is not bool:
-            raise ValueError("motor command must be {\"enabled\": true|false, \"units\"?: [unit ids]}")
+            raise ValueError("motor command must be {\"enabled\": true|false, \"units\"?: [unit ids]} or {\"stagger\": true|false}")
         count = config["unit_count"]
         if "units" in raw:
             units = raw["units"]
@@ -172,6 +182,10 @@ class PresetStore:
                       # Per unit: seconds until a held start is sent; null = not held.
                       **({"waiting": self.motor_gate.waiting(
                           [unit in self.motor_units for unit in range(1, config["unit_count"] + 1)])}
+                         if self.motor_gate is not None else {}),
+                      # stagger：同時啟動多台時依控箱分批；staggerAvailable：設定檔有控箱分組才有差別。
+                      # stagger: starts are spread by control box; staggerAvailable: only when groups are configured.
+                      **({"stagger": self.motor_gate.is_staggered(), "staggerAvailable": self.motor_gate.can_stagger()}
                          if self.motor_gate is not None else {})},
             # true：全部燈光關閉（送全黑），蓋過效果、演出與測試。 / true: every light sends black, over effects, shows and tests.
             "blackout": self.blackout,

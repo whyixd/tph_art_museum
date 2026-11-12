@@ -61,7 +61,12 @@ export type BackendState = {
    * waiting：每台要轉但還在排隊（等前一次緩停結束、依控箱分區）的剩餘秒數（null = 沒有在等；舊後端沒有）。
    * waiting: per unit, seconds until a held start is sent (null = not held; missing on old backends).
    */
-  motor: { channel: number; enabled: boolean; value: number; units?: boolean[]; waiting?: (number | null)[] }
+  motor: {
+    channel: number; enabled: boolean; value: number; units?: boolean[]; waiting?: (number | null)[]
+    /** 同時啟動多台時依控箱分批（false = 全部一起）；staggerAvailable：設定檔有控箱分組才有差別。舊後端沒有。 */
+    /** Starts spread by control box (false: all together); staggerAvailable: groups are configured. Missing on old backends. */
+    stagger?: boolean; staggerAvailable?: boolean
+  }
   /** true：全部燈光關閉（轉燈、球燈、洗牆燈送全黑；舊後端沒有）。 / true: every light sends black (missing on old backends). */
   blackout?: boolean
   /** 總亮度 0..1（轉燈、球燈、洗牆燈；舊後端沒有）。 / Master level 0..1 for every light (missing on old backends). */
@@ -190,6 +195,15 @@ export async function setBackendMotor(enabled: boolean, units?: number[]): Promi
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(units ? { enabled, units } : { enabled }),
+  }))
+}
+
+/** 啟動方式：依控箱分區（true）或全部一起（false）；不改變馬達的轉動／停止。 / Staggered by control box, or all together. */
+export async function setBackendMotorStagger(stagger: boolean): Promise<BackendState> {
+  return readState<BackendState>(await fetch('/api/motor', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ stagger }),
   }))
 }
 

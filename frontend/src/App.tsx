@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { applyBackendPreset, getBackendPatch, getBackendPlayback, getBackendSequence, getBackendState, getBackendWind, getWeatherState, restartBackendPlayback, saveBackendSequence, setBackendBlackout, setBackendMasterLevel, setBackendMotor, setBackendStandby, setBackendWindPresets, setBackendWindTarget, type BackendPatch, type BackendWind, type BackendWindPresets, type BackendPlayback, type BackendState, type WeatherState } from './backendApi'
+import { applyBackendPreset, getBackendPatch, getBackendPlayback, getBackendSequence, getBackendState, getBackendWind, getWeatherState, restartBackendPlayback, saveBackendSequence, setBackendBlackout, setBackendMasterLevel, setBackendMotor, setBackendMotorStagger, setBackendStandby, setBackendWindPresets, setBackendWindTarget, type BackendPatch, type BackendWind, type BackendWindPresets, type BackendPlayback, type BackendState, type WeatherState } from './backendApi'
 import { ControlPanel, type EditGroup } from './components/ControlPanel'
 import type { WindGroup, WindPresets } from './components/WindPanel'
 import { getWindTarget, setWindTarget, subscribeWindPreview } from './wind/windPreview'
@@ -448,13 +448,14 @@ export function App() {
     }
   }, [backendBusy, backendState, controlMode])
 
-  const setMotor = useCallback(async (enabled: boolean, units?: number[]) => {
+  // enabled 為 'stagger' | 'together' 時是切換啟動方式（分區／全部一起）。 / 'stagger' | 'together' switches the start mode.
+  const setMotor = useCallback(async (enabled: boolean | 'stagger' | 'together', units?: number[]) => {
     if (controlMode !== 'backend' || backendBusy || backendState === null) return
     const request = backendRequest.current
     setBackendBusy(true)
     setBackendError(null)
     try {
-      const state = await setBackendMotor(enabled, units)
+      const state = typeof enabled === 'boolean' ? await setBackendMotor(enabled, units) : await setBackendMotorStagger(enabled === 'stagger')
       if (request === backendRequest.current) setBackendState(state)
     } catch (error) {
       if (request === backendRequest.current) {
@@ -942,6 +943,7 @@ export function App() {
           onRefreshBackend={() => setBackendRefresh((current) => current + 1)}
           onApplyBackend={() => { void applyToBackend(effectPreset, fixturePresets) }}
           onMotor={(enabled, units) => { void setMotor(enabled, units) }}
+          onMotorStagger={(stagger) => { void setMotor(stagger ? 'stagger' : 'together') }}
           onBlackout={(enabled) => { void setBlackout(enabled) }}
           onMasterLevel={(level) => { void setMasterLevel(level) }}
           onRestartBackend={(source) => { void restartBackend(source) }}

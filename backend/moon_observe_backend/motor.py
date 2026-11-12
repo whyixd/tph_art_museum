@@ -37,6 +37,10 @@ class MotorGate:
         self.restart_delay = restart_delay
         self.start_interval = start_interval
         self.start_groups = [list(group) for group in start_groups]
+        # 分區啟動（依控箱、每 start_interval 一組）或全部一起；可在執行中切換（set_staggered）。停止後的等待不受影響。
+        # Staggered starts (one control box per start_interval) or all together; switchable at run time. The wait
+        # after a stop applies either way.
+        self.staggered = True
         self.link_timeout = link_timeout
         self.clock = clock
         self.lock = Lock()
@@ -47,7 +51,7 @@ class MotorGate:
 
     def _rank(self, index: int, count: int) -> int:
         """Start order of unit ``index + 1``: its group's position; lower starts first."""
-        if not self.start_groups:
+        if not self.start_groups or not self.staggered:
             return 0
         for position, group in enumerate(self.start_groups):
             if index + 1 in group:
@@ -77,8 +81,23 @@ class MotorGate:
                 for index in ready:
                     if self._rank(index, count) == first:
                         self._sent[index] = 255
-                self._next_slot = now + self.start_interval
+                self._next_slot = now + (self.start_interval if self.staggered else 0.0)
             return tuple(self._sent)
+
+    def set_staggered(self, staggered: bool) -> None:
+        with self.lock:
+            self.staggered = staggered
+            if not staggered:
+                # 排隊中的不必再等下一個時段。 / Held starts need not wait for the next slot.
+                self._next_slot = 0.0
+
+    def is_staggered(self) -> bool:
+        with self.lock:
+            return self.staggered
+
+    def can_stagger(self) -> bool:
+        """Whether staggering changes anything (groups and an interval are configured)."""
+        return bool(self.start_groups) and self.start_interval > 0
 
     def waiting(self, desired: Sequence[bool]) -> list[float | None]:
         """Seconds until each wanted-but-held unit gets its start; None = not held (or no output loop).
@@ -109,5 +128,5 @@ class MotorGate:
                     remaining = round(moment - now, 1)
                     result[index] = remaining if remaining > 0 else None
                     del ready_at[index]
-            slot = moment + self.start_interval
+            slot = moment + (self.start_interval if self.staggered else 0.0)
         return result

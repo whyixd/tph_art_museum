@@ -106,6 +106,29 @@ class StartGroupTests(unittest.TestCase):
         self.assertEqual([1.0, 1.0, None, None, 2.0, 3.0], self.gate.waiting([True] * 6))
         self.assertEqual([1.0, 1.0, 0.0, 0.0, 2.0, 3.0], self.started_at(everything, 5))
 
+    def test_all_together_when_staggering_is_off(self):
+        self.gate.set_staggered(False)
+        self.gate.apply((0,) * 6)
+        self.assertEqual([None] * 6, self.gate.waiting([True] * 6))
+        self.assertEqual([0.0] * 6, self.started_at((255,) * 6, 2))
+
+    def test_all_together_still_waits_for_the_soft_stop(self):
+        self.gate.set_staggered(False)
+        frames(self.gate, self.clock, (255,) * 6, 1)
+        frames(self.gate, self.clock, (0,) * 6, 3)                  # stopped 3 s ago
+        first = self.started_at((255,) * 6, 12)
+        self.assertEqual(1, len(set(first)))                          # together …
+        self.assertAlmostEqual(9.0, first[0], delta=0.05)             # … once the 12 s have passed
+
+    def test_turning_staggering_off_releases_the_queue(self):
+        self.gate.apply((0,) * 6)
+        self.assertEqual([1.0, 1.0, 0.0, 0.0, None, None], self.started_at((255,) * 6, 1.5)[:4] + [None, None])
+        self.gate.set_staggered(False)
+        self.assertEqual((255,) * 6, self.gate.apply((255,) * 6))
+        self.gate.set_staggered(True)
+        self.assertTrue(self.gate.is_staggered() and self.gate.can_stagger())
+        self.assertFalse(MotorGate(12.0).can_stagger())
+
     def test_a_single_unit_starts_at_once(self):
         self.assertEqual([None, None, None, None, 0.0, None], self.started_at((0, 0, 0, 0, 255, 0), 1))
 
@@ -168,6 +191,25 @@ class StoreMotorOutputTests(unittest.TestCase):
                 store.motor_output(3)
             self.assertEqual([None, 8.0, None], store.state(CONFIG)["motor"]["waiting"])
             self.assertNotIn("waiting", PresetStore(path, 156).state(CONFIG)["motor"])
+
+    def test_stagger_switch_through_the_store(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "preset.json"
+            path.write_text(json.dumps(default_preset("full-on")), encoding="utf-8")
+            gate = MotorGate(12.0, start_interval=1.0, start_groups=[[1], [2, 3]])
+            store = PresetStore(path, 156, motor_gate=gate)
+            motor = store.state(CONFIG)["motor"]
+            self.assertEqual((True, True), (motor["stagger"], motor["staggerAvailable"]))
+            store.apply_motor({"enabled": True}, CONFIG)
+            motor = store.apply_motor({"stagger": False}, CONFIG)["motor"]
+            self.assertFalse(motor["stagger"])
+            self.assertFalse(gate.is_staggered())
+            self.assertEqual([True] * 3, motor["units"])                         # the switch leaves the motors alone
+            self.assertTrue(store.apply_motor({"stagger": True}, CONFIG)["motor"]["stagger"])
+            for bad in ({"stagger": 1}, {"stagger": True, "enabled": True}):
+                with self.subTest(bad=bad), self.assertRaises(ValueError):
+                    store.apply_motor(bad, CONFIG)
+            self.assertNotIn("stagger", PresetStore(path, 156).state(CONFIG)["motor"])
 
 
 if __name__ == "__main__":

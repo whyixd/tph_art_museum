@@ -98,6 +98,7 @@ type ControlPanelProps = {
   onApplyBackend: () => void
   /** units 省略 = 全部轉燈。 / units omitted = every unit. */
   onMotor: (enabled: boolean, units?: number[]) => void
+  onMotorStagger: (stagger: boolean) => void
   /** 全部關燈／恢復。 / All lights off / back on. */
   onBlackout: (enabled: boolean) => void
   onMasterLevel: (level: number) => void
@@ -122,17 +123,21 @@ type ControlPanelProps = {
  * 馬達：全部或每台個別轉動／停止（255 緩啟動、0 緩停）。舊後端沒有 units 時只顯示全部的按鈕。
  * Motors: start / stop every unit or each one (255 soft start, 0 soft stop). Old backends without units: all only.
  */
-function MotorControls({ motor, unitCount, busy, onMotor }: {
+function MotorControls({ motor, unitCount, busy, onMotor, onMotorStagger }: {
   motor: BackendState['motor']
   unitCount: number
   busy: boolean
   onMotor: (enabled: boolean, units?: number[]) => void
+  onMotorStagger: (stagger: boolean) => void
 }) {
   const units = motor.units
   const running = units ? units.filter(Boolean).length : null
   const allRunning = units ? running === unitCount : motor.enabled
   const waiting = motor.waiting ?? []
   const held = waiting.filter((seconds) => seconds !== null) as number[]
+  // 緩停可以重複按：每按一次再送一次全部緩停，並顯示送了幾次。 / Soft stop may be pressed again; the count is shown.
+  const [stops, setStops] = useState(0)
+  useEffect(() => { if (motor.enabled) setStops(0) }, [motor.enabled])
   return (
     <div className="motor-controls">
       <span className="control-label">馬達控制 · Art-Net Channel {motor.channel}</span>
@@ -140,10 +145,25 @@ function MotorControls({ motor, unitCount, busy, onMotor }: {
         {running === null ? (motor.enabled ? '開啟命令：255（緩啟動）' : '關閉命令：0（緩停）')
           : `轉動中 ${running}／${unitCount} 台`}
         {held.length > 0 && `，其中 ${held.length} 台排隊啟動，最慢 ${Math.ceil(Math.max(...held))} 秒後`}
+        {stops > 0 && `　已送出全部緩停 ${stops} 次`}
       </p>
+      {motor.stagger !== undefined && (
+        <div className="color-controls">
+          <span className="control-label">啟動方式</span>
+          <div className="segmented-control" aria-label="啟動方式">
+            <button type="button" className={motor.stagger ? 'active' : 'secondary'} aria-pressed={motor.stagger}
+              onClick={() => onMotorStagger(true)} disabled={busy || motor.stagger}>分區啟動（每秒一個控箱）</button>
+            <button type="button" className={!motor.stagger ? 'active' : 'secondary'} aria-pressed={!motor.stagger}
+              onClick={() => onMotorStagger(false)} disabled={busy || !motor.stagger}>全部一起啟動</button>
+          </div>
+          {motor.staggerAvailable === false && (
+            <p className="control-note">設定檔沒有控箱分組（[[motor.start_groups]]），兩種方式目前都是一起啟動。</p>
+          )}
+        </div>
+      )}
       <div className="button-row">
-        <button type="button" className="secondary" onClick={() => onMotor(false)}
-          disabled={busy || !motor.enabled}>全部緩停</button>
+        <button type="button" className="secondary" disabled={busy}
+          onClick={() => { setStops((count) => count + 1); onMotor(false) }}>全部緩停</button>
         <button type="button" onClick={() => onMotor(true)} disabled={busy || allRunning}>全部緩啟動</button>
       </div>
       {units && (
@@ -163,7 +183,7 @@ function MotorControls({ motor, unitCount, busy, onMotor }: {
         </div>
       )}
       <p className="control-note">
-        點編號切換該台轉動／停止（亮色 = 轉動中）。後端啟動時全部停止。啟動會排隊、時間到自動送出：停止後要等約 12 秒（馬達控制板緩停中不接受啟動），同時啟動多台時依控箱每秒放行一組（避免同時衝擊電源）。停止不排隊。Channel {motor.channel} 位於 LED 通道之後；斷線時是否停機需由接收端保障。
+        點編號切換該台轉動／停止（亮色 = 轉動中）。後端啟動時全部停止。啟動會排隊、時間到自動送出：停止後要等約 12 秒（馬達控制板緩停中不接受啟動）；「分區啟動」時同時啟動多台會依控箱每秒放行一組（避免同時衝擊電源），「全部一起啟動」則等待結束後同時送出。停止不排隊，「全部緩停」可以重複按。啟動方式在後端重新啟動後回到分區。Channel {motor.channel} 位於 LED 通道之後；斷線時是否停機需由接收端保障。
       </p>
     </div>
   )
@@ -447,6 +467,7 @@ export function ControlPanel({
   onRefreshBackend,
   onApplyBackend,
   onMotor,
+  onMotorStagger,
   onBlackout,
   onMasterLevel,
   onRestartBackend,
@@ -832,7 +853,7 @@ export function ControlPanel({
               </p>
             </div>
             {backendState && <MotorControls motor={backendState.motor} unitCount={backendState.output.unitCount}
-              busy={backendBusy} onMotor={onMotor} />}
+              busy={backendBusy} onMotor={onMotor} onMotorStagger={onMotorStagger} />}
             {backendState && <AudioPanel />}
             {backendState && <UnitColorTestPanel unitCount={backendState.output.unitCount} onChange={onUnitColorTest} />}
             {backendState && (fixtureCounts.ball > 0 || fixtureCounts.wash > 0) && (
