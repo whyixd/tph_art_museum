@@ -142,8 +142,8 @@ class WindFrameTests(unittest.TestCase):
         for pixel in calm + strong:
             for channel in pixel:
                 self.assertTrue(0 <= channel <= 1)
-        self.assertGreater(sum(p[2] for p in calm), sum(p[0] for p in calm))      # calm: blue
-        self.assertGreater(sum(p[0] for p in strong), sum(p[2] for p in strong))  # strong: red
+        self.assertGreater(sum(p[0] for p in calm), sum(p[1] for p in calm))      # calm: orange (red over green)
+        self.assertGreater(sum(p[1] for p in strong), sum(p[0] for p in strong))  # strong: green
 
     def test_smoothing_and_turn_limit(self):
         clock = Clock()

@@ -66,7 +66,8 @@ PARAMETERS: dict[str, dict[str, tuple[float, float, float]]] = {
 TIMING_KEYS = ("speedHz", "minRate", "maxRate", "calmMs", "fullMs", "curve",
                "sparkleBelowMs", "sweepSeconds", "sweepFastSeconds", "gapSeconds")
 DEFAULT_COLORS: tuple[Rgb, ...] = (
-    (0.14, 0.27, 0.67), (0.2, 0.75, 0.9), (0.56, 1.0, 0.78), (1.0, 0.7, 0.28), (1.0, 0.28, 0.49),
+    # 無風 → 強風：橙、黃、綠（同前端 WIND_FLOW_COLORS）。 / Calm to strong: orange, yellow, green.
+    (1.0, 0.45, 0.05), (1.0, 0.85, 0.1), (0.1, 1.0, 0.3),
 )
 DEFAULT_TARGET = {"speedMs": 3.0, "flowDeg": 0.0, "smoothingSeconds": 2.0, "gustiness": 0.0}
 _TARGET_RANGES = {"speedMs": (0, 30), "flowDeg": (0, 360), "smoothingSeconds": (0, 60), "gustiness": (0, 0.6)}

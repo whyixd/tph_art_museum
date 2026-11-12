@@ -367,13 +367,11 @@ export function windFlowParameters(vertical: WindParameter, density: number): Wi
   ]
 }
 
-/** 預設漸層：無風 → 強風。 / Default gradient, calm to strong. */
+/** 預設漸層：無風 → 強風，橙、黃、綠。 / Default gradient, calm to strong: orange, yellow, green. */
 export const WIND_FLOW_COLORS = [
-  { r: 0.14, g: 0.27, b: 0.67 },
-  { r: 0.2, g: 0.75, b: 0.9 },
-  { r: 0.56, g: 1, b: 0.78 },
-  { r: 1, g: 0.7, b: 0.28 },
-  { r: 1, g: 0.28, b: 0.49 },
+  { r: 1, g: 0.45, b: 0.05 },
+  { r: 1, g: 0.85, b: 0.1 },
+  { r: 0.1, g: 1, b: 0.3 },
 ]
 
 const DESCRIPTION_TAIL = '風越大流得越快（基準流速 × 無風倍率 → 強風倍率）。風速達到「亮點門檻 X」時，另有一道隨機亮點帶沿風向'
