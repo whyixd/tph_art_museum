@@ -3,26 +3,27 @@
 By the host's local time (the Pi must be on NTP, time zone Asia/Taipei) the installation is in one of three phases:
 
 - ``off`` (outside the opening hours): every motor stops, the chosen light groups go dark (blackout), a show stops.
-- ``standby`` (inside the hours): the standby effect (wind-flow, ``wind.WindStandby``) plays and, with
-  ``startMotors``, every motor runs.
-- ``show`` (inside the hours, from a show time until the show ends): the show for that date plays
-  ``showRepeats`` times in a row, then back to standby. Show times are ``showMinutes`` of every hour (0 and 30 =
+- ``standby`` (inside the hours): the standby effect (wind-flow, ``wind.WindStandby``) plays; the motors rest.
+- ``show`` (inside the hours, from a show time until the show ends): with ``startMotors`` every motor starts
+  (staggered or together as the motor gate is set) and the show for that date begins ``motorDelaySeconds`` later,
+  plays ``showRepeats`` times in a row, then the motors stop and the standby effect returns until the next show
+  time. Show times are ``showMinutes`` of every hour (0 and 30 =
   on the hour and at half past) inside the show period ``showHours`` (both ends included, e.g. 17:30-20:30 =
   17:30, 18:00 ... 20:30), plus the listed ``showTimes``. A show time at the closing time still plays, and closing
   waits for a show the schedule started to finish.
 
 After the backend starts with the schedule already enabled (a reboot, a service restart) the schedule does not
 start motors until someone confirms once (``confirm``, the button on the page); lights and shows run as usual
-and closing still stops the motors. Enabling the schedule by hand counts as that confirmation.
+(shows without motors) and closing still stops the motors. Enabling the schedule by hand counts as that confirmation.
 
 The scheduler acts when the phase changes (and once when it is enabled or the backend starts), so manual changes
 in between are kept until the next change. A show started by hand inside the hours also returns to standby when
 it ends. Disabled, it touches nothing (and gives back the lights it turned off).
 
-依主機本地時間分三種狀態：營業時間外（馬達全停、選擇的燈組關閉、演出停止）、待機（播待機效果，馬達轉動）、
-演出（表演時間到演出結束，之後回到待機；每次連播 showRepeats 輪）。表演時間 = 表演時段 showHours 內（含頭尾）每小時的 showMinutes 分（0、30 = 整點與半點），加上 showTimes。
+依主機本地時間分三種狀態：營業時間外（馬達全停、選擇的燈組關閉、演出停止）、待機（播待機效果，馬達停著）、
+演出（表演時間到：啟動全部馬達，motorDelaySeconds 後開始演出，連播 showRepeats 輪後馬達停止、回到待機，等下一個表演時間）。表演時間 = 表演時段 showHours 內（含頭尾）每小時的 showMinutes 分（0、30 = 整點與半點），加上 showTimes。
 剛好在關閉時間的那一場照播；排程開始的演出還沒播完時，等它播完才關閉。只在狀態改變時動作，中間的手動操作會保留到下次改變。
-後端啟動時排程已經啟用（重開機、重啟服務）：排程不會啟動馬達，要有人確認一次（confirm）；燈光與演出照常，關閉時間仍會停馬達。
+後端啟動時排程已經啟用（重開機、重啟服務）：排程不會啟動馬達，要有人確認一次（confirm）；燈光與演出照常（演出不帶馬達），關閉時間仍會停馬達。
 """
 
 from __future__ import annotations
@@ -37,6 +38,8 @@ import tempfile
 from threading import Event, RLock, Thread
 import time
 from typing import Any, Callable, Mapping, Sequence
+
+from .show import SHOW_DELAY_MAX_SECONDS
 
 SCHEDULE_SCHEMA_VERSION = 1
 GROUPS = ("spinner", "ball", "wash")
@@ -53,7 +56,10 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "enabled": False,
     "hours": {"start": "10:00", "end": "20:30"},
     "offGroups": list(GROUPS),
+    # 每場表演啟動全部馬達，播完設定的輪數後停止。 / Every show starts all motors; they stop after its rounds.
     "startMotors": True,
+    # 馬達啟動後幾秒才開始演出（等馬達轉起來）。 / Seconds from the motor start to the show (spin-up).
+    "motorDelaySeconds": 0,
     # 表演時段（含頭尾）：這段時間內每小時的 showMinutes 分開始表演。 / Show period (both ends included).
     "showHours": {"start": "17:30", "end": "20:30"},
     # 表演時段內每小時的第幾分開始表演：整點與 30 分。 / Minutes of every hour inside the show period: hour and half past.
@@ -100,8 +106,8 @@ def _show_id(value: Any, label: str) -> str:
 def validate_settings(raw: Any) -> dict[str, Any]:
     """Normalized schedule settings; unknown fields are refused."""
     if not isinstance(raw, dict) or set(raw) != set(DEFAULT_SETTINGS):
-        raise ValueError("schedule must be {schemaVersion, enabled, hours, offGroups, startMotors, showHours, showMinutes, "
-                         "showTimes, showRepeats, showId, dateShows}")
+        raise ValueError("schedule must be {schemaVersion, enabled, hours, offGroups, startMotors, motorDelaySeconds, "
+                         "showHours, showMinutes, showTimes, showRepeats, showId, dateShows}")
     if raw["schemaVersion"] != SCHEDULE_SCHEMA_VERSION:
         raise ValueError("unsupported schedule schemaVersion")
     for name in ("enabled", "startMotors"):
@@ -130,6 +136,9 @@ def validate_settings(raw: Any) -> dict[str, Any]:
     if (not isinstance(every, list) or len(set(every)) != len(every)
             or any(type(minute) is not int or not 0 <= minute <= 59 for minute in every)):
         raise ValueError("showMinutes must list minutes 0..59 without repeats")
+    delay = raw["motorDelaySeconds"]
+    if type(delay) not in (int, float) or not 0 <= delay <= SHOW_DELAY_MAX_SECONDS:
+        raise ValueError(f"motorDelaySeconds must be 0..{SHOW_DELAY_MAX_SECONDS}")
     repeats = raw["showRepeats"]
     if type(repeats) is not int or not 1 <= repeats <= MAX_SHOW_REPEATS:
         raise ValueError(f"showRepeats must be an integer 1..{MAX_SHOW_REPEATS}")
@@ -149,6 +158,7 @@ def validate_settings(raw: Any) -> dict[str, Any]:
         "hours": {"start": hours["start"], "end": hours["end"]},
         "offGroups": [group for group in GROUPS if group in groups],
         "startMotors": raw["startMotors"],
+        "motorDelaySeconds": delay,
         "showHours": {"start": show_hours["start"], "end": show_hours["end"]},
         "showMinutes": sorted(every),
         "showTimes": sorted(times),
@@ -197,8 +207,10 @@ def _log(line: str) -> None:
 class Scheduler:
     """Applies the schedule through callbacks; ``tick`` runs twice a second in its own thread (``start``).
 
-    ``show_state`` returns ``ShowPlayer.state()`` (after letting a finished show end); ``play_show(show_id, rounds)``
-    plays the show that many times and raises ValueError for an unknown or broken show. ``now`` is the local wall clock (naive datetime).
+    ``show_state`` returns ``ShowPlayer.state()`` (after letting a finished show end); ``play_show(show_id, rounds,
+    motors, delay)`` plays the show that many times (with ``motors``: starts every motor now, begins the show
+    ``delay`` seconds later and stops the motors after the last round) and raises ValueError for an unknown or
+    broken show. ``now`` is the local wall clock (naive datetime).
     """
 
     def __init__(
@@ -208,7 +220,7 @@ class Scheduler:
         set_motors: Callable[[bool], Any],
         set_blackout: Callable[[Sequence[str], bool], Any],
         set_standby: Callable[[bool], Any],
-        play_show: Callable[[str, int], Any],
+        play_show: Callable[[str, int, bool, float], Any],
         stop_show: Callable[[], Any],
         show_state: Callable[[], Mapping[str, Any]],
         now: Callable[[], datetime] = datetime.now,
@@ -245,6 +257,10 @@ class Scheduler:
         self._dark: tuple[str, ...] = ()
         # 排程開始、還在播的演出（關閉時間會等它播完）。 / The show this schedule started and is still playing.
         self._scheduled: str | None = None
+        # 排程的這場表演啟動了馬達（回到待機時要確定停掉）。 / The scheduled show started the motors.
+        self._motors = False
+        # 馬達先轉、演出還在等：待機效果保留到演出開始。 / Motors running, show still waiting: standby stays until it begins.
+        self._waiting = False
         self._last: datetime | None = None
         # 最近一次表演時間沒播成的原因。 / Why the latest show time did not play.
         self._error: str | None = None
@@ -261,6 +277,7 @@ class Scheduler:
     def _close(self) -> None:
         self.stop_show()
         self._scheduled = None
+        self._motors = self._waiting = False
         self.set_motors(False)
         # 沒被關掉的燈組在營業時間外播待機效果。 / Groups left on show the standby effect outside the hours.
         self.set_standby(True)
@@ -272,13 +289,9 @@ class Scheduler:
         self.log(f"schedule: closed (motors stopped, off: {', '.join(groups) or 'none'})")
 
     def _open(self) -> None:
+        # 馬達只在表演時轉。 / Motors run only during shows.
         self._release_dark()
-        motors = "untouched"
-        if self.settings["startMotors"]:
-            motors = "started" if self._confirmed else "waiting for confirmation"
-            if self._confirmed:
-                self.set_motors(True)
-        self.log(f"schedule: open (motors {motors})")
+        self.log("schedule: open")
 
     def _due(self, last: datetime | None, now: datetime) -> bool:
         """Whether a show time was passed since the previous tick (and is still fresh)."""
@@ -292,16 +305,24 @@ class Scheduler:
         if show_id is None:
             # 沒有選演出：不播，不算錯誤。 / No show chosen: nothing plays; not an error.
             return False
+        motors = self.settings["startMotors"] and self._confirmed
+        delay = self.settings["motorDelaySeconds"] if motors else 0
         try:
-            self.play_show(show_id, self.settings["showRepeats"])
+            self.play_show(show_id, self.settings["showRepeats"], motors, delay)
         except ValueError as error:
             self._error = f"{now:%H:%M} 演出 {show_id} 無法播放 / cannot play: {error}"
             self.log(f"schedule: {self._error}")
             return False
-        self.set_standby(False)
+        self._waiting = delay > 0
+        if not self._waiting:
+            self.set_standby(False)
         self._scheduled = show_id
+        # 換掉前一場時，前一場啟動的馬達交給這一場。 / Replacing a show: its motors pass to this one.
+        self._motors = motors or self._motors
         self._error = None
-        self.log(f"schedule: show {show_id} started ({self.settings['showRepeats']} round(s))")
+        detail = (f"motors started, show in {delay:g} s" if delay > 0 else "motors started") if motors else (
+            "motors waiting for confirmation" if self.settings["startMotors"] else "without motors")
+        self.log(f"schedule: show {show_id} started ({self.settings['showRepeats']} round(s), {detail})")
         return True
 
     def tick(self) -> None:
@@ -319,7 +340,13 @@ class Scheduler:
                 return
             state = self.show_state()
             playing = state.get("playing")
-            if self._scheduled is not None and (playing is None or playing["showId"] != self._scheduled):
+            starting = state.get("starting")
+            if self._waiting and playing is not None and starting is None:
+                # 等待結束、演出開始：離開待機效果。 / The wait is over and the show begins: standby ends.
+                self._waiting = False
+                self.set_standby(False)
+            if self._scheduled is not None and not any(
+                    entry is not None and entry.get("showId") == self._scheduled for entry in (playing, starting)):
                 self._scheduled = None
             if not in_hours(self.settings, now):
                 if self._phase in ("standby", "show"):
@@ -341,7 +368,12 @@ class Scheduler:
             if busy:
                 self._phase = "show"
             elif self._phase != "standby":
-                # 開門、或演出（排程或手動開始的）結束：回到待機效果。 / Opening, or a show ended: back to standby.
+                # 開門、或演出（排程或手動開始的）結束：回到待機效果；排程表演啟動的馬達停止。
+                # Opening, or a show ended: back to standby; motors a scheduled show started stop.
+                if self._motors:
+                    self._motors = False
+                    self.set_motors(False)
+                self._waiting = False
                 self.set_standby(True)
                 self._phase = "standby"
 
@@ -381,16 +413,14 @@ class Scheduler:
             return self.state()
 
     def confirm(self, raw: Any) -> dict[str, Any]:
-        """``{"confirmed": true}``: after a backend start, lets the schedule start motors (once per start). Inside
-        the hours the motors start now."""
+        """``{"confirmed": true}``: after a backend start, lets the schedule start motors (once per start), from the
+        next show time on."""
         if not isinstance(raw, dict) or set(raw) != {"confirmed"} or raw["confirmed"] is not True:
             raise ValueError("schedule confirmation must be {\"confirmed\": true}")
         with self.lock:
             if not self._confirmed:
                 self._confirmed = True
                 self.log("schedule: motor start confirmed")
-                if self.settings["enabled"] and self.settings["startMotors"] and self._phase in ("standby", "show"):
-                    self.set_motors(True)
             return self.state()
 
     def _next_show(self, now: datetime) -> dict[str, Any] | None:

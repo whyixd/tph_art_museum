@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  confirmSchedule, getSchedule, getShows, saveSchedule,
+  SHOW_DELAY_MAX_SECONDS, confirmSchedule, getSchedule, getShows, saveSchedule,
   type ScheduleGroup, type ScheduleSettings, type ScheduleState,
 } from '../backendApi'
 
@@ -13,7 +13,7 @@ const GROUPS: { id: ScheduleGroup; label: string }[] = [
 const PHASES: Record<ScheduleState['status']['phase'], string> = {
   disabled: '排程停用（手動控制）',
   off: '啟動時間外：馬達停止、選擇的燈組關閉',
-  standby: '待機效果',
+  standby: '待機效果（馬達停著）',
   show: '演出中',
 }
 
@@ -52,9 +52,11 @@ function inHours(hours: ScheduleSettings['hours'], time: string): boolean {
   return start < end ? at >= start && at < end : at >= start || at < end
 }
 
-// 每日排程（M13）：裝置啟動時間內播待機效果、表演時間播演出；啟動時間外馬達停止、選擇的燈組關閉。
-// Daily schedule (M13): inside the opening hours the standby effect plays and shows play at their times; outside
-// them the motors stop and the chosen light groups go dark.
+// 每日排程（M13）：裝置啟動時間內播待機效果；表演時間到就啟動馬達、播演出，連播完馬達停止、回到待機；
+// 啟動時間外馬達停止、選擇的燈組關閉。
+// Daily schedule (M13): inside the opening hours the standby effect plays; at each show time the motors start and
+// the show plays its rounds, then the motors stop and standby returns. Outside the hours the motors stop and the
+// chosen light groups go dark.
 export function SchedulePanel() {
   const [state, setState] = useState<ScheduleState | null | undefined>(undefined)
   // 編輯中的設定；null = 跟著後端。 / The settings being edited; null = follow the backend.
@@ -102,7 +104,10 @@ export function SchedulePanel() {
     MONTH_DAY.test(rule.from) && MONTH_DAY.test(rule.to) && rule.showId !== '')
   const repeatsValid = Number.isInteger(settings.showRepeats) && settings.showRepeats >= 1 && settings.showRepeats <= 50
   const showHoursValid = TIME.test(settings.showHours.start) && TIME.test(settings.showHours.end)
-  const valid = hoursValid && showHoursValid && rulesValid && repeatsValid && parsed.invalid.length === 0 && every.invalid.length === 0
+  const delayValid = Number.isFinite(settings.motorDelaySeconds) && settings.motorDelaySeconds >= 0
+    && settings.motorDelaySeconds <= SHOW_DELAY_MAX_SECONDS
+  const valid = hoursValid && showHoursValid && rulesValid && repeatsValid && delayValid
+    && parsed.invalid.length === 0 && every.invalid.length === 0
   // 剛好在關閉時間的那一場照播。 / A time exactly at closing still plays.
   const playable = (time: string) => inHours(settings.hours, time) || time === settings.hours.end
   const outside = hoursValid ? parsed.times.filter((time) => !playable(time)) : []
@@ -173,8 +178,8 @@ export function SchedulePanel() {
       {needsConfirm && (
         <div className="schedule-confirm" role="alert">
           <p>
-            後端重新啟動過：排程<strong>不會啟動馬達</strong>，燈光與演出照常。確認現場安全後按下確認
-            {status.inHours ? '，馬達會立刻啟動' : '，下次啟動時間開始時馬達才會啟動'}。每次重啟只需確認一次。
+            後端重新啟動過：排程<strong>不會啟動馬達</strong>，燈光與演出照常（演出不帶馬達）。確認現場安全後按下確認，
+            下一場表演起會帶馬達（按下時不會立刻啟動）。每次重啟只需確認一次。
           </p>
           <button type="button" disabled={busy} onClick={() => { void confirm() }}>確認，允許排程啟動馬達</button>
         </div>
@@ -184,7 +189,7 @@ export function SchedulePanel() {
 
       <label className="audio-option">
         <input type="checkbox" checked={settings.enabled} onChange={(event) => edit({ enabled: event.target.checked })} />
-        啟用排程（儲存後立刻依現在時間套用，會自動啟動／停止馬達；手動啟用視同已確認）
+        啟用排程（儲存後立刻依現在時間套用，表演時會自動啟動／停止馬達；手動啟用視同已確認）
       </label>
 
       <div className="schedule-row">
@@ -216,8 +221,17 @@ export function SchedulePanel() {
       </div>
       <label className="audio-option">
         <input type="checkbox" checked={settings.startMotors} onChange={(event) => edit({ startMotors: event.target.checked })} />
-        啟動時間開始時啟動全部馬達
+        每場表演啟動全部馬達（分區或全部一起依「馬達」設定），連播完後停止
       </label>
+      {settings.startMotors && (
+        <label className="sequence-field">
+          馬達啟動後幾秒開始演出（0–{SHOW_DELAY_MAX_SECONDS}；等待時照播待機效果）
+          <input type="number" min={0} max={SHOW_DELAY_MAX_SECONDS} step={1}
+            value={Number.isNaN(settings.motorDelaySeconds) ? '' : settings.motorDelaySeconds}
+            onChange={(event) => edit({ motorDelaySeconds: event.target.value === '' ? NaN : Number(event.target.value) })} />
+        </label>
+      )}
+      {!delayValid && <p className="backend-error" role="alert">馬達等待秒數要在 0–{SHOW_DELAY_MAX_SECONDS} 之間。</p>}
 
       <div className="schedule-row">
         <label className="sequence-field">
@@ -310,8 +324,9 @@ export function SchedulePanel() {
       </div>
       {error && <p className="backend-error" role="alert">{error}</p>}
       <p className="control-note">
-        依主機（Pi）的本地時間。啟動時間內播待機效果（「風力」分頁的風流），表演時段內每到表演時間就播當天的演出，連播設定的輪數後回到待機
-        （上一場還沒播完就到下一個表演時間時，會從頭重新開始）；關閉時間一到，馬達全停、勾選的燈組關閉、手動播的演出停止。
+        依主機（Pi）的本地時間。啟動時間內播待機效果（「風力」分頁的風流），馬達停著；表演時段內每到表演時間就啟動全部馬達、播當天的演出，
+        連播設定的輪數後馬達停止、回到待機，等下一個表演時間（上一場還沒播完就到下一個表演時間時，會從頭重新開始）；
+        關閉時間一到，馬達全停、勾選的燈組關閉、手動播的演出停止。
         剛好在關閉時間的那一場照播，排程開始的演出會等它播完才關閉。排程只在狀態改變時動作，
         中間手動調整的馬達、關燈、待機會保留到下一次改變；要長時間手動控制請先停用排程。
         後端或 Pi 重新啟動後，燈光與演出依當時時間自動套用，但馬達要先在這裡確認一次才會由排程啟動。

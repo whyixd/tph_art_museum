@@ -606,7 +606,8 @@ def main(argv: list[str] | None = None) -> int:
             set_motors=lambda enabled: store.apply_motor({"enabled": enabled}, config),
             set_blackout=lambda groups, enabled: store.apply_blackout({"enabled": enabled, "groups": list(groups)}, config),
             set_standby=lambda enabled: wind_standby.set_standby({"enabled": enabled}),
-            play_show=lambda show_id, rounds: show_player.play({"showId": show_id, "rounds": rounds}),
+            play_show=lambda show_id, rounds, motors, delay: show_player.play(
+                {"showId": show_id, "rounds": rounds, "startMotors": motors, "delaySeconds": delay}),
             stop_show=show_player.stop, show_state=show_state)
         if scheduler.warning:
             print(f"warning: {scheduler.warning}", file=sys.stderr, flush=True)

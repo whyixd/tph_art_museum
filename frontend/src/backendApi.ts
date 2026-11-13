@@ -655,8 +655,10 @@ export type ScheduleSettings = {
   hours: { start: string; end: string }
   /** 啟動時間外關閉的燈組。 / Light groups turned off outside the hours. */
   offGroups: ScheduleGroup[]
-  /** 啟動時間開始時啟動全部馬達（結束時一律停止）。 / Start every motor at opening (they always stop at closing). */
+  /** 每場表演啟動全部馬達，連播完後停止（關閉時間一律停止）。 / Every show starts all motors; they stop after it. */
   startMotors: boolean
+  /** 馬達啟動後幾秒才開始演出（0–SHOW_DELAY_MAX_SECONDS）。 / Seconds from the motor start to the show. */
+  motorDelaySeconds: number
   /** 表演時段（含頭尾）。 / Show period, both ends included. */
   showHours: { start: string; end: string }
   /** 表演時段內每小時的第幾分開始表演（0、30 = 整點與半點）。 / Minutes of every hour inside the show period. */

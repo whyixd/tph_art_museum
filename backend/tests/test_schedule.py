@@ -32,7 +32,7 @@ class World:
         self.monotonic = 0.0
         self.events = []
         self.playing = None
-        self.starting = False
+        self.starting = None
         self.known = {"demo": False, "xmas": False, "looping": True}  # showId -> loop
         self.scheduler = Scheduler(
             path,
@@ -45,19 +45,29 @@ class World:
             # 像手動啟用過的排程（已確認）。 / As a schedule enabled by hand (confirmed).
             self.scheduler.settings = validate_settings(raw)
 
-    def play(self, show_id, rounds):
+    def play(self, show_id, rounds, motors, delay):
         if show_id not in self.known:
             raise ValueError("unknown showId")
-        self.playing = {"showId": show_id, "loop": self.known[show_id], "durationSeconds": 60.0}
-        self.rounds = rounds
+        if motors:
+            self.events.append(("motors", True))
+        self.rounds, self.delay = rounds, delay
+        if delay > 0:
+            # 馬達先轉，演出等 delay 秒。 / Motors first, the show waits.
+            self.starting = {"showId": show_id, "remainingSeconds": delay}
+        else:
+            self.begin(show_id)
         self.events.append(("play", show_id))
 
+    def begin(self, show_id="demo"):
+        self.starting = None
+        self.playing = {"showId": show_id, "loop": self.known[show_id], "durationSeconds": 60.0}
+
     def stop(self):
-        self.playing = None
+        self.playing = self.starting = None
         self.events.append(("stop",))
 
     def show_state(self):
-        return {"playing": self.playing, **({"starting": {}} if self.starting else {})}
+        return {"playing": self.playing, **({"starting": self.starting} if self.starting else {})}
 
     def advance(self, seconds):
         """Tick every half second up to ``seconds`` later; returns the events of that span."""
@@ -89,6 +99,7 @@ class SettingsTests(unittest.TestCase):
             {"showTimes": ["11:00", "11:00"]}, {"showTimes": ["11.00"]}, {"showId": ""}, {"schemaVersion": 2},
             {"dateShows": [{"from": "02-30", "to": "03-01", "showId": "demo"}]},
             {"dateShows": [{"from": "12-01", "to": "12-25"}]}, {"extra": True},
+            {"motorDelaySeconds": -1}, {"motorDelaySeconds": 121}, {"motorDelaySeconds": True},
             {"showHours": {"start": "17:30"}}, {"showHours": {"start": "17:30", "end": "25:00"}},
             {"showMinutes": [60]}, {"showMinutes": [0, 0]}, {"showMinutes": [0.5]}, {"showRepeats": 0}, {"showRepeats": 51},
             {"showRepeats": 2.0},
@@ -125,18 +136,18 @@ class SchedulerTests(unittest.TestCase):
                          world.advance(1))
         self.assertEqual("off", world.phase())
         self.assertEqual([], world.advance(60))
-        # 10:00 開始：恢復燈光、啟動馬達、播待機效果。 / 10:00: lights back, motors start, standby effect.
-        self.assertEqual([("blackout", ("spinner", "ball", "wash"), False), ("motors", True), ("standby", True)],
-                         world.go("10:00"))
+        # 10:00 開始：恢復燈光、播待機效果；馬達不動。 / 10:00: lights back, standby effect; motors rest.
+        self.assertEqual([("blackout", ("spinner", "ball", "wash"), False), ("standby", True)], world.go("10:00"))
         self.assertEqual("standby", world.phase())
         self.assertEqual({"at": "2026-11-14T11:00", "showId": "demo"}, world.scheduler.state()["status"]["nextShow"])
-        # 11:00 表演：播演出、離開待機。 / 11:00: the show plays and standby ends.
-        self.assertEqual([("play", "demo"), ("standby", False)], world.go("11:00"))
+        # 11:00 表演：啟動馬達、播演出、離開待機。 / 11:00: motors start, the show plays and standby ends.
+        self.assertEqual([("motors", True), ("play", "demo"), ("standby", False)], world.go("11:00"))
+        self.assertEqual(0, world.delay)
         self.assertEqual("show", world.phase())
         self.assertEqual([], world.advance(30))
-        # 演出結束：回到待機。 / The show ends: back to standby.
+        # 演出結束：馬達停、回到待機。 / The show ends: motors stop, back to standby.
         world.playing = None
-        self.assertEqual([("standby", True)], world.advance(1))
+        self.assertEqual([("motors", False), ("standby", True)], world.advance(1))
         self.assertEqual("standby", world.phase())
         # 20:30 結束：演出停、馬達停、燈關。 / 20:30: show and motors stop, lights off.
         self.assertEqual([("stop",), ("motors", False), ("standby", True), ("blackout", ("spinner", "ball", "wash"), True)],
@@ -147,7 +158,7 @@ class SchedulerTests(unittest.TestCase):
     def test_closing_waits_for_a_scheduled_show_but_stops_one_started_by_hand(self):
         world = World("12:00", settings(showTimes=["20:29"]))
         world.advance(1)
-        self.assertEqual([("play", "demo"), ("standby", False)], world.go("20:29"))
+        self.assertEqual([("motors", True), ("play", "demo"), ("standby", False)], world.go("20:29"))
         # 排程開始的演出：關閉時間到了先讓它播完。 / A scheduled show finishes before closing.
         self.assertEqual([], world.go("20:30"))
         self.assertEqual([], world.advance(120))
@@ -168,7 +179,7 @@ class SchedulerTests(unittest.TestCase):
     def test_starting_inside_the_hours_does_not_replay_a_past_show(self):
         world = World("11:00", settings())
         world.time += timedelta(seconds=20)
-        self.assertEqual([("motors", True), ("standby", True)], world.advance(5))
+        self.assertEqual([("standby", True)], world.advance(5))
         self.assertEqual("standby", world.phase())
 
     def test_a_late_show_time_is_skipped(self):
@@ -188,15 +199,19 @@ class SchedulerTests(unittest.TestCase):
         world = World("09:00", settings(offGroups=["spinner"], startMotors=False))
         self.assertEqual([("stop",), ("motors", False), ("standby", True), ("blackout", ("spinner",), True)], world.advance(1))
         self.assertEqual([("blackout", ("spinner",), False), ("standby", True)], world.go("10:00"))
+        # 不帶馬達的表演。 / Shows without motors.
+        self.assertEqual([("play", "demo"), ("standby", False)], world.go("11:00"))
+        world.playing = None
+        self.assertEqual([("standby", True)], world.advance(1))
         none = World("09:00", settings(offGroups=[]))
         self.assertEqual([("stop",), ("motors", False), ("standby", True)], none.advance(1))
-        self.assertEqual([("motors", True), ("standby", True)], none.go("10:00"))
+        self.assertEqual([("standby", True)], none.go("10:00"))
 
     def test_date_rule_picks_the_show(self):
         world = World("10:30", settings(dateShows=[{"from": "11-01", "to": "11-30", "showId": "xmas"}]))
         world.advance(1)
         self.assertEqual("xmas", world.scheduler.state()["status"]["todayShowId"])
-        self.assertEqual(("play", "xmas"), world.go("11:00")[0])
+        self.assertIn(("play", "xmas"), world.go("11:00"))
 
     def test_missing_or_unknown_show_stays_in_standby(self):
         for show_id, reported in ((None, False), ("gone", True)):
@@ -215,21 +230,22 @@ class SchedulerTests(unittest.TestCase):
         world.advance(1)
         self.assertEqual([0, 30], world.scheduler.state()["settings"]["showMinutes"])
         # 10:00 開門：表演時段還沒到，只有待機。 / 10:00 opens: before the show period, standby only.
-        self.assertEqual([("blackout", ("spinner", "ball", "wash"), False), ("motors", True), ("standby", True)],
-                         world.go("10:00"))
+        self.assertEqual([("blackout", ("spinner", "ball", "wash"), False), ("standby", True)], world.go("10:00"))
         self.assertEqual([], world.go("17:00"))
         self.assertEqual({"at": "2026-11-14T17:30", "showId": "demo"}, world.scheduler.state()["status"]["nextShow"])
-        # 17:30 第一場，連播 6 輪；播完回待機，等 18:00。 / 17:30: first show, 6 rounds; then standby until 18:00.
-        self.assertEqual([("play", "demo"), ("standby", False)], world.go("17:30"))
+        # 17:30 第一場：馬達啟動，連播 6 輪；播完馬達停、回待機，等 18:00。
+        # 17:30: first show with the motors, 6 rounds; then the motors stop and standby until 18:00.
+        self.assertEqual([("motors", True), ("play", "demo"), ("standby", False)], world.go("17:30"))
         self.assertEqual(6, world.rounds)
         world.playing = None
-        self.assertEqual([("standby", True)], world.advance(1))
+        self.assertEqual([("motors", False), ("standby", True)], world.advance(1))
+        self.assertEqual([], world.advance(60))
         self.assertEqual({"at": "2026-11-14T18:00", "showId": "demo"}, world.scheduler.state()["status"]["nextShow"])
-        self.assertEqual([("play", "demo"), ("standby", False)], world.go("18:00"))
+        self.assertEqual([("motors", True), ("play", "demo"), ("standby", False)], world.go("18:00"))
         world.playing = None
         world.advance(1)
         # 20:30 最後一場照播（同時是關閉時間）；播完才關閉。 / 20:30: the last show plays (also closing time), then closes.
-        self.assertEqual([("play", "demo"), ("standby", False)], world.go("20:30"))
+        self.assertEqual([("motors", True), ("play", "demo"), ("standby", False)], world.go("20:30"))
         self.assertEqual("show", world.phase())
         self.assertEqual([], world.advance(300))
         world.playing = None
@@ -240,28 +256,30 @@ class SchedulerTests(unittest.TestCase):
     def test_show_period_ending_before_closing_returns_to_standby(self):
         world = World("19:59", settings(showMinutes=[0, 30], showHours={"start": "17:30", "end": "20:00"}))
         world.advance(1)
-        self.assertEqual([("play", "demo"), ("standby", False)], world.go("20:00"))
+        self.assertEqual([("motors", True), ("play", "demo"), ("standby", False)], world.go("20:00"))
         world.playing = None
-        self.assertEqual([("standby", True)], world.advance(1))
+        self.assertEqual([("motors", False), ("standby", True)], world.advance(1))
         self.assertEqual("standby", world.phase())
         self.assertNotIn(("play", "demo"), world.go("20:30"))
 
     def test_an_older_file_takes_defaults_for_new_fields(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "schedule.json"
-            old = {key: value for key, value in settings().items() if key not in ("showHours", "showMinutes", "showRepeats")}
+            old = {key: value for key, value in settings().items()
+                   if key not in ("showHours", "showMinutes", "showRepeats", "motorDelaySeconds")}
             path.write_text(json.dumps(old), encoding="utf-8")
             world = World(path=path)
             self.assertIsNone(world.scheduler.warning)
-            self.assertEqual(([0, 30], 6), (world.scheduler.settings["showMinutes"], world.scheduler.settings["showRepeats"]))
+            self.assertEqual(([0, 30], 6, 0), (world.scheduler.settings["showMinutes"], world.scheduler.settings["showRepeats"],
+                                               world.scheduler.settings["motorDelaySeconds"]))
 
     def test_a_show_started_by_hand_returns_to_standby(self):
         world = World("10:30", settings())
         world.advance(1)
-        world.starting = True  # 延後開始的演出也算。 / A delayed start counts too.
+        world.starting = {"showId": "demo", "remainingSeconds": 5}  # 延後開始的演出也算。 / A delayed start counts too.
         self.assertEqual([], world.advance(2))
         self.assertEqual("show", world.phase())
-        world.starting = False
+        world.starting = None
         world.playing = {"showId": "demo", "loop": True, "durationSeconds": 60.0}
         # 手動開始的循環演出不會被排程停掉。 / A looping show started by hand is not stopped by the schedule.
         self.assertEqual([], world.advance(90))
@@ -291,7 +309,7 @@ class SchedulerTests(unittest.TestCase):
         # 改成現在在營業時間內：立刻開。 / Hours changed to include now: opens at once.
         del world.events[:]
         world.scheduler.apply(settings(offGroups=["wash"], hours={"start": "08:00", "end": "20:30"}))
-        self.assertEqual([("blackout", ("wash",), False), ("motors", True), ("standby", True)], world.events)
+        self.assertEqual([("blackout", ("wash",), False), ("standby", True)], world.events)
 
     def test_settings_persist_and_a_broken_file_disables(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -316,21 +334,24 @@ class SchedulerTests(unittest.TestCase):
             world = World("10:30", path=path)
             self.assertFalse(world.scheduler.state()["status"]["motorsConfirmed"])
             self.assertEqual([("standby", True)], world.advance(1))
-            # 表演照常，仍不啟動馬達。 / Shows still play, without motors.
+            # 表演照常，但不啟動馬達。 / Shows still play, without motors.
             self.assertEqual([("play", "demo"), ("standby", False)], world.go("11:00"))
             for raw in ({"confirmed": False}, {"confirmed": 1}, {}, None):
                 with self.subTest(raw=raw), self.assertRaises(ValueError):
                     world.scheduler.confirm(raw)
             del world.events[:]
+            # 確認後不會立刻啟動，下一場表演才帶馬達。 / Confirming starts nothing; the next show brings the motors.
             self.assertTrue(world.scheduler.confirm({"confirmed": True})["status"]["motorsConfirmed"])
-            self.assertEqual([("motors", True)], world.events)
-            # 只確認一次：再按不會重複，之後每天照排程。 / Once only; later days follow the schedule.
             world.scheduler.confirm({"confirmed": True})
-            self.assertEqual([("motors", True)], world.events)
+            self.assertEqual([], world.events)
+            world.playing = None
+            self.assertEqual([("standby", True)], world.advance(1))
+            self.assertEqual([("motors", True), ("play", "demo"), ("standby", False)], world.go("15:00"))
             world.playing = None
             world.go("20:30")
             world.time += timedelta(days=1)
-            self.assertIn(("motors", True), world.go("10:00"))
+            self.assertNotIn(("motors", True), world.go("10:00"))
+            self.assertIn(("motors", True), world.go("11:00"))
 
     def test_unconfirmed_closing_still_stops_motors_and_confirming_while_closed_waits_for_opening(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -339,12 +360,15 @@ class SchedulerTests(unittest.TestCase):
             world = World("09:00", path=path)
             self.assertIn(("motors", False), world.advance(1))
             self.assertEqual([("blackout", ("spinner", "ball", "wash"), False), ("standby", True)], world.go("10:00"))
+            self.assertEqual([("play", "demo"), ("standby", False)], world.go("11:00"))
+            world.playing = None
             self.assertIn(("motors", False), world.go("20:30"))
             del world.events[:]
             world.scheduler.confirm({"confirmed": True})
             self.assertEqual([], world.events)
             world.time += timedelta(days=1)
-            self.assertIn(("motors", True), world.go("10:00"))
+            world.go("10:00")
+            self.assertIn(("motors", True), world.go("11:00"))
 
     def test_enabling_by_hand_is_the_confirmation(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -353,15 +377,47 @@ class SchedulerTests(unittest.TestCase):
             world = World("10:30", path=path)
             world.advance(1)
             world.scheduler.apply(settings())
-            self.assertIn(("motors", True), world.events)
             self.assertTrue(world.scheduler.state()["status"]["motorsConfirmed"])
+            self.assertIn(("motors", True), world.go("11:00"))
             # 重啟時已啟用、之後先停用再啟用：也算確認。 / Disabled then enabled again after a restart counts too.
             again = World("10:30", path=path)
             self.assertEqual([("standby", True)], again.advance(1))
             again.scheduler.apply(settings(enabled=False))
             del again.events[:]
             again.scheduler.apply(settings())
-            self.assertIn(("motors", True), again.events)
+            self.assertIn(("motors", True), again.go("11:00"))
+
+    def test_motor_delay_keeps_standby_until_the_show_begins(self):
+        world = World("10:30", settings(motorDelaySeconds=15))
+        world.advance(1)
+        # 馬達先轉，待機效果保留到演出真的開始。 / Motors first; the standby effect stays until the show begins.
+        self.assertEqual([("motors", True), ("play", "demo")], world.go("11:00"))
+        self.assertEqual(15, world.delay)
+        self.assertEqual([], world.advance(10))
+        self.assertEqual("show", world.phase())
+        world.begin()
+        self.assertEqual([("standby", False)], world.advance(1))
+        world.playing = None
+        self.assertEqual([("motors", False), ("standby", True)], world.advance(1))
+        # 等待中到了關閉時間：等那場播完才關。 / Closing while a scheduled show waits: it plays first.
+        late = World("20:00", settings(showTimes=["20:29"], motorDelaySeconds=60))
+        late.advance(1)
+        late.go("20:29")
+        self.assertEqual([], late.go("20:30"))
+        late.begin()
+        self.assertEqual([("standby", False)], late.advance(1))
+        late.playing = None
+        self.assertIn(("blackout", ("spinner", "ball", "wash"), True), late.advance(1))
+
+    def test_motors_stop_when_a_show_that_replaced_the_scheduled_one_ends(self):
+        world = World("10:30", settings())
+        world.advance(1)
+        world.go("11:00")
+        # 手動換成別的演出（不帶馬達）：播完時排程把馬達停掉。 / Replaced by hand without motors: stopped at its end.
+        world.playing = {"showId": "looping", "loop": True, "durationSeconds": 60.0}
+        self.assertEqual([], world.advance(30))
+        world.playing = None
+        self.assertEqual([("motors", False), ("standby", True)], world.advance(1))
 
     def test_thread_runs_and_stops(self):
         world = World("09:00", settings())
@@ -402,7 +458,8 @@ class WiringTests(unittest.TestCase):
                 set_motors=lambda enabled: store.apply_motor({"enabled": enabled}, config),
                 set_blackout=lambda groups, enabled: store.apply_blackout({"enabled": enabled, "groups": list(groups)}, config),
                 set_standby=lambda enabled: wind.set_standby({"enabled": enabled}),
-                play_show=lambda show_id, rounds: player.play({"showId": show_id, "rounds": rounds}),
+                play_show=lambda show_id, rounds, motors, delay: player.play(
+                    {"showId": show_id, "rounds": rounds, "startMotors": motors, "delaySeconds": delay}),
                 stop_show=player.stop, show_state=show_state, now=lambda: clock[0], log=lambda line: None)
             with make_server(store, config, 0, show_store=show_store, show_player=player, wind_standby=wind,
                              scheduler=scheduler) as server:
@@ -433,11 +490,11 @@ class WiringTests(unittest.TestCase):
                     self.assertFalse(state["motor"]["enabled"])
                     self.assertEqual({"spinner": True, "ball": True, "wash": False}, state["blackoutGroups"])
                     self.assertTrue(wind.active())
-                    # 10:00：燈恢復、馬達全開、待機。 / 10:00: lights back, every motor on, standby.
+                    # 10:00：燈恢復、待機；馬達不動。 / 10:00: lights back, standby; motors rest.
                     clock[0] = datetime(2026, 11, 14, 10, 0)
                     scheduler.tick()
                     state = call("GET", "/api/state")
-                    self.assertEqual([True, True, True], state["motor"]["units"])
+                    self.assertFalse(state["motor"]["enabled"])
                     self.assertEqual({"spinner": False, "ball": False, "wash": False}, state["blackoutGroups"])
                     self.assertEqual("standby", call("GET", "/api/schedule")["status"]["phase"])
                     # 11:00：演出開始，離開待機。 / 11:00: the show starts and standby ends.
@@ -447,13 +504,15 @@ class WiringTests(unittest.TestCase):
                     scheduler.tick()
                     playing = call("GET", "/api/shows")["playing"]
                     self.assertEqual(("demo", 1, 6), (playing["showId"], playing["round"], playing["rounds"]))
+                    self.assertEqual([True, True, True], call("GET", "/api/state")["motor"]["units"])
                     self.assertFalse(wind.active())
                     self.assertEqual("show", call("GET", "/api/schedule")["status"]["phase"])
-                    # 演出停止（這裡用手動停止代替播完）：回到待機，馬達照轉。 / The show stops: standby again, motors keep running.
+                    # 演出停止（這裡用手動停止代替播完）：馬達停、回到待機。 / The show stops: motors stop, standby again.
                     call("DELETE", "/api/show/play")
                     scheduler.tick()
                     self.assertTrue(wind.active())
-                    self.assertTrue(call("GET", "/api/state")["motor"]["enabled"])
+                    self.assertFalse(call("GET", "/api/state")["motor"]["enabled"])
+                    self.assertEqual("standby", call("GET", "/api/schedule")["status"]["phase"])
                     # 20:30：馬達停、燈關。 / 20:30: motors stop, lights off.
                     clock[0] = datetime(2026, 11, 14, 20, 30)
                     scheduler.tick()
