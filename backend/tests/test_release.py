@@ -76,7 +76,7 @@ class VersionTests(unittest.TestCase):
         self.assertEqual([(0, 3), (0, 2), (0, 1), (0, 0)], config["dmx"]["poles"]["ball"][:4])  # 1 on top
         self.assertEqual(14, max(rank for rank, _ in config["dmx"]["poles"]["ball"]) + 1)
         # pillar-fill：柱子依配置順序、每根由低到高（與前端 site.test.ts 相同）。 / Same order as the frontend test.
-        self.assertEqual([1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 12, 11, 13, 10, 15, 14, 19, 18, 17, 16, 21, 20, 23, 22],
+        self.assertEqual([1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 12, 11, 10, 13, 15, 14, 16, 18, 17, 19, 21, 20, 23, 22],
                          config["pillar_ranks"])
         self.assertEqual(24, len(config["targets"]))
         # 音檔與延遲校準：音檔在設定目錄的 audio/，校準存在服務可寫的 preset/。

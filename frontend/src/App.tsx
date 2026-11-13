@@ -118,6 +118,7 @@ export function App() {
   const [view, setView] = useState<SceneView>('site')
   const [selectedUnit, setSelectedUnit] = useState(0)
   const [showStructure, setShowStructure] = useState(true)
+  const [showLabels, setShowLabels] = useState(false)
   // 演出時間軸可收起，讓小螢幕（iPad mini）把高度留給 3D 畫面。 / The show timeline can be hidden so small screens keep the 3D view.
   const [timelineVisible, setTimelineVisible] = useState(true)
   const [visible, setVisible] = useState<GroupVisibility>({ spinner: true, ball: true, wash: true })
@@ -819,6 +820,11 @@ export function App() {
                 onChange={(event) => setShowStructure(event.target.checked)} />
               <span>骨架</span>
             </label>
+            <label className="scene-toggle" title="在 3D 畫面顯示轉燈（藍）與球燈（黃）的編號">
+              <input type="checkbox" checked={showLabels}
+                onChange={(event) => setShowLabels(event.target.checked)} />
+              <span>編號</span>
+            </label>
             {inShow && (
               <label className="scene-toggle">
                 <input type="checkbox" checked={timelineVisible}
@@ -849,6 +855,7 @@ export function App() {
               markedUnits={overrideUnits}
               selectedFixture={selectedFixture}
               showStructure={showStructure}
+              showLabels={showLabels}
               // 編輯轉燈覆寫時，點轉燈是加入／移出這組覆寫。 / While editing an override, clicking a spinner toggles it.
               onSelectUnit={(unit) => { if (editingOverride) showEditor.toggleOverrideUnit(unit + 1); else setSelectedUnit(unit) }}
               onSelectFixture={setSelectedFixture}

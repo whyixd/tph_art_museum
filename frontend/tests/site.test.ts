@@ -80,10 +80,10 @@ describe('site layout', () => {
 describe('pillar order', () => {
   it('goes pole by pole in layout order, low to high on each pole', () => {
     const layout = exampleSiteLayout()
-    // Numbered from the top, so each pole's pair runs 2, 1. Pole 6 holds 14, 12, 11 low to high (before 13 on
-    // pole 7); poles 10, 11 and 12 hold 20, then 19 and 18, then 17.
+    // Numbered from the top, so each pole's pair runs 2, 1. Pole 6 holds 13, 12, 11 low to high (before 14 on
+    // pole 7); poles 10, 11 and 12 hold 17, then 19 and 18, then 20.
     expect(pillarRanks(layout.spinners, layout.poles)).toEqual(
-      [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 12, 11, 13, 10, 15, 14, 19, 18, 17, 16, 21, 20, 23, 22])
+      [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 12, 11, 10, 13, 15, 14, 16, 18, 17, 19, 21, 20, 23, 22])
   })
 
   it('puts spinners without a nearby pole last, by unit', () => {

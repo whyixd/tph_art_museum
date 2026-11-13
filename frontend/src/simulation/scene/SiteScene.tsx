@@ -72,6 +72,8 @@ export type SiteSceneProps = {
   markedUnits?: readonly number[] | null
   selectedFixture: FixtureSelection
   showStructure: boolean
+  /** 在轉燈、球燈旁顯示編號。 / Show the unit and ball numbers next to them. */
+  showLabels?: boolean
   onSelectUnit: (unitIndex: number) => void
   onSelectFixture: (selection: FixtureSelection) => void
   onDiagnostics: (diagnostics: Diagnostics) => void
@@ -589,6 +591,61 @@ function Fixtures(props: SiteSceneProps & { group: FixtureGroup; points: ScenePo
   )
 }
 
+/** 編號在螢幕上的高度（px），不隨距離縮放。 / Label height on screen (px), whatever the distance. */
+const LABEL_PIXELS = 20
+const LABEL_GAP = 0.2
+
+/** 編號貼圖：深色圓角底、彩色字。 / A number label texture: dark rounded plate, coloured digits. */
+function labelTexture(text: string, color: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = 128
+  canvas.height = 64
+  const context = canvas.getContext('2d')
+  if (context) {
+    context.fillStyle = 'rgba(8, 12, 18, 0.78)'
+    context.beginPath()
+    context.roundRect(4, 4, 120, 56, 14)
+    context.fill()
+    context.fillStyle = color
+    context.font = '600 44px system-ui, sans-serif'
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.fillText(text, 64, 34)
+  }
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  return texture
+}
+
+/**
+ * 編號標籤：永遠面向鏡頭、不被燈具或牆擋住、不接收點選。放在燈具下方，避開上方的選取箭頭。
+ * Number labels: always face the camera, drawn over lights and walls, never clickable. Below the light, clear of
+ * the selection marker above it.
+ */
+function NumberLabels({ items, color }: { items: readonly { text: string; position: ScenePoint }[]; color: string }) {
+  const key = items.map((item) => item.text).join(',')
+  const textures = useMemo(() => items.map((item) => labelTexture(item.text, color)), [key, color])
+  useEffect(() => () => textures.forEach((texture) => texture.dispose()), [textures])
+  const group = useRef<THREE.Group | null>(null)
+  // sizeAttenuation 關掉後大小只跟視角有關：每格依視角與畫面高度換算成固定的像素高度（全場、上視、單台都一樣大）。
+  // Without size attenuation the size depends on the field of view only: rescale every frame to a fixed pixel height.
+  useFrame(({ camera, size }) => {
+    if (!group.current || !(camera instanceof THREE.PerspectiveCamera)) return
+    const height = (LABEL_PIXELS / size.height) * 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)
+    for (const sprite of group.current.children) sprite.scale.set(height * 2, height, 1)
+  })
+  return (
+    <group ref={group}>
+      {items.map((item, index) => (
+        <sprite key={item.text} position={item.position} scale={[0, 0, 1]} renderOrder={10} raycast={() => null}>
+          <spriteMaterial map={textures[index]} transparent depthTest={false} depthWrite={false} toneMapped={false}
+            sizeAttenuation={false} />
+        </sprite>
+      ))}
+    </group>
+  )
+}
+
 /** 燈桿直徑約 20 cm（側視圖桿寬）。 / Poles are about 20 cm across (side-view width). */
 const POLE_RADIUS = 0.1
 const ARM_RADIUS = 0.025
@@ -667,6 +724,13 @@ export function SiteScene(props: SiteSceneProps) {
     () => Array.from({ length: unitCount }, (_, index) => simulatedUnknownPhase(index, props.resetToken)),
     [unitCount, props.resetToken],
   )
+  // 編號：轉燈是燈台編號（1 起），球燈是 DMX 編號。 / Labels: the spinner unit number (from 1), the ball's DMX id.
+  const spinnerLabels = useMemo(() => placements.map(({ index, position }) => (
+    { text: String(index + 1), position: [position[0], position[1] - SPINNER_RADIUS - LABEL_GAP, position[2]] as ScenePoint }
+  )), [placements])
+  const ballLabels = useMemo(() => ballPoints.map((point, index) => (
+    { text: String(layout.ball[index].id), position: [point[0], point[1] - BALL_RADIUS - LABEL_GAP, point[2]] as ScenePoint }
+  )), [ballPoints, layout])
   return (
     <>
       <ClockDriver {...props} clock={clock} unknownPhases={unknownPhases} />
@@ -675,6 +739,8 @@ export function SiteScene(props: SiteSceneProps) {
       )}
       {view !== 'single' && visible.ball && ballPoints.length > 0 && <Fixtures {...props} group="ball" points={ballPoints} clock={clock} />}
       {view !== 'single' && visible.wash && washPoints.length > 0 && <Fixtures {...props} group="wash" points={washPoints} clock={clock} />}
+      {props.showLabels && visible.spinner && <NumberLabels items={spinnerLabels} color="#65d9f8" />}
+      {props.showLabels && view !== 'single' && visible.ball && <NumberLabels items={ballLabels} color="#ffd166" />}
       {view !== 'single' && props.showStructure && <Room width={width} />}
       {view !== 'single' && props.showStructure && <Poles layout={layout} />}
     </>
