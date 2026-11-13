@@ -24,6 +24,7 @@ import { SequenceEditor } from './SequenceEditor'
 import { UnitColorTestPanel } from './UnitColorTestPanel'
 import { OutputStatsLine } from './OutputStatsLine'
 import { AudioPanel } from './AudioPanel'
+import { SchedulePanel } from './SchedulePanel'
 import { ShowEditor } from './ShowEditor'
 import type { ShowEditorState } from '../useShowEditor'
 import { FixtureEditor, GROUP_LABELS, type FixtureGroup } from './FixtureEditor'
@@ -914,6 +915,7 @@ export function ControlPanel({
             </div>
             {backendState && <MotorControls motor={backendState.motor} unitCount={backendState.output.unitCount}
               busy={backendBusy} onMotor={onMotor} onMotorStagger={onMotorStagger} />}
+            {backendState && <SchedulePanel />}
             {backendState && <AudioPanel />}
             {backendState && <UnitColorTestPanel unitCount={backendState.output.unitCount} onChange={onUnitColorTest} />}
             {backendState && (fixtureCounts.ball > 0 || fixtureCounts.wash > 0) && (

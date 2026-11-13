@@ -644,3 +644,68 @@ async function putWind(path: string, body: unknown): Promise<BackendWind> {
 export const setBackendStandby = (enabled: boolean) => putWind('/api/wind/standby', { enabled })
 export const setBackendWindPresets = (presets: BackendWindPresets) => putWind('/api/wind/presets', presets)
 export const setBackendWindTarget = (target: BackendWindTarget) => putWind('/api/wind/target', target)
+
+export type ScheduleGroup = 'spinner' | 'ball' | 'wash'
+
+/** 每日排程（M13）；時間為主機本地時間 "HH:MM"，日期為 "MM-DD"。 / Daily schedule; host local time, dates as MM-DD. */
+export type ScheduleSettings = {
+  schemaVersion: 1
+  enabled: boolean
+  /** 裝置啟動時間：start 含、end 不含；end 早於 start 表示跨午夜。 / Opening hours; an end before the start runs past midnight. */
+  hours: { start: string; end: string }
+  /** 啟動時間外關閉的燈組。 / Light groups turned off outside the hours. */
+  offGroups: ScheduleGroup[]
+  /** 啟動時間開始時啟動全部馬達（結束時一律停止）。 / Start every motor at opening (they always stop at closing). */
+  startMotors: boolean
+  /** 表演時段（含頭尾）。 / Show period, both ends included. */
+  showHours: { start: string; end: string }
+  /** 表演時段內每小時的第幾分開始表演（0、30 = 整點與半點）。 / Minutes of every hour inside the show period. */
+  showMinutes: number[]
+  /** 另外指定的時間。 / Extra times. */
+  showTimes: string[]
+  /** 每次表演連播幾輪（1–50）。 / How many times the show plays in a row. */
+  showRepeats: number
+  /** 平常的演出；null = 不播。 / The usual show; null = none. */
+  showId: string | null
+  /** 指定日期範圍改播別的演出（由上往下第一個符合的）。 / Other shows for date ranges; the first match wins. */
+  dateShows: { from: string; to: string; showId: string }[]
+}
+
+export type ScheduleState = {
+  settings: ScheduleSettings
+  status: {
+    phase: 'disabled' | 'off' | 'standby' | 'show'
+    serverTime: string
+    inHours: boolean
+    todayShowId: string | null
+    nextShow: { at: string; showId: string | null } | null
+    /** false：後端重啟後還沒確認，排程不會啟動馬達。 / false: not confirmed since the backend started; no motor starts. */
+    motorsConfirmed: boolean
+    error: string | null
+    warning: string | null
+  }
+}
+
+// 舊版後端沒有排程 API，回 null。 / Older backends lack the schedule API; returns null.
+export async function getSchedule(): Promise<ScheduleState | null> {
+  const response = await fetch('/api/schedule', { cache: 'no-store' })
+  if (response.status === 404) return null
+  return readState<ScheduleState>(response)
+}
+
+/** 後端重啟後確認一次，排程才會啟動馬達。 / One confirmation per backend start lets the schedule start motors. */
+export async function confirmSchedule(): Promise<ScheduleState> {
+  return readState<ScheduleState>(await fetch('/api/schedule/confirm', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confirmed: true }),
+  }))
+}
+
+export async function saveSchedule(settings: ScheduleSettings): Promise<ScheduleState> {
+  return readState<ScheduleState>(await fetch('/api/schedule', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  }))
+}

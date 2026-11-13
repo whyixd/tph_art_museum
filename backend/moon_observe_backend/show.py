@@ -361,17 +361,22 @@ class ShowStore:
 
 
 SHOW_DELAY_MAX_SECONDS = 120
+SHOW_ROUNDS_MAX = 50
 
 
 class _Active:
     def __init__(self, compiled: tuple[dict[str, Any], ...], start: float, started_at: float, audio: bool,
-                 motors: bool = False) -> None:
+                 motors: bool = False, rounds: int | None = None, done: int = 0) -> None:
         self.compiled = compiled
         self.start = start
         self.started_at = started_at
         self.audio = audio
         # 這次播放啟動了馬達：演出結束（不循環）或手動停止時一起停。 / This play started the motors: stop them with it.
         self.motors = motors
+        # 總共播幾輪（None = 照演出自己的結尾：循環的一直播、不循環的播一次）；done = 已播完的輪數（不循環的演出）。
+        # Rounds to play (None: as the show's ending says); done = rounds finished so far (non-looping shows).
+        self.rounds = rounds
+        self.done = done
         # 最後一次讀到的音樂時間與當時時刻；音樂結束後由此推算淡出。 / Last music time read, to run the ending fade on.
         self.last: tuple[float, float] | None = None
 
@@ -396,18 +401,23 @@ class ShowPlayer:
         self.on_motors: Callable[[bool], None] | None = None
         # 馬達已啟動、等 delaySeconds 後才開始的演出：(showId, 起點, 開始時刻, 計時器)。
         # A show waiting delaySeconds after its motor start: (showId, start, due time, timer).
-        self._pending: tuple[str, float, float, Timer] | None = None
+        self._pending: tuple[str, float, float, Timer, int | None] | None = None
 
     def play(self, raw: Any) -> dict[str, Any]:
-        """``{showId, startSeconds?, startMotors?, delaySeconds?}``. With ``startMotors`` every motor starts now (staggered
+        """``{showId, startSeconds?, startMotors?, delaySeconds?, rounds?}``. ``rounds`` (1..50) plays the show that many
+        times and then ends it: a looping show stops after that many rounds of its track, a non-looping one starts
+        again after its ending. With ``startMotors`` every motor starts now (staggered
         or together as the motor gate is set) and the show begins ``delaySeconds`` later; the motors then stop when a
         non-looping show ends or the show is stopped by hand, but not when another show or effect takes over.
 
         startMotors：立刻啟動全部馬達，演出延後 delaySeconds 開始；不循環的演出結束或手動停止時馬達一起停，
-        換演出或套用效果時不停。"""
-        allowed = {"showId", "startSeconds", "startMotors", "delaySeconds"}
+        換演出或套用效果時不停。rounds：播這麼多輪後結束（循環的演出播滿輪數就停；不循環的演出結尾跑完後從頭再播）。"""
+        allowed = {"showId", "startSeconds", "startMotors", "delaySeconds", "rounds"}
         if not isinstance(raw, dict) or "showId" not in raw or set(raw) - allowed:
-            raise ValueError("show play request must be {showId, startSeconds?, startMotors?, delaySeconds?}")
+            raise ValueError("show play request must be {showId, startSeconds?, startMotors?, delaySeconds?, rounds?}")
+        rounds = raw.get("rounds")
+        if rounds is not None and (type(rounds) is not int or not 1 <= rounds <= SHOW_ROUNDS_MAX):
+            raise ValueError(f"rounds must be an integer 1..{SHOW_ROUNDS_MAX}")
         motors = raw.get("startMotors", False)
         if type(motors) is not bool:
             raise ValueError("startMotors must be true or false")
@@ -424,20 +434,20 @@ class ShowPlayer:
             timer = Timer(delay, lambda: self._begin_pending(timer))
             timer.daemon = True
             with self.lock:
-                self._pending = (show_id, start, self.clock() + delay, timer)
+                self._pending = (show_id, start, self.clock() + delay, timer, rounds)
             timer.start()
         else:
-            self._begin(show_id, start, motors)
+            self._begin(show_id, start, motors, rounds)
         return self.state()
 
-    def _begin(self, show_id: str, start: float, motors: bool) -> None:
+    def _begin(self, show_id: str, start: float, motors: bool, rounds: int | None = None) -> None:
         compiled = self.store.compiled(show_id)
         info = compiled[0]["show"]
         with_audio = self.audio is not None and self.audio.available
         if with_audio:
             self.audio.play({"trackId": info["trackId"], "startSeconds": start, "loop": info["loop"]})
         with self.lock:
-            self._active = _Active(compiled, start, self.clock(), with_audio, motors)
+            self._active = _Active(compiled, start, self.clock(), with_audio, motors, rounds)
             self.generation += 1
 
     def _begin_pending(self, timer: Timer) -> None:
@@ -447,7 +457,8 @@ class ShowPlayer:
                 return  # 已取消或被新的播放取代。 / Cancelled, or replaced by a newer play.
             self._pending = None
         try:
-            self._begin(pending[0], min(pending[1], self.store.compiled(pending[0])[0]["show"]["durationSeconds"]), True)
+            self._begin(pending[0], min(pending[1], self.store.compiled(pending[0])[0]["show"]["durationSeconds"]), True,
+                        pending[4])
         except (KeyError, ValueError):
             # 等待中演出被刪除：不播，馬達也停。 / The show was deleted while waiting: no show, stop the motors.
             if self.on_motors is not None:
@@ -506,13 +517,33 @@ class ShowPlayer:
             active = self._active
             if active is None:
                 return None
-            frame = show_frame(active.compiled, self._seconds(active, self.clock()), self.fps)
-            if not show_finished(active.compiled, frame):
+            info = active.compiled[0]["show"]
+            seconds = self._seconds(active, self.clock())
+            frame = show_frame(active.compiled, seconds, self.fps)
+            if info["loop"]:
+                # 循環的演出：播滿指定的輪數就結束。 / A looping show ends after its rounds.
+                over = active.rounds is not None and seconds >= active.rounds * info["durationSeconds"]
+            else:
+                over = show_finished(active.compiled, frame)
+                if over and active.rounds is not None and active.done + 1 < active.rounds:
+                    # 還有下一輪：直接從頭再播，中間不回到待機輸出。 / Another round: start again without a gap.
+                    try:
+                        if active.audio:
+                            self.audio.play({"trackId": info["trackId"], "startSeconds": 0, "loop": False})
+                        self._active = _Active(active.compiled, 0.0, self.clock(), active.audio, active.motors,
+                                               active.rounds, active.done + 1)
+                        self.generation += 1
+                        return active.compiled, 0, self.generation
+                    except ValueError:
+                        pass  # 音訊不能播了：到此結束。 / Audio no longer plays: end here.
+            if not over:
                 return active.compiled, frame, self.generation
-            # 結尾淡出跑完：演出結束，回到待機輸出。 / Ending fade done: the show is over, back to standby output.
+            # 結尾淡出跑完（或輪數播滿）：演出結束，回到待機輸出。 / Ending fade done (or rounds played): the show is over.
             self._active = None
             self.generation += 1
-        # 這次播放啟動的馬達跟著停（循環的演出不會走到這裡）。 / Motors this play started stop with it (loops never end).
+        if active.audio and info["loop"]:
+            self.audio.stop()
+        # 這次播放啟動的馬達跟著停（沒有指定輪數的循環演出不會走到這裡）。 / Motors this play started stop with it.
         if active.motors and self.on_motors is not None:
             self.on_motors(False)
         return None
@@ -533,4 +564,8 @@ class ShowPlayer:
                 "showId": info["id"], "trackId": info["trackId"], "silent": not active.audio,
                 "positionSeconds": seconds % info["durationSeconds"] if info["loop"] else seconds,
                 "durationSeconds": info["durationSeconds"], "loop": info["loop"],
+                # 指定輪數時：第幾輪／共幾輪。 / With rounds: which round of how many.
+                **({} if active.rounds is None else {
+                    "round": min(active.rounds, int(seconds // info["durationSeconds"]) + 1) if info["loop"] else active.done + 1,
+                    "rounds": active.rounds}),
             }}

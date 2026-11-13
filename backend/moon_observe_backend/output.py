@@ -24,6 +24,7 @@ from .dmx import DMX_CHANNELS, GROUPS, build_universes, patch_report
 from .fixture_effects import fixture_geometry, render_fixture_frame
 from .hardware import build_packets, default_motor_channel, packet_sizes
 from .renderer import render_frame
+from .schedule import Scheduler
 from .sequence import SequenceStore, render_sequence_fixtures, render_sequence_frame, validate_sequence
 from .show import ShowPlayer, ShowStore
 from .palette import PaletteStore
@@ -595,6 +596,20 @@ def main(argv: list[str] | None = None) -> int:
         wind_standby = WindStandby(sequence_path.parent / "wind-standby.json")
         if wind_standby.warning:
             print(f"warning: {wind_standby.warning}", file=sys.stderr, flush=True)
+        def show_state() -> Mapping[str, Any]:
+            # 沒有輸出迴圈時（--api-only、Art-Net 暫停）也讓播完的演出結束。 / Ends a finished show without the output loop too.
+            show_player.current()
+            return show_player.state()
+        # 每日排程（營業時間、待機、表演時間），存在 preset 旁（schedule.json）。 / Daily schedule beside the preset.
+        scheduler = Scheduler(
+            sequence_path.parent / "schedule.json",
+            set_motors=lambda enabled: store.apply_motor({"enabled": enabled}, config),
+            set_blackout=lambda groups, enabled: store.apply_blackout({"enabled": enabled, "groups": list(groups)}, config),
+            set_standby=lambda enabled: wind_standby.set_standby({"enabled": enabled}),
+            play_show=lambda show_id, rounds: show_player.play({"showId": show_id, "rounds": rounds}),
+            stop_show=show_player.stop, show_state=show_state)
+        if scheduler.warning:
+            print(f"warning: {scheduler.warning}", file=sys.stderr, flush=True)
         if audio_player.available:
             def preload() -> None:
                 for warning in audio_player.preload():
@@ -605,9 +620,11 @@ def main(argv: list[str] | None = None) -> int:
                          weather_store=weather_store, playback_monitor=playback_monitor,
                          unit_color_store=unit_color_store, fixture_color_store=fixture_color_store,
                          output_stats=output_stats, audio_player=audio_player,
-                         show_store=show_store, show_player=show_player, wind_standby=wind_standby) as server:
+                         show_store=show_store, show_player=show_player, wind_standby=wind_standby,
+                         scheduler=scheduler) as server:
             if weather_store is not None:
                 weather_store.start()
+            scheduler.start()
             try:
                 if args.api_only:
                     print(f"{service_label} listening on {args.api_host}:{args.api_port}; Art-Net output is disabled. Ctrl+C to stop.", flush=True)
@@ -639,6 +656,7 @@ def main(argv: list[str] | None = None) -> int:
                     server.shutdown()
                     worker.join(timeout=2)
             finally:
+                scheduler.stop()
                 show_player.stop()
                 audio_player.stop()
                 if weather_store is not None:

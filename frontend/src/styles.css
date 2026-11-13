@@ -610,6 +610,24 @@ input[type="range"] {
 .unit-color-test { display: grid; gap: 0.6rem; margin-top: 1.2rem; }
 .audio-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid #242c37; }
 .audio-panel select { width: 100%; min-width: 0; }
+.schedule-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid #242c37; }
+.schedule-panel .sequence-field { margin-top: 0; flex: 1 1 8rem; min-width: 0; }
+.schedule-panel select { width: 100%; min-width: 0; }
+.schedule-row { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; align-items: center; }
+.schedule-confirm { display: grid; gap: 0.5rem; padding: 0.6rem 0.7rem; border: 1px solid #b4532f; border-radius: 0.45rem; background: #2a1712; color: #ffd0c2; font-size: 0.85rem; }
+.schedule-confirm button { justify-self: start; }
+.schedule-caption { color: #aebdca; font-size: 0.85rem; }
+.schedule-panel .sequence-field { font-size: 0.85rem; }
+.schedule-rule input, .schedule-rule select {
+  padding: 0.48rem 0.6rem;
+  border: 1px solid #303a48;
+  border-radius: 0.45rem;
+  color: #eef4fb;
+  background: #111721;
+}
+.schedule-rule input { width: 4.6rem; }
+.schedule-panel .schedule-rule select { flex: 1 1 7rem; width: auto; }
+.schedule-rule span { color: #aebdca; font-size: 0.85rem; }
 .audio-option { display: flex; align-items: flex-start; gap: 0.4rem; color: #d6e0ea; font-size: 0.85rem; }
 .audio-option input { margin-top: 0.2rem; }
 .audio-offset-row { flex-wrap: wrap; align-items: center; }

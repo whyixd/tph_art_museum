@@ -32,6 +32,7 @@ Backend 與 build 好的前端以同一個「版本化、不可變 release」部
     ├── preset.json
     ├── sequence.json                  UI「儲存串接」時建立
     ├── shows.json                     UI「演出」分頁儲存演出時建立（與 sequence.json 同目錄）
+    ├── schedule.json                  UI「後端」分頁儲存每日排程時建立（M13；沒有檔案 = 排程停用）
     ├── beat-edits/                    時間軸「拍點修正」儲存時建立；優先於 release 內建的拍點檔
     ├── palette.json                   啟用 [weather] 且在色盤頁儲存時建立
     └── audio-calibration.json         「後端」分頁儲存延遲補償時建立

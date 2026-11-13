@@ -281,6 +281,7 @@ def make_server(
     show_store: Any = None,
     show_player: Any = None,
     wind_standby: Any = None,
+    scheduler: Any = None,
 ) -> ThreadingHTTPServer:
     if not 0 <= port <= 65535:
         raise ValueError("api port must be 0..65535")
@@ -425,6 +426,8 @@ def make_server(
                 self._respond(200, patch_table(config))
             elif self.path == "/api/wind" and wind_standby is not None:
                 self._respond(200, wind_standby.state())
+            elif self.path == "/api/schedule" and scheduler is not None:
+                self._respond(200, scheduler.state())
             elif self.path == "/api/output":
                 # 輸出迴圈的影格時間（--api-only 時沒有輸出）。 / Output loop frame timing (none with --api-only).
                 self._respond(200, output_stats.snapshot() if output_stats is not None else {"active": False})
@@ -492,6 +495,7 @@ def make_server(
         def do_PUT(self) -> None:
             limits = {
                 "/api/preset": 32768, "/api/motor": 64, "/api/blackout": 64, "/api/master": 64, "/api/wind/standby": 64, "/api/wind/presets": 16384, "/api/wind/target": 256, "/api/sequence": 262144,
+                "/api/schedule": 8192, "/api/schedule/confirm": 64,
                 "/api/weather/override": 256, "/api/weather/palette": 16384,
                 "/api/playback/restart": 64, "/api/weather/visit": 64, "/api/test/units": 4096,
                 "/api/test/fixtures": 8192, "/api/audio/play": 512, "/api/audio/calibration": 128,
@@ -508,7 +512,8 @@ def make_server(
                     or (self.path == "/api/test/fixtures" and fixture_color_store is None)
                     or (route.startswith("/api/audio/") and audio_player is None)
                     or (self.path == "/api/show/play" and show_player is None)
-                    or (self.path.startswith("/api/wind/") and wind_standby is None)):
+                    or (self.path.startswith("/api/wind/") and wind_standby is None)
+                    or (self.path.startswith("/api/schedule") and scheduler is None)):
                 self._respond(404, {"error": "not found"})
                 return
             if self.headers.get_content_type() != "application/json":
@@ -578,6 +583,12 @@ def make_server(
                     result = wind_standby.apply_presets(raw)
                 elif self.path == "/api/wind/target":
                     result = wind_standby.apply_target(raw)
+                elif self.path == "/api/schedule":
+                    # 每日排程（營業時間、表演時間）；存檔後立刻套用。 / Daily schedule; saved and applied at once.
+                    result = scheduler.apply(raw)
+                elif self.path == "/api/schedule/confirm":
+                    # 後端重啟後確認一次，排程才會啟動馬達。 / One confirmation per backend start lets the schedule start motors.
+                    result = scheduler.confirm(raw)
                 else:
                     result = store.apply_motor(raw, config)
             except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:

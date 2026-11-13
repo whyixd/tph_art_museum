@@ -13,6 +13,7 @@ backend/config.toml
 backend/preset.json
 backend/sequence.json
 backend/shows.json
+backend/schedule.json
 backend/beat-edits/
 backend/palette.json
 backend/audio-calibration.json

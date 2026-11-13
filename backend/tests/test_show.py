@@ -400,6 +400,61 @@ class OutputTests(unittest.TestCase):
                           "totalFrames": 2400, "loop": True}, state["show"])
 
 
+class RoundsTests(unittest.TestCase):
+    """``rounds``: the show plays that many times, then ends (silent here: the test clock is the music time)."""
+
+    def player(self, directory, document, on_motors=None):
+        store = ShowStore(Path(directory) / "shows.json", beat_maps={CLICK_TRACK_ID: CLICK}, fps=40, pixels=4)
+        store.save("demo", document)
+        clock = FakeClock()
+        player = ShowPlayer(store, None, 40, clock=clock)
+        player.on_motors = on_motors
+        return player, clock
+
+    def test_a_looping_show_ends_after_its_rounds(self):
+        with tempfile.TemporaryDirectory() as directory:
+            player, clock = self.player(directory, show())
+            player.play({"showId": "demo", "rounds": 3})
+            self.assertEqual((1, 3), (player.state()["playing"]["round"], player.state()["playing"]["rounds"]))
+            clock.now += 125  # 第 3 輪。 / Round 3.
+            self.assertIsNotNone(player.current())
+            self.assertEqual(3, player.state()["playing"]["round"])
+            clock.now += 54.9
+            self.assertIsNotNone(player.current())
+            clock.now += 0.2  # 3 × 60 s 播滿。 / 3 × 60 s played.
+            self.assertIsNone(player.current())
+            self.assertIsNone(player.state()["playing"])
+
+    def test_a_non_looping_show_starts_again_without_a_gap(self):
+        with tempfile.TemporaryDirectory() as directory:
+            motors = []
+            player, clock = self.player(directory, show(ending={"kind": "fade-black", "seconds": 2}), motors.append)
+            player.play({"showId": "demo", "rounds": 2, "startMotors": True})
+            first = player.current()
+            clock.now += 61.9  # 結尾淡出中。 / Inside the ending fade.
+            self.assertEqual(first[2], player.current()[2])
+            clock.now += 0.2  # 第 1 輪跑完：直接從頭播第 2 輪。 / Round 1 over: round 2 starts at once.
+            again = player.current()
+            self.assertEqual(0, again[1])
+            self.assertNotEqual(first[2], again[2])
+            self.assertEqual((2, 2), (player.state()["playing"]["round"], player.state()["playing"]["rounds"]))
+            self.assertEqual([True], motors)
+            clock.now += 62.1  # 第 2 輪跑完：結束，馬達跟著停。 / Round 2 over: the show ends and the motors stop.
+            self.assertIsNone(player.current())
+            self.assertEqual([True, False], motors)
+
+    def test_without_rounds_nothing_changes_and_bad_values_are_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            player, clock = self.player(directory, show())
+            player.play({"showId": "demo"})
+            self.assertNotIn("rounds", player.state()["playing"])
+            clock.now += 600
+            self.assertIsNotNone(player.current())
+            for rounds in (0, 51, 1.5, True, "2"):
+                with self.subTest(rounds=rounds), self.assertRaises(ValueError):
+                    player.play({"showId": "demo", "rounds": rounds})
+
+
 class ApiTests(unittest.TestCase):
     def test_save_play_stop_and_delete(self):
         with tempfile.TemporaryDirectory() as directory:
