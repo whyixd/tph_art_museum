@@ -32,7 +32,7 @@ from .playback import PlaybackMonitor
 from .motor import DEFAULT_RESTART_DELAY_SECONDS, DEFAULT_START_INTERVAL_SECONDS, MotorGate
 from .unit_colors import FixtureColorStore, UnitColorStore
 from .weather import WeatherStore
-from .wind import WindStandby
+from .wind import STANDBY_GROUPS, WindStandby
 
 SINGLE_ROUND_SECONDS = 60  # A single effect "round" for weather visits: at least this long.
 DMX_EXIT_REPEATS = 2  # 結束時每個 DMX universe 送幾次全 0。 / All-zero frames per DMX universe on exit.
@@ -422,7 +422,8 @@ def stream(
                 fixture_tests = fixture_colors_provider() if fixture_colors_provider is not None else {}
                 colors: dict[str, list[Rgb]] = {}
                 for group in groups:
-                    if standby is not None:
+                    if standby is not None and group in STANDBY_GROUPS:
+                        # 洗牆燈不受待機控制，照原本的播放。 / The washes are not under standby: they play on.
                         group_colors = standby.fixture_colors(group, geometry[group])
                     elif sequence_mode:
                         group_colors = render_sequence_fixtures(

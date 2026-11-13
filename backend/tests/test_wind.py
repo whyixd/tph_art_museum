@@ -176,7 +176,7 @@ class WindFrameTests(unittest.TestCase):
 
 
 class WindOutputTests(unittest.TestCase):
-    def test_standby_replaces_the_effect_on_every_group_but_not_tests(self):
+    def test_standby_replaces_the_effect_on_spinners_and_balls_but_not_washes_or_tests(self):
         with tempfile.TemporaryDirectory() as directory:
             config, preset = load(Path(directory))
             clock = Clock()
@@ -197,14 +197,15 @@ class WindOutputTests(unittest.TestCase):
                 clients.clear()
                 now[0] = 0.0
                 stream(config, preset, seconds=0.05, client_factory=factory, clock=lambda: now[0], sleep=sleep,
-                       fixture_preset_provider=lambda: {"ball": ball_preset(), "wash": None}, **options)
+                       fixture_preset_provider=lambda: {"ball": ball_preset(), "wash": ball_preset()}, **options)
                 return [client.packets[0] for client in clients]
 
             plain = run()
             in_standby = run(standby_provider=wind.frame)
             self.assertNotEqual(plain[0][:387], in_standby[0][:387])     # spinner
             self.assertNotEqual(plain[1], in_standby[1])                 # balls
-            self.assertNotEqual(plain[2], in_standby[2])                 # washes: lit by wind-flow, no preset needed
+            self.assertEqual(plain[2], in_standby[2])                    # washes are not under standby: they play on
+            self.assertTrue(any(plain[2][18:]))                          # (the washes are lit by their own preset)
             flashed = run(standby_provider=wind.frame, beat_flash_provider=lambda: 1.0)
             self.assertEqual(bytes([255]) * 387, flashed[0][:387])       # the beat flash stays above standby
 

@@ -31,6 +31,9 @@ from .effects import hash01
 
 Rgb = tuple[float, float, float]
 GROUPS = ("spinner", "ball", "wash")
+# 待機時播風流的群組；洗牆燈不受待機控制，照原本的播放（2026-11-14）。設定仍保留三組，舊檔照讀。
+# Groups standby plays wind-flow on; the washes keep their own playback. Settings still hold all three groups.
+STANDBY_GROUPS = ("spinner", "ball")
 WIND_SCHEMA_VERSION = 1
 MAX_TURN_DEG_PER_SECOND = 3.0
 CALM_DIRECTION_MS = 0.3

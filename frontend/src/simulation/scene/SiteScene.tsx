@@ -60,6 +60,8 @@ export type SiteSceneProps = {
   effectPreset: EffectPreset
   fixturePresets: FixturePresets
   sequence: CompiledSequence | null
+  /** 洗牆燈用的串接／演出（待機時洗牆燈照原本的播放）；沒給 = 同 sequence。 / The washes' sequence when it differs. */
+  washSequence?: CompiledSequence | null
   sequenceRevision: number
   paused: boolean
   resetToken: number
@@ -738,7 +740,7 @@ export function SiteScene(props: SiteSceneProps) {
         <Spinners {...props} placements={placements} unitCount={unitCount} clock={clock} unknownPhases={unknownPhases} />
       )}
       {view !== 'single' && visible.ball && ballPoints.length > 0 && <Fixtures {...props} group="ball" points={ballPoints} clock={clock} />}
-      {view !== 'single' && visible.wash && washPoints.length > 0 && <Fixtures {...props} group="wash" points={washPoints} clock={clock} />}
+      {view !== 'single' && visible.wash && washPoints.length > 0 && <Fixtures {...props} sequence={props.washSequence !== undefined ? props.washSequence : props.sequence} group="wash" points={washPoints} clock={clock} />}
       {props.showLabels && visible.spinner && <NumberLabels items={spinnerLabels} color="#65d9f8" />}
       {props.showLabels && view !== 'single' && visible.ball && <NumberLabels items={ballLabels} color="#ffd166" />}
       {view !== 'single' && props.showStructure && <Room width={width} />}

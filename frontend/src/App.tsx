@@ -87,8 +87,8 @@ export function App() {
     EFFECT_MANIFEST.map(({ id }) => [id, createDefaultEffectPreset(id, DEFAULT_SETTINGS.ledCount)]),
   ) as Record<EffectId, ReturnType<typeof createDefaultEffectPreset>>)
   const [sequenceEnabled, setSequenceEnabled] = useState(false)
-  // 待機：模擬模式下不管單一效果／串接／演出，全場改播風流（風力原型，只在前端）。
-  // Standby: in simulation the whole site plays wind-flow, whatever the single effect / sequence / show is (frontend only).
+  // 待機：模擬模式下不管單一效果／串接／演出，轉燈、球燈改播風流（洗牆燈照原本的播放；只在前端）。
+  // Standby: in simulation spinners and balls play wind-flow, whatever the single effect / sequence / show is; washes play on.
   const [standby, setStandby] = useState(false)
   // 風流（待機效果）三個群組的設定，在「風力」分頁調整。 / wind-flow (standby) presets, edited in the wind tab.
   const [windPresets, setWindPresets] = useState<WindPresets>(() => ({
@@ -240,7 +240,10 @@ export function App() {
   const viewPreset = inStandby ? shownWindPresets.spinner : inBackend && backendState ? backendState.preset : effectPreset
   const backendFixtures: FixturePresets | null = backendState?.fixtures
     ? { ball: backendState.fixtures.ball.preset, wash: backendState.fixtures.wash.preset } : null
-  const viewFixtures = inStandby ? shownWindPresets : inBackend ? backendFixtures ?? NO_FIXTURES : fixturePresets
+  const playingFixtures = inBackend ? backendFixtures ?? NO_FIXTURES : fixturePresets
+  // 待機：轉燈、球燈播風流；洗牆燈不受待機控制，照原本的播放。 / Standby: wind-flow on spinners and balls; washes play on.
+  const viewFixtures: FixturePresets = inStandby
+    ? { ball: shownWindPresets.ball, wash: viewSequence ? null : playingFixtures.wash } : playingFixtures
   const playbackRef = useRef(playback)
   playbackRef.current = playback
   const backendFrame = useCallback(() => (
@@ -792,7 +795,7 @@ export function App() {
               }}>重設時間</button>
               {(!inBackend || backendWind) && (
                 <button type="button" className={inStandby ? 'active' : 'secondary'} aria-pressed={inStandby}
-                  title="全場改播待機效果（風流，在「風力」分頁設定）；再按一次回到原本的效果／串接／演出"
+                  title="轉燈、球燈改播待機效果（風流，在「風力」分頁設定），洗牆燈照原本的播放；再按一次回到原本的效果／串接／演出"
                   onClick={() => changeStandby(!inStandby)}>{inStandby ? '待機中' : '待機'}</button>
               )}
             </div>
@@ -840,6 +843,7 @@ export function App() {
               effectPreset={viewPreset}
               fixturePresets={viewSequence && !inStandby ? NO_FIXTURES : viewFixtures}
               sequence={inStandby ? null : viewSequence}
+              washSequence={inStandby ? viewSequence : undefined}
               sequenceRevision={sequenceRevision}
               syncFrame={inBackend ? backendFrame : !inStandby && previewShow && showEditor.preview === 'playing' ? showEditor.previewFrame : null}
               syncTolerance={!inBackend && previewShow && showEditor.preview === 'playing' ? 0 : 2}

@@ -9,10 +9,12 @@ import { WindPreviewPanel } from './WindPreviewPanel'
 export type WindGroup = 'spinner' | 'ball' | 'wash'
 export type WindPresets = { spinner: EffectPreset; ball: FixturePreset; wash: FixturePreset }
 
-const GROUPS: readonly [WindGroup, string][] = [['spinner', '轉燈'], ['ball', '球燈'], ['wash', '洗牆燈']]
+// 洗牆燈不受待機控制（照原本的播放），不在這裡設定；後端仍保存它的設定。
+// The washes are not under standby (they play on), so they are not set up here; the backend still keeps theirs.
+const GROUPS: readonly [WindGroup, string][] = [['spinner', '轉燈'], ['ball', '球燈']]
 
 type WindPanelProps = {
-  /** 待機中（全場播風流）。 / Standby: wind-flow on every group. */
+  /** 待機中（轉燈、球燈播風流）。 / Standby: wind-flow on spinners and balls. */
   standby: boolean
   /** null：不能切換待機（舊後端沒有風流）。 / null: standby unavailable (an old backend without wind-flow). */
   onStandby: ((standby: boolean) => void) | null
@@ -23,8 +25,8 @@ type WindPanelProps = {
 }
 
 /**
- * 「風力」分頁：待機切換、預覽風力，以及三個群組的風流（待機效果）設定。風流只在這裡設定，不在一般的效果清單。
- * The wind tab: standby toggle, preview wind and the wind-flow (standby effect) settings of the three groups.
+ * 「風力」分頁：待機切換、預覽風力，以及轉燈、球燈的風流（待機效果）設定。風流只在這裡設定，不在一般的效果清單。
+ * The wind tab: standby toggle, preview wind and the wind-flow (standby effect) settings of spinners and balls.
  * wind-flow is only set up here, not in the ordinary effect lists.
  */
 export function WindPanel({ standby, onStandby, backend, presets, onPreset }: WindPanelProps) {
@@ -43,7 +45,7 @@ export function WindPanel({ standby, onStandby, backend, presets, onPreset }: Wi
         {onStandby ? (
           <div className="segmented-control" aria-label="待機">
             <button type="button" className={standby ? 'active' : 'secondary'} aria-pressed={standby}
-              onClick={() => onStandby(true)}>待機（全場播風流）</button>
+              onClick={() => onStandby(true)}>待機（轉燈、球燈播風流）</button>
             <button type="button" className={!standby ? 'active' : 'secondary'} aria-pressed={!standby}
               onClick={() => onStandby(false)}>原本的播放</button>
           </div>
@@ -52,8 +54,8 @@ export function WindPanel({ standby, onStandby, backend, presets, onPreset }: Wi
         )}
         <p className="control-note">
           {backend
-            ? '待機時後端全場改送風流，蓋過單一效果、串接、演出（進入待機會停止演出的音樂；開始演出會離開待機）。下面的設定會存到後端，待機中立即生效。後端重新啟動後不會自動進入待機。'
-            : '待機時全場改播風流，不管單一效果、串接或演出。下面的設定隨時可以改，待機中會立即看到。這裡是模擬用的設定，和後端的分開。'}
+            ? '待機時後端的轉燈、球燈改送風流，蓋過單一效果、串接、演出；洗牆燈不受待機控制，照原本的播放（進入待機會停止演出的音樂；開始演出會離開待機）。下面的設定會存到後端，待機中立即生效。後端重新啟動後不會自動進入待機。'
+            : '待機時轉燈、球燈改播風流，不管單一效果、串接或演出；洗牆燈照原本的播放。下面的設定隨時可以改，待機中會立即看到。這裡是模擬用的設定，和後端的分開。'}
         </p>
       </div>
       <WindPreviewPanel backend={backend} />
