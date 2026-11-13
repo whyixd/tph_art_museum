@@ -4,13 +4,13 @@
 constexpr uint8_t PRE_RELAY_PIN = D2;
 constexpr uint8_t MAIN_RELAY_PIN = D3;
 constexpr uint8_t MOTOR_PWM_PIN = D1;
-constexpr uint8_t MOTOR_COMMAND_PIN = D8;
+constexpr uint8_t MOTOR_COMMAND_PIN = D4;
 constexpr unsigned long MOTOR_COMMAND_DEBOUNCE_MS = 30;
 
 // Set this to the duty found with motor_pwm_test (1..255).
 // Zero keeps the power sequence disabled until the tested value is entered.
 #ifndef TARGET_PWM_DUTY
-#define TARGET_PWM_DUTY 82
+#define TARGET_PWM_DUTY 54
 #endif
 
 static_assert(TARGET_PWM_DUTY >= 0 && TARGET_PWM_DUTY <= 90,

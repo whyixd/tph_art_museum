@@ -1,6 +1,9 @@
 // Moon Observe motor controller for Seeed Studio XIAO SAMD21.
-// D8 HIGH (or disconnected) requests stop; a debounced HIGH-to-LOW
-// transition requests the normal power sequence and PWM ramp.
+// Command input (MOTOR_COMMAND_PIN, D4): HIGH or disconnected requests stop,
+// LOW requests the normal power sequence and PWM ramp. The pin is polled in
+// every loop and acted on by level, not by edge: D4 is the SAMD21 NMI pin,
+// which noInterrupts() cannot mask, and the earlier interrupt-flag version
+// lost edges and then never read the pin again.
 
 #include "board_config.h"
 
@@ -27,44 +30,31 @@ unsigned long lastRampAt = 0;
 unsigned long pwmZeroAt = 0;
 bool pwmZeroAtValid = false;
 uint8_t currentDuty = 0;
-volatile bool commandEdgePending = false;
 bool commandCandidateHigh = true;
 bool commandStableHigh = true;
-bool commandDebouncing = false;
 bool commandStartArmed = false;
 unsigned long commandCandidateSince = 0;
 
-void onMotorCommandEdge() {
-  commandEdgePending = true;
-}
-
 void updateMotorCommand() {
   const unsigned long now = millis();
-  noInterrupts();
-  const bool edgePending = commandEdgePending;
-  commandEdgePending = false;
-  interrupts();
-  if (edgePending) {
-    commandCandidateHigh = digitalRead(MOTOR_COMMAND_PIN) == HIGH;
-    commandCandidateSince = now;
-    commandDebouncing = true;
-  }
-  if (!commandDebouncing) return;
-
   const bool pinHigh = digitalRead(MOTOR_COMMAND_PIN) == HIGH;
+
+  // Debounce: a level counts once it has held for MOTOR_COMMAND_DEBOUNCE_MS.
   if (pinHigh != commandCandidateHigh) {
     commandCandidateHigh = pinHigh;
     commandCandidateSince = now;
-    return;
   }
-  if (now - commandCandidateSince < MOTOR_COMMAND_DEBOUNCE_MS) return;
-  commandDebouncing = false;
-  if (commandStableHigh == pinHigh) return;
+  if (commandStableHigh != commandCandidateHigh &&
+      now - commandCandidateSince >= MOTOR_COMMAND_DEBOUNCE_MS) {
+    commandStableHigh = commandCandidateHigh;
+    // A start needs a HIGH seen since boot or since the last start.
+    if (commandStableHigh) commandStartArmed = true;
+  }
 
-  commandStableHigh = pinHigh;
-  if (pinHigh) {
-    commandStartArmed = true;
-    motorPowerStop();
+  // Act on the level. A LOW that arrives during the soft stop is kept and
+  // starts the motor once the power is off.
+  if (commandStableHigh) {
+    motorPowerStop();  // Returns at once when already off or stopping.
   } else if (commandStartArmed && powerState == MotorPowerState::POWER_OFF) {
     commandStartArmed = false;
     motorPowerStart();
@@ -171,10 +161,6 @@ void motorPowerStart() {
 
 // Normal stop: ramp PWM down before releasing motor power.
 void motorPowerStop() {
-  if (powerState == MotorPowerState::POWER_OFF ||
-      powerState == MotorPowerState::POWER_DOWN ||
-      powerState == MotorPowerState::MOTOR_STOPPING) return;
-
   if (powerState == MotorPowerState::PRECHARGING ||
       powerState == MotorPowerState::MAIN_RELAY_SETTLING ||
       powerState == MotorPowerState::PRECHARGE_RELEASE) {
@@ -182,8 +168,14 @@ void motorPowerStop() {
     enterPowerState(MotorPowerState::POWER_OFF);
     return;
   }
-  enterPowerState(MotorPowerState::MOTOR_STOPPING);
-  pwmZeroAtValid = false;
+  if (powerState == MotorPowerState::MOTOR_RAMPING ||
+      powerState == MotorPowerState::MOTOR_RUNNING) {
+    enterPowerState(MotorPowerState::MOTOR_STOPPING);
+    pwmZeroAtValid = false;
+  }
+  // Off, stopping or powering down: nothing to do. This is called in every
+  // loop while the command is HIGH. An invalid state is left to
+  // motorPowerUpdate(), which drops straight to POWER_OFF.
 }
 
 void motorPowerUpdate() {
@@ -246,8 +238,7 @@ void setup() {
   commandCandidateHigh = commandStableHigh;
   // A LOW already present at boot is not a fresh start command.
   commandStartArmed = commandStableHigh;
-  attachInterrupt(digitalPinToInterrupt(MOTOR_COMMAND_PIN),
-                  onMotorCommandEdge, CHANGE);
+  commandCandidateSince = millis();
   Serial.begin(115200);
 }
 

@@ -978,3 +978,17 @@ CPython、PyPy 都要通過；frontend 加上 `tsc`、build。
 - 連帶：`effects_v2.json` 重新產生（`flowPositions` 與用到位置的樣本）；柱子順序 `pillar_ranks` 變成 `[…, 12, 11, 10, 13, 15, 14, 16, 18, 17, 19, …]`（第 6 根柱子由低到高是 13、12、11，14 在第 7 根；第 10–12 根依序是 17、19 與 18、20），前後端測試的期望值已更新。
 - Pi 上的 `/etc/tph-art-museum/layout.json` 是另一份，要另外改並重啟服務才會生效。
 - 驗證：backend 264、frontend 168 個測試、`tsc` 通過。
+
+### 2026-11-14：XIAO 漏掉啟動／停止（D4 是 NMI），韌體改為輪詢
+
+- **現象**：群控時少數幾台 WLED 的 IO13 有輸出，馬達卻沒起動或沒停止。與 2026-11-12「緩停中的啟動被忽略」不同：這次隔 12 秒才切換也會漏，而且停止也會漏（當時寫的「停止一定有效」不成立）。
+- **實際接線是 D4，不是 D8**（`board_config.h` 的 `MOTOR_COMMAND_PIN = D4`、`TARGET_PWM_DUTY = 54`：緩啟動約 7.2 秒、緩停約 6.8 秒）。2026-11-12 的分析與文件都以 D8、duty 82 為前提。
+- **測試工具** `backend/scripts/motor_cycle_test.py`：停掉後端後，直接對 WLED 送 Art-Net ch469，重複「啟動 → 停止」固定次數；燈條綠 = 送啟動、紅 = 送停止；每次切換後 1 秒問 WLED `/json/info` 的 `moonMotor.output`。加 `--xiao-port COM9`（需要 pyserial：`uv run --with pyserial`）讀 XIAO 序列埠的 `[MOTOR_PWR] A -> B`，自動判定每次啟停、最後列出漏掉的次數。
+- **桌上實測**（一台，192.168.0.222，舊韌體，啟動 12 秒／停止 12 秒 × 20 次）：肉眼那次 3 次停止沒停；自動那次第 8 次啟動 `no state change at all`（XIAO 完全沒有狀態切換），20 次 WLED 的輸出都正確。
+- **原因**（讀程式與 Seeed SAMD core 1.8.6 推論，與實測現象相符）：D4 = PA08 = SAMD21 的 **NMI**。舊韌體在 `CHANGE` 中斷裡立旗標，主迴圈「讀旗標 → 清旗標」用 `noInterrupts()` 保護，但 NMI 擋不住；邊緣落在兩行之間旗標就被清掉。而且只有看到旗標才讀腳位，漏一次就停在舊狀態，直到下一次邊緣。
+- **修正**（`firmware/sketches/motor_control_io`）：拿掉中斷，每圈 loop 直接讀腳位、去彈跳 30 ms，**依準位動作**：HIGH → 停止；LOW 且已看過 HIGH 且在 `POWER_OFF` → 啟動。所以**緩停中收到的 LOW 會保留，停完後自動啟動**（原本被忽略且不補）。開機時腳位已是 LOW 仍不啟動。上電順序、PWM 緩升緩降、時間、序列埠輸出都沒動。
+- 後端的 `restart_delay_seconds`（12 秒）保留：還沒重刷的 XIAO 仍需要；重刷後是雙保險。`config.example.toml`、`motor.py`、`firmware/wled/README.md` 與接線圖仍寫 D8／duty 82，尚未更新。
+- 驗證：`firmware/tests/motor_control_io_host.cpp` 改為 D4、沒有中斷，新增：短於去彈跳的 HIGH 不停止、緩停中的 LOW 在停完後啟動、緩停中 LOW 又回 HIGH 不啟動、沒有中斷也能啟停；g++ 編譯執行通過。
+- **新韌體實測**（同一台、同一支腳本、同樣 12 秒／12 秒，2026-11-14 02:06 結束）：**100 次啟動、100 次停止，XIAO 0 次漏**，WLED 輸出每次都正確（舊韌體 20 次漏 1 次啟動）。
+- **緩停中的啟動實測**（`--cycles 10 --on-seconds 20 --off-seconds 3`，停止 3 秒後就送啟動，02:32）：10 次都在緩停結束後自動啟動（`MOTOR_STOPPING → POWER_DOWN → POWER_OFF → PRECHARGING → … → MOTOR_RUNNING`，啟動命令送出後約 3.9 秒開始上電、約 11 秒到全速），啟動 0 次漏。當時腳本把這 10 次停止記成 MISS，是判定規則的問題（3 秒內到不了 `POWER_OFF`），已改成「有反應且仍在緩停」算 ok。
+- 只測了一台（桌上單機，不是現場群控），其他 23 台尚未重刷。

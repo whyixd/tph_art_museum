@@ -24,7 +24,7 @@
 - [ ] 刷 WLED（`firmware/wled/flash.py`），套用 `unit_settings.json`：Art-Net、universe 0、Multi RGB、起始位址 1、IO16 共 129 顆、色序 RGB（已刷過的板子用 `flash.py config <IP>` 只更新設定）
 - [ ] 色序：「後端」分頁單色測試送紅／綠／藍，燈條顏色相同（紅綠對調 = WLED `order` 不對）
 - [ ] WLED 網路設定為 2.0.0.(200 + n)
-- [ ] 馬達接線 IO13 → XIAO D8（`firmware/wled/wiring-io13-d8.svg`），XIAO 燒 `motor_control_io`
+- [ ] 馬達接線 IO13 → XIAO **D4**（接法同 `firmware/wled/wiring-io13-d8.svg`，圖上仍標 D8），XIAO 燒 `motor_control_io`（2026-11-14 之後的輪詢版）
 - [ ] **編號對位置**：「後端」分頁的單色測試逐台點亮，確認實體位置與控制頁面全場 3D 的編號一致（每根柱子由上往下編號，2026-11-12 現場確認；`doc/spaces05_annotated_*.png` 仍是舊的由下往上編號，不要照圖）
 - [ ] **方向測試（M4）**：馬達停止時，套用
 
