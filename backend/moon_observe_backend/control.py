@@ -282,6 +282,7 @@ def make_server(
     show_player: Any = None,
     wind_standby: Any = None,
     scheduler: Any = None,
+    anemometer: Any = None,
 ) -> ThreadingHTTPServer:
     if not 0 <= port <= 65535:
         raise ValueError("api port must be 0..65535")
@@ -426,6 +427,9 @@ def make_server(
                 self._respond(200, patch_table(config))
             elif self.path == "/api/wind" and wind_standby is not None:
                 self._respond(200, wind_standby.state())
+            elif self.path == "/api/wind/probe" and anemometer is not None:
+                # 測試讀取的預設值與偵測到的序列埠。 / Test read defaults and the detected serial ports.
+                self._respond(200, anemometer.state())
             elif self.path == "/api/schedule" and scheduler is not None:
                 self._respond(200, scheduler.state())
             elif self.path == "/api/output":
@@ -494,7 +498,7 @@ def make_server(
 
         def do_PUT(self) -> None:
             limits = {
-                "/api/preset": 32768, "/api/motor": 64, "/api/blackout": 64, "/api/master": 64, "/api/wind/standby": 64, "/api/wind/presets": 16384, "/api/wind/target": 256, "/api/sequence": 262144,
+                "/api/preset": 32768, "/api/motor": 64, "/api/blackout": 64, "/api/master": 64, "/api/wind/standby": 64, "/api/wind/presets": 16384, "/api/wind/target": 256, "/api/wind/probe": 512, "/api/sequence": 262144,
                 "/api/schedule": 8192, "/api/schedule/confirm": 64,
                 "/api/weather/override": 256, "/api/weather/palette": 16384,
                 "/api/playback/restart": 64, "/api/weather/visit": 64, "/api/test/units": 4096,
@@ -512,7 +516,8 @@ def make_server(
                     or (self.path == "/api/test/fixtures" and fixture_color_store is None)
                     or (route.startswith("/api/audio/") and audio_player is None)
                     or (self.path == "/api/show/play" and show_player is None)
-                    or (self.path.startswith("/api/wind/") and wind_standby is None)
+                    or (self.path == "/api/wind/probe" and anemometer is None)
+                    or (self.path.startswith("/api/wind/") and self.path != "/api/wind/probe" and wind_standby is None)
                     or (self.path.startswith("/api/schedule") and scheduler is None)):
                 self._respond(404, {"error": "not found"})
                 return
@@ -583,6 +588,9 @@ def make_server(
                     result = wind_standby.apply_presets(raw)
                 elif self.path == "/api/wind/target":
                     result = wind_standby.apply_target(raw)
+                elif self.path == "/api/wind/probe":
+                    # 讀一次風速計（只讀，最多等逾時）。 / Read the anemometer once (read only, up to the timeout).
+                    result = anemometer.probe(raw)
                 elif self.path == "/api/schedule":
                     # 每日排程（營業時間、表演時間）；存檔後立刻套用。 / Daily schedule; saved and applied at once.
                     result = scheduler.apply(raw)

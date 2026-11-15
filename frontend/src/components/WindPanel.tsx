@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AnemometerProbePanel } from './AnemometerProbePanel'
 import { getEffectManifest, type EffectPreset, type RgbColor } from '../effects'
 import { getFixtureManifest, type FixturePreset } from '../fixtures'
 import { WIND_FLOW_COLORS } from '../wind/windPreview'
@@ -59,6 +60,8 @@ export function WindPanel({ standby, onStandby, backend, presets, onPreset }: Wi
         </p>
       </div>
       <WindPreviewPanel backend={backend} />
+      {/* 現場測試：讀一次風速計（只在後端控制）。 / On-site test: read the anemometer once (backend control only). */}
+      {backend && <AnemometerProbePanel />}
       <div className="segmented-control group-switch" aria-label="風流設定的群組">
         {GROUPS.map(([value, label]) => (
           <button key={value} type="button" className={group === value ? 'active' : 'secondary'}

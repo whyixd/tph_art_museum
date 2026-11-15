@@ -16,6 +16,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 from stupidArtnet import StupidArtnet
 
+from .anemometer import AnemometerProbe
 from .audio import AudioPlayer
 from .config import DEFAULT_HARDWARE, load_config
 from .control import PresetStore, make_server
@@ -623,7 +624,7 @@ def main(argv: list[str] | None = None) -> int:
                          unit_color_store=unit_color_store, fixture_color_store=fixture_color_store,
                          output_stats=output_stats, audio_player=audio_player,
                          show_store=show_store, show_player=show_player, wind_standby=wind_standby,
-                         scheduler=scheduler) as server:
+                         scheduler=scheduler, anemometer=AnemometerProbe(config.get("wind"))) as server:
             if weather_store is not None:
                 weather_store.start()
             scheduler.start()

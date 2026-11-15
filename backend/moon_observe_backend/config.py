@@ -12,6 +12,7 @@ from typing import Any
 from .dmx import COLOR_CHANNELS, DMX_CHANNELS, GROUPS, WHITE_MODES
 from .fixture_effects import fixture_geometry, parse_preset_document
 from .hardware import CHANNELS_PER_PIXEL, COLOR_ORDERS, default_motor_channel, packet_sizes
+from .modbus import BAUDRATES
 
 MAX_PIXELS = 2048
 MAX_UNITS = 64
@@ -355,9 +356,9 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
     with config_path.open("rb") as stream:
         raw = tomllib.load(stream)
     sections = set(raw)
-    if not {"artnet", "render"} <= sections or sections - {"artnet", "render", "hardware", "motor", "dmx", "weather", "audio"} \
+    if not {"artnet", "render"} <= sections or sections - {"artnet", "render", "hardware", "motor", "dmx", "weather", "audio", "wind"} \
             or not isinstance(raw["artnet"], dict) or not isinstance(raw["render"], dict):
-        raise ValueError("config requires [artnet] and [render] sections (optional: [hardware], [motor], [dmx], [weather], [audio])")
+        raise ValueError("config requires [artnet] and [render] sections (optional: [hardware], [motor], [dmx], [weather], [audio], [wind])")
     artnet = raw["artnet"]
     render = raw["render"]
     if set(artnet) - {"ip", "universe", "source_ip", "targets"} or set(render) - {"preset", "sequence", "fps", "rpm", "pixels", "unit_id", "unit_count", "layout"}:
@@ -472,6 +473,28 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
                 entry.get("calibration", "audio-calibration.json"), "audio.calibration")).resolve()),
         }
 
+    wind = None
+    if "wind" in raw:
+        # 風速計（RS485 Modbus，經 LoRa DTU）。目前只用在「風力」分頁的測試讀取。
+        # The anemometer (RS485 Modbus through the LoRa DTU); for now only the wind tab's test read uses it.
+        entry = raw["wind"]
+        if not isinstance(entry, dict) or set(entry) - {"port", "baudrate", "address", "timeout_seconds"}:
+            raise ValueError("unknown wind config field (port, baudrate, address, timeout_seconds)")
+        port = entry.get("port", "")
+        if not isinstance(port, str) or len(port) > 200:
+            raise ValueError("wind.port must be a serial device path")
+        baudrate = entry.get("baudrate", 9600)
+        if type(baudrate) is not int or baudrate not in BAUDRATES:
+            raise ValueError(f"wind.baudrate must be one of {', '.join(map(str, BAUDRATES))}")
+        timeout = entry.get("timeout_seconds", 2.0)
+        if type(timeout) not in (int, float) or not 0.1 <= timeout <= 10:
+            raise ValueError("wind.timeout_seconds must be 0.1..10")
+        wind = {
+            "port": port, "baudrate": baudrate,
+            "address": _integer(entry.get("address", 1), "wind.address", 1, 247),
+            "timeout_seconds": float(timeout),
+        }
+
     preset_name = render.get("preset")
     if not isinstance(preset_name, str) or not preset_name:
         raise ValueError("render.preset must name a JSON file")
@@ -492,6 +515,7 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         "targets": targets,
         "weather": weather,
         "audio": audio,
+        "wind": wind,
         "fps": fps,
         "rpm": rpm,
         "pixels": pixels,

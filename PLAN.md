@@ -255,7 +255,7 @@ M5 已實作（`sequence.py`）：
 | M13 🔶 | 排程、待機效果、風力（§9） | 每日表演時段；日期 → 曲目／演出；其餘時段為待機效果（可指定 M16d 的風力效果）；天氣分類、色盤、造訪移除。2026-11-14：排程已實作（加上裝置啟動時間，見文末），**待 Pi 實機驗證**；天氣分類、色盤、造訪的移除仍在 M15 | M12 |
 | M14 🔶 | 前端時間軸編輯器與拍點修正工具（§9.5） | 波形、拍點標記可增刪移動、瀏覽器試聽同步預覽。2026-11-10：先於 M11、M13 實作，程式與測試完成，**待 Pi 實機驗證與環境曲實際修正** | M12 |
 | M15 | 清理：刪除不用的效果（含 `roulette-ring`）、舊串接與天氣程式；文件 | 測試與文件一致 | M12–M14 |
-| M16 | 風速風向（§10）：現場 RS485 風速計（經 LoRa DTU）＋Open-Meteo 備援；新增待機專屬的風力效果（依風速變快、變色，依風向流動；既有效果不受影響）；強風自動緩停轉燈（門檻可設定）。2026-11-12 規劃，**尚未實作**；分 M16a 資料、b 前端與校正、c 強風保護、d 風力效果、e 現場（§10.13） | `GET /api/wind` 回報來源、原始值、平滑值；拔掉 FTDI → 約 25 秒內切到 Open-Meteo，接回 → 下一次讀取就切回；測試風超過門檻 → 全部緩停，降低後依控箱恢復；風力效果的前後端一致性向量；既有效果的向量逐 byte 不變；現場 checklist §10.11 | W3、W5–W7 |
+| M16 | 風速風向（§10）：現場 RS485 風速計（經 LoRa DTU）＋Open-Meteo 備援；新增待機專屬的風力效果（依風速變快、變色，依風向流動；既有效果不受影響）；強風自動緩停轉燈（門檻可設定）。2026-11-12 規劃；2026-11-16 先做了風速計測試按鈕（見文末），其餘**尚未實作**；分 M16a 資料、b 前端與校正、c 強風保護、d 風力效果、e 現場（§10.13） | `GET /api/wind` 回報來源、原始值、平滑值；拔掉 FTDI → 約 25 秒內切到 Open-Meteo，接回 → 下一次讀取就切回；測試風超過門檻 → 全部緩停，降低後依控箱恢復；風力效果的前後端一致性向量；既有效果的向量逐 byte 不變；現場 checklist §10.11 | W3、W5–W7 |
 
 ### M2 實作細節
 
@@ -1022,3 +1022,14 @@ CPython、PyPy 都要通過；frontend 加上 `tsc`、build。
   - 原因：馬達延後（`motorDelaySeconds` 2 秒）等完、`ShowPlayer._begin_pending` 準備演出（編譯、開始音樂）的期間，`state()` 既不回報 `playing` 也不回報 `starting`。排程每 0.5 秒 tick 一次，剛好在這個空檔 tick 就以為演出已結束：停馬達、開待機、狀態回 `standby`；演出接著開始，卻在待機底下播（下一個 tick 只把狀態改回 `show`，不會再關待機）。20:30 那場因為也是關閉時間，排程直接關門，演出與音樂在關門後照播。現場 19:00、19:30、20:00、20:30 四場都中（Pi 上的監看：20:30:02.3 `starting` 消失、馬達停，20:30:02.8 狀態 `off` 但 `christmas-5` 第 1 輪在播）。
   - 修正（`show.py`）：等待中的演出在真正開始（設好 `_active`）的同一個鎖內才清掉，準備期間 `state()` 仍回報 `starting`；準備期間被停止或取代就不開始（剛開始的音樂也停）。另外前一場還在播時，等待中的下一場也會回報 `starting`（原本被 `playing` 蓋掉，關閉時間那場若前面有別的演出在播會被直接關門）。演出分頁在播放中同時顯示「馬達已啟動，N 秒後換成：…」。
   - 驗證：`test_show.py` 新增準備期間看得到 `starting`、播放中也看得到等待中的下一場、準備期間被停止；`test_schedule.py` 新增「準備演出時排程 tick」（11:00 與 20:30 各一次），舊程式碼上兩者都重現現場症狀（待機沒關、20:30 直接關門），新程式碼通過。後端 295、前端 168 個測試、`tsc` 通過。**尚未部署驗證。**
+
+### 2026-11-16：風速計測試按鈕（M16a 的第一部分）
+
+現場測試用：在「風力」分頁按一下就經 USB 轉 RS485、LoRa DTU 讀一次風速計，看得出問題出在哪一段。背景定時讀取、Open-Meteo 備援、平滑、強風保護（M16a 其餘、M16c）都還沒做。
+
+- **`modbus.py`**：CRC16、讀取要求（`01 03 00 00 00 04 44 09`）、`find_frame`（容許前面有雜訊、辨識例外回應）、`open_port`（raw 8N1、非阻塞）、`read_holding_registers`（讀前清空輸入、累積讀到一幀有效回應或逾時；逾時時回傳收到的全部位元組）。**只用標準函式庫（`termios`＋`select`），不用 pyserial**：Pi 沒有 pyserial，安裝程式是 `uv sync --frozen`，多一個套件會讓離線升級有風險（§10.3、§10.12 原本寫 pyserial，M16a 的背景讀取沿用這個模組）。
+- **`anemometer.py`** `AnemometerProbe`：一次只做一個讀取（鎖，第二個回 422）；每次開埠、讀、關埠；只讀（功能碼 0x03）。結果分類：`ok`、`no-port`、`open-failed`、`no-response`、`incomplete`、`bad-frame`、`exception`，每種附上「可能的原因／下一步」。成功時解析風速（reg0 ÷10）、風級、風向（reg2 ÷10）、16 方位代碼，檢查方位代碼與角度是否相差 ≤ 1 格。每次讀取記一行 log（`wind probe: ok … rtt 244 ms rx 13 byte(s)`）。序列埠只允許 `/dev/serial/by-id|by-path/…`、`/dev/ttyUSB*`、`/dev/ttyACM*`、`/dev/ttyAMA*`、`/dev/cu.*`，網頁不能開任意檔案。
+- **設定** `config.toml` 的 `[wind]`（可省略）：只接受 `port`、`baudrate`、`address`、`timeout_seconds`；§10.8 其他欄位等 M16a 實作時再加（現在寫進去會讓服務起不來）。省略時用偵測到的第一個序列埠（by-id 優先）、9600、位址 1、2 秒。installer 不會改既有 config，Pi 要用預設以外的值時手動加。
+- **API**：`GET /api/wind/probe` → `{defaults, configured, ports, baudrates}`；`PUT /api/wind/probe` `{port?, baudrate?, address?, timeoutSeconds?}` → 一次讀取的結果（`sent`／`received` hex、`bytes`、`roundTripMs`、`noiseBytes`、`registers`、`values`、`kind`、`message`、`detail`）。
+- **前端**（「風力」分頁，後端控制時）`AnemometerProbePanel`：序列埠（可選偵測到的或自己輸入、重新偵測）、baud、位址、逾時；〔讀一次〕；〔開始連續讀取〕每秒一次、預設 120 次（現場清單 §10.11 第 3 項），統計成功率（是否達 95%）、來回時間最短／平均／最長、建議逾時（最長 × 2）、各種失敗的次數。
+- 驗證：backend `test_anemometer.py` 16 個（含 pty 假風速計：分段到達、逾時、前面有雜訊、例外回應、各種失敗分類、序列埠限制、設定、API），PyPy 與 CPython 通過；全部後端 311 個通過。frontend `probeStats.test.ts` 3 個，全部 171 個、build 通過。開發機（`--api-only`＋pty 假風速計）headless Chromium：讀一次成功（13 bytes、來回約 250 ms、數值與方位一致）、連續 5 次 100%、假風速計不回應時顯示「沒有回應」。**尚未在 Pi 與實際風速計上測試。**

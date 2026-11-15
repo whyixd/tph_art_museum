@@ -645,6 +645,50 @@ export const setBackendStandby = (enabled: boolean) => putWind('/api/wind/standb
 export const setBackendWindPresets = (presets: BackendWindPresets) => putWind('/api/wind/presets', presets)
 export const setBackendWindTarget = (target: BackendWindTarget) => putWind('/api/wind/target', target)
 
+/** 風速計測試讀取的設定。 / Anemometer test read settings. */
+export type AnemometerProbeRequest = { port: string; baudrate: number; address: number; timeoutSeconds: number }
+export type AnemometerProbeInfo = {
+  /** 預設值（config.toml 的 [wind]；沒設序列埠時是偵測到的第一個）。 / Defaults ([wind], else the first port found). */
+  defaults: AnemometerProbeRequest
+  configured: boolean
+  ports: string[]
+  baudrates: number[]
+}
+export type AnemometerProbeKind = 'ok' | 'no-port' | 'open-failed' | 'no-response' | 'incomplete' | 'bad-frame' | 'exception'
+/** 一次讀取的結果。 / The outcome of one read. */
+export type AnemometerProbeResult = AnemometerProbeRequest & {
+  ok: boolean
+  kind: AnemometerProbeKind
+  message: string
+  detail: string | null
+  sent: string
+  received: string
+  bytes: number
+  roundTripMs: number | null
+  noiseBytes: number
+  registers: number[] | null
+  values: {
+    speedMs: number; beaufort: number; directionDeg: number; directionCode: number
+    codeMatches: boolean; plausible: boolean
+  } | null
+}
+
+/** 舊後端沒有測試讀取：回傳 null。 / null on backends without the test read. */
+export async function getAnemometerProbe(): Promise<AnemometerProbeInfo | null> {
+  const response = await fetch('/api/wind/probe')
+  if (response.status === 404) return null
+  return readState<AnemometerProbeInfo>(response)
+}
+
+/** 讀一次風速計（後端最多等逾時秒數）。 / Read the anemometer once (the backend waits up to the timeout). */
+export async function probeAnemometer(request: AnemometerProbeRequest): Promise<AnemometerProbeResult> {
+  return readState<AnemometerProbeResult>(await fetch('/api/wind/probe', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  }))
+}
+
 export type ScheduleGroup = 'spinner' | 'ball' | 'wash'
 
 /** 每日排程（M13）；時間為主機本地時間 "HH:MM"，日期為 "MM-DD"。 / Daily schedule; host local time, dates as MM-DD. */

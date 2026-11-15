@@ -445,3 +445,13 @@ calibration = "audio-calibration.json"
 # name = "東京"
 # latitude = 35.6762
 # longitude = 139.6503
+
+# 風速計（RS485 Modbus，經 LoRa DTU）。目前只用在「風力」分頁的「風速計測試」；整段可省略，
+# 省略時測試面板用偵測到的第一個序列埠、9600、位址 1、逾時 2 秒。只接受下面四個欄位。
+# The anemometer (RS485 Modbus through the LoRa DTU). For now only the wind tab's test read uses it; the
+# section is optional (then the first detected port, 9600, address 1, 2 s). Only these four fields are accepted.
+# [wind]
+# port = "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B0029TYY-if00-port0"
+# baudrate = 9600
+# address = 1
+# timeout_seconds = 2.0

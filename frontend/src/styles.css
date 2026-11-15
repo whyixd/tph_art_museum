@@ -617,6 +617,18 @@ input[type="range"] {
 .schedule-confirm { display: grid; gap: 0.5rem; padding: 0.6rem 0.7rem; border: 1px solid #b4532f; border-radius: 0.45rem; background: #2a1712; color: #ffd0c2; font-size: 0.85rem; }
 .schedule-confirm button { justify-self: start; }
 .schedule-caption { color: #aebdca; font-size: 0.85rem; }
+.anemometer-probe { margin-bottom: 1rem; }
+.anemometer-port { flex-basis: 100%; }
+.anemometer-ports { margin-top: 0; padding-top: 0; border-top: 0; overflow-wrap: anywhere; }
+.anemometer-ports button { margin-left: 0.4rem; padding: 0.2rem 0.55rem; font-size: 0.8rem; }
+.anemometer-run { align-items: center; }
+.anemometer-run input { margin-top: 0; }
+.anemometer-count { width: 4.6rem; padding: 0.4rem 0.5rem; border: 1px solid #303a48; border-radius: 0.45rem; color: #eef4fb; background: #111721; }
+.anemometer-result { display: grid; gap: 0.35rem; padding: 0.6rem 0.7rem; border-radius: 0.45rem; font-size: 0.85rem; }
+.anemometer-result.ok { border: 1px solid #2f7a4f; background: #10221a; color: #c9f2d8; }
+.anemometer-result.failed { border: 1px solid #b4532f; background: #2a1712; color: #ffd0c2; }
+.anemometer-result p { margin: 0; }
+.anemometer-result code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; color: #d6e0ea; overflow-wrap: anywhere; }
 .schedule-panel .sequence-field { font-size: 0.85rem; }
 .schedule-rule input, .schedule-rule select {
   padding: 0.48rem 0.6rem;
