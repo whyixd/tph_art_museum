@@ -526,6 +526,64 @@ class WiringTests(unittest.TestCase):
                 finally:
                     server.shutdown()
 
+    def test_a_tick_while_the_delayed_show_is_prepared_keeps_the_motors_and_ends_standby(self):
+        # 2026-11-14 現場：馬達等待結束、演出準備中時排程剛好 tick，把空檔當成演出結束：馬達停、待機蓋過演出；
+        # 剛好在關閉時間那場則直接關門，演出卻在關門後播。 / The on-site bug: a tick in the gap between wait and play.
+        for at, closing in (("11:00", False), ("20:30", True)):
+            with self.subTest(at=at), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "preset.json").write_text(json.dumps(default_preset("center-out-sine")), encoding="utf-8")
+                config = {"ip": "127.0.0.1", "source_ip": None, "universe": 0, "fps": 40, "rpm": 360, "pixels": 156,
+                          "unit_id": 1, "unit_count": 3}
+                store = PresetStore(root / "preset.json", 156)
+                audio = FakeAudio()
+                show_store = ShowStore(root / "shows.json", beat_maps={CLICK_TRACK_ID: CLICK}, fps=40, pixels=156)
+                show_store.save("demo", show())
+                player = ShowPlayer(show_store, audio, 40)
+                player.on_motors = lambda enabled: store.apply_motor({"enabled": enabled}, config)
+                wind = WindStandby()
+                clock = [datetime(2026, 11, 14, int(at[:2]), int(at[3:])) - timedelta(seconds=1)]
+
+                def show_state():
+                    player.current()
+                    return player.state()
+
+                scheduler = Scheduler(
+                    None, set_motors=lambda enabled: store.apply_motor({"enabled": enabled}, config),
+                    set_blackout=lambda groups, enabled: store.apply_blackout({"enabled": enabled, "groups": list(groups)}, config),
+                    set_standby=lambda enabled: wind.set_standby({"enabled": enabled}),
+                    play_show=lambda show_id, rounds, motors, delay: player.play(
+                        {"showId": show_id, "rounds": rounds, "startMotors": motors, "delaySeconds": delay}),
+                    stop_show=player.stop, show_state=show_state, now=lambda: clock[0], log=lambda line: None)
+                scheduler.settings = validate_settings(settings(showMinutes=[], showTimes=[at], motorDelaySeconds=2))
+                scheduler.tick()
+                clock[0] += timedelta(seconds=1)
+                scheduler.tick()
+                self.assertTrue(store.state(config)["motor"]["enabled"])
+                self.assertIsNotNone(player._pending)
+                self.assertTrue(wind.active())                    # standby plays while the motors spin up
+                # 等待結束：準備演出（開始音樂）時排程 tick。 / The wait ends; the schedule ticks while the show is prepared.
+                clock[0] += timedelta(seconds=2)
+                play = audio.play
+                audio.play = lambda raw: (scheduler.tick(), play(raw))
+                player._begin_pending(player._pending[3])
+                audio.play = play
+                scheduler.tick()
+                self.assertEqual("demo", player.state()["playing"]["showId"])
+                self.assertEqual("show", scheduler.state()["status"]["phase"])
+                self.assertFalse(wind.active())                   # the show is seen, not covered by standby
+                state = store.state(config)
+                self.assertTrue(state["motor"]["enabled"])        # the motors keep running
+                self.assertEqual({"spinner": False, "ball": False, "wash": False}, state["blackoutGroups"])
+                if closing:
+                    # 關閉時間那場：播完才關門。 / The show at the closing time plays before closing.
+                    clock[0] += timedelta(minutes=1)
+                    scheduler.tick()
+                    self.assertEqual("show", scheduler.state()["status"]["phase"])
+                    player.stop()
+                    scheduler.tick()
+                    self.assertEqual("off", scheduler.state()["status"]["phase"])
+
     def test_without_a_scheduler_the_route_is_missing(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -295,6 +295,47 @@ class PlayerTests(unittest.TestCase):
             self.assertEqual(1, len(audio.played))
             self.assertEqual([True, True, False], calls)
 
+    def test_a_waiting_show_never_vanishes_while_it_starts(self):
+        # 2026-11-14 現場：等待結束、準備演出（編譯、開始音樂）的空檔裡 state() 既沒在播也沒在等，排程以為演出結束，
+        # 停了馬達、回到待機，演出卻在待機底下播。 / On site the gap between waiting and playing looked like the end.
+        with tempfile.TemporaryDirectory() as directory:
+            player, audio, clock, calls = self.motor_player(directory)
+            seen = []
+            compiled = player.store.compiled
+
+            def slow_compiled(show_id):
+                seen.append(player.state())              # what another thread sees while the show is prepared
+                return compiled(show_id)
+
+            def audio_play(raw):
+                seen.append(player.state())
+                audio.played.append(raw)
+
+            player.play({"showId": "demo", "startMotors": True, "delaySeconds": 2})
+            player.store.compiled = slow_compiled
+            audio.play = audio_play
+            player._begin_pending(player._pending[3])
+            self.assertEqual(2, len(seen))
+            for state in seen:
+                self.assertEqual("demo", state["starting"]["showId"])
+            self.assertNotIn("starting", player.state())
+            self.assertEqual("demo", player.state()["playing"]["showId"])
+
+            # 前一場還在播時，等待中的下一場也要看得到。 / A show waiting behind a playing one is visible too.
+            player.play({"showId": "demo", "startMotors": True, "delaySeconds": 2})
+            state = player.state()
+            self.assertEqual("demo", state["playing"]["showId"])
+            self.assertEqual("demo", state["starting"]["showId"])
+
+            # 準備期間被停止：不留下演出，剛開始的音樂也停。 / Stopped while being prepared: nothing is left playing.
+            player.stop()
+            player.play({"showId": "demo", "startMotors": True, "delaySeconds": 2})
+            stopped = audio.stopped
+            audio.play = lambda raw: player.stop()
+            player._begin_pending(player._pending[3])
+            self.assertEqual({"playing": None}, player.state())
+            self.assertGreater(audio.stopped, stopped)
+
     def test_rejects_bad_motor_options(self):
         with tempfile.TemporaryDirectory() as directory:
             player, _, _, calls = self.motor_player(directory)

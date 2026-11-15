@@ -451,18 +451,39 @@ class ShowPlayer:
             self.generation += 1
 
     def _begin_pending(self, timer: Timer) -> None:
+        # 等待中的演出在真正開始（_active 設好）的同一個鎖內才清掉：準備（編譯、開始音樂）期間 state() 仍回報
+        # starting，不會有「既沒在播也沒在等」的空檔（排程會把那個空檔當成演出結束：停馬達、回待機）。
+        # The waiting show stays visible (state() reports "starting") until it is active, in the same lock: no gap
+        # in which nothing plays or waits (the schedule would take that gap for the end of the show).
         with self.lock:
             pending = self._pending
             if pending is None or pending[3] is not timer:
                 return  # 已取消或被新的播放取代。 / Cancelled, or replaced by a newer play.
-            self._pending = None
         try:
-            self._begin(pending[0], min(pending[1], self.store.compiled(pending[0])[0]["show"]["durationSeconds"]), True,
-                        pending[4])
+            compiled = self.store.compiled(pending[0])
         except (KeyError, ValueError):
             # 等待中演出被刪除：不播，馬達也停。 / The show was deleted while waiting: no show, stop the motors.
+            with self.lock:
+                if self._pending is not pending:
+                    return
+                self._pending = None
             if self.on_motors is not None:
                 self.on_motors(False)
+            return
+        info = compiled[0]["show"]
+        start = min(pending[1], info["durationSeconds"])
+        with_audio = self.audio is not None and self.audio.available
+        if with_audio:
+            self.audio.play({"trackId": info["trackId"], "startSeconds": start, "loop": info["loop"]})
+        with self.lock:
+            if self._pending is pending:
+                self._pending = None
+                self._active = _Active(compiled, start, self.clock(), with_audio, True, pending[4])
+                self.generation += 1
+                return
+        # 準備期間被停止或取代：剛開始的音樂也停掉。 / Stopped or replaced meanwhile: stop the music just started.
+        if with_audio and self._active is None:
+            self.audio.stop()
 
     def _cancel_pending(self) -> bool:
         with self.lock:
@@ -551,16 +572,16 @@ class ShowPlayer:
     def state(self) -> dict[str, Any]:
         with self.lock:
             active = self._active
+            # 馬達已啟動，演出還在等（前一場可能還在播，等完才換）。 / Motors started, the show still waits (the
+            # previous show may still play until then).
+            starting = {} if self._pending is None else {"starting": {
+                "showId": self._pending[0], "remainingSeconds": max(0.0, self._pending[2] - self.clock()),
+            }}
             if active is None:
-                if self._pending is None:
-                    return {"playing": None}
-                # 馬達已啟動，演出還在等。 / Motors started, the show is still waiting.
-                return {"playing": None, "starting": {
-                    "showId": self._pending[0], "remainingSeconds": max(0.0, self._pending[2] - self.clock()),
-                }}
+                return {"playing": None, **starting}
             info = active.compiled[0]["show"]
             seconds = self._seconds(active, self.clock())
-            return {"playing": {
+            return {**starting, "playing": {
                 "showId": info["id"], "trackId": info["trackId"], "silent": not active.audio,
                 "positionSeconds": seconds % info["durationSeconds"] if info["loop"] else seconds,
                 "durationSeconds": info["durationSeconds"], "loop": info["loop"],

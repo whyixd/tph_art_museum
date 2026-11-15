@@ -365,6 +365,11 @@ export function ShowEditor({ editor, controlMode, enabled, onEnabled, currentInd
           <p className="weather-override" role="status">
             播放中：{shows.shows.find((show) => show.id === playingOnBackend.showId)?.title ?? playingOnBackend.showId}
             {playingOnBackend.silent ? '（沒有音效卡，無聲）' : ''} · {formatClock(playingOnBackend.positionSeconds)} / {formatClock(playingOnBackend.durationSeconds)}
+            {startingOnBackend && <>
+              {/* 下一場在等馬達延後時間，等完會換掉這一場。 / The next show waits out its delay, then replaces this one. */}
+              <br />馬達已啟動，{Math.ceil(startingOnBackend.remainingSeconds)} 秒後換成：
+              {shows.shows.find((show) => show.id === startingOnBackend.showId)?.title ?? startingOnBackend.showId}
+            </>}
           </p>
         ) : startingOnBackend ? (
           <p className="weather-override" role="status">
