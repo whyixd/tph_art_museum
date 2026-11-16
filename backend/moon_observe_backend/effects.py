@@ -6,7 +6,7 @@ from bisect import bisect_right
 from dataclasses import dataclass
 from functools import lru_cache
 import math
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 SCHEMA_VERSION = 2
 GRADIENT_AXES = ("strip", "radius", "unit")
@@ -37,6 +37,7 @@ EFFECT_IDS = (
     "unit-random-fill",
     "color-alternate",
     "wave-split",
+    "color-roam",
 )
 # min, max, default, integer
 PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
@@ -143,6 +144,15 @@ PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "fadeOutSeconds": (0, 10, 3, False),
         "endDarkSeconds": (0, 10, 1, False),
     },
+    "color-roam": {
+        "radiusCm": (50, 2000, 400, False),
+        "stepSeconds": (0.5, 30, 4, False),
+        "choices": (1, 6, 3, True),
+        "noReturn": (0, 6, 2, True),
+        "roamers": (1, 6, 1, True),
+        # 0 等速，1 兩端放慢。 / 0 linear, 1 eased at both ends.
+        "curve": (0, 1, 1, True),
+    },
     "pillar-fill": {
         "stepSeconds": (0.05, 5, 0.5, False),
         "acceleration": (1, 4, 1, False),
@@ -182,6 +192,8 @@ FIXED_PARAMETERS: dict[str, tuple[str, ...]] = {
     # 隨機順序靠全部轉燈共用的整輪長度。 / The random order relies on one shared round length.
     "unit-random-fill": ("stepSeconds", "acceleration", "fadeInSeconds", "holdSeconds", "fadeOutSeconds",
                          "endDarkSeconds"),
+    # 全部轉燈共用同一條漫遊路徑。 / Every spinner follows the one roaming path.
+    "color-roam": ("radiusCm", "stepSeconds", "choices", "noReturn", "roamers", "curve"),
     # 錯落順序靠九台共用的整輪長度。 / The stagger order relies on one shared round length.
     "random-fill": ("staggerSeconds",),
     # 水平流動要全部轉燈一起流。 / The horizontal flow moves all spinners together.
@@ -195,7 +207,8 @@ FIXED_PARAMETERS: dict[str, tuple[str, ...]] = {
 }
 # 九台共用時間表、不套用天氣多雲錯開的效果（前端 ignoresWeatherTiming）；它們也沒有雨天線條版本。
 # Shared-schedule effects that skip weather cloud offsets (frontend ignoresWeatherTiming); they have no rain lines either.
-WEATHER_TIMING_FREE = ("unit-chase", "unit-random", "roulette-ring", "pillar-fill", "unit-random-fill", "wave-split")
+WEATHER_TIMING_FREE = ("unit-chase", "unit-random", "roulette-ring", "pillar-fill", "unit-random-fill", "wave-split",
+                       "color-roam")
 UNIT_VARIATION_DISTRIBUTIONS = ("linear", "skip", "random")
 # 不用到燈台編號／相位的效果：沒有雨、各台不錯開時，每台畫面相同，只需算一次（輸出迴圈依此共用）。
 # 其他效果依 unit_index（隨機種子、逐台排程、燈台色盤）或各台相位而不同。測試逐台比對確認。
@@ -480,6 +493,9 @@ def default_preset(effect_id: str, led_count: int | None = None) -> dict[str, An
         color = {"mode": "gradient", "axis": "radius", "colors": [
             {"r": 0.2, "g": 0.85, "b": 1}, {"r": 1, "g": 0.2, "b": 0.75}, {"r": 1, "g": 0.7, "b": 0.15},
         ]}
+    elif effect_id == "color-roam":
+        # 底色深藍、起點琥珀。 / Deep blue base, amber roamer.
+        color = {"mode": "gradient", "axis": "unit", "colors": [{"r": 0, "g": 0.15, "b": 0.6}, {"r": 1, "g": 0.6, "b": 0.1}]}
     elif effect_id == "two-tone-trail":
         # 底色紅、亮點綠。 / Red base, green dot.
         color = {"mode": "gradient", "axis": "strip", "colors": [{"r": 1, "g": 0, "b": 0}, {"r": 0, "g": 1, "b": 0}]}
@@ -537,6 +553,9 @@ class EffectContext:
     # 轉燈在全部轉燈範圍內的平面位置 (x, y)，各自 0–1（同 fixture_geometry）；中心擴散的水平流動用。
     # The spinner's plan position (x, y) within all spinners, each 0–1 (as fixture_geometry); center-out-sine's flow.
     unit_flow: tuple[float, float] | None = None
+    # 全部轉燈中心的場地座標（依台號，同一個序列物件，可快取）；色彩漫遊用。
+    # Every spinner centre by unit (one shared sequence, cacheable); color-roam.
+    unit_positions: Sequence[Mapping[str, float] | None] | None = None
 
     @property
     def strip(self) -> float:
@@ -759,6 +778,9 @@ def _brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float:
         return _pillar_fill(p, ctx)
     if effect == "unit-random-fill":
         return _unit_random_fill(p, ctx)
+    if effect == "color-roam":
+        # 漸層時整台全亮、靠顏色；純色時 B 是全暗。 / Gradient: fully lit, shown by colour; solid: B is dark.
+        return 1.0 if preset["color"]["mode"] == "gradient" else _color_roam_strength(p, ctx)
     if effect == "wave-split":
         # 純色：海面下亮、海面上暗，浪花全亮。 / Solid: lit below the surface, dark above, the foam fully lit.
         top, foam = _wave_split(p, ctx)
@@ -1051,6 +1073,9 @@ def sample_effect(
         # 第一色、最後一色交替。 / The first and last colours alternate.
         stops = color["colors"]
         return stops[0] if _alternate_step(preset["parameters"], ctx) % 2 == 0 else stops[-1]
+    if preset["effectId"] == "color-roam" and color["mode"] == "gradient" and rain is None:
+        # 不論方向：第一色 B、最後一色 A。 / Any axis: the first colour is B, the last A.
+        return _gradient(color["colors"], _color_roam_strength(preset["parameters"], ctx), False)
     if preset["effectId"] == "moving-rings" and color["mode"] == "gradient" and rain is None:
         # 每個環一色（第 k 環取第 k 色），重疊處相加。 / Ring k takes colour k; overlaps add up.
         colors = color["colors"]
@@ -1419,6 +1444,9 @@ def completion_frames(preset: Mapping[str, Any], fps: int, unit_count: int) -> i
         return _pillar_fill_timing(parameters, fps, unit_count)[-1]
     if effect == "color-alternate":
         return 2 * max(1, int(parameters["intervalFrames"]))
+    if effect == "color-roam":
+        # 起點走過與台數相同的步數。 / The roamer walks as many steps as there are units.
+        return roam_step_frames(parameters, fps) * max(1, unit_count)
     if effect == "wave-split":
         return max(1, math.ceil(fps * parameters["wavelengthMeters"] / parameters["speedMps"]))
     if effect == "unit-random":
@@ -1437,3 +1465,12 @@ def completion_frames(preset: Mapping[str, Any], fps: int, unit_count: int) -> i
         stages = center_fill_stage(0, unit_count, parameters.get("fromBothEnds", 0) == 1)[1]
         return math.ceil(((stages - 1) * (expansion + hold) + expansion) * fps) + 1
     return None
+
+
+def _color_roam_strength(p: Mapping[str, Any], ctx: EffectContext) -> float:
+    return color_roam_strength(p, ctx.controller_frame, ctx.controller_fps, ctx.unit_index, ctx.unit_count,
+                               ctx.unit_positions)
+
+
+# color_roam 用到本模組的 hash01 等，放最後匯入。 / color_roam uses this module's hash01, so it is imported last.
+from .color_roam import color_roam_strength, roam_step_frames  # noqa: E402

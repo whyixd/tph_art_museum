@@ -7,6 +7,8 @@ import { rouletteRing, rouletteTiming } from '../src/effects/rouletteRing'
 import { spectrumCycle } from '../src/effects/spectrumCycle'
 import { unitChase } from '../src/effects/unitChase'
 import { unitRandom, unitTurn } from '../src/effects/unitRandom'
+import { colorRoamStrength, roamLayout } from '../src/effects/colorRoam'
+import { exampleSiteLayout } from '../src/site/layout'
 import {
   createDefaultEffectPreset,
   createEffectContext,
@@ -63,6 +65,7 @@ describe('effect synchronization contract', () => {
       'unit-random-fill',
       'color-alternate',
       'wave-split',
+      'color-roam',
       'wind-flow',
     ])
     expect(decoded.every(
@@ -752,6 +755,64 @@ describe('unit-random-fill', () => {
     expect(orders[2]).not.toEqual(orders[1])
     // The pillar rank does not change the order.
     expect(level(500, 3, 20)).toBe(level(500, 3))
+  })
+})
+
+describe('color-roam', () => {
+  const fps = 40
+  const preset = createDefaultEffectPreset('color-roam')
+  const positions = exampleSiteLayout().spinners
+  const strengths = (frame: number, parameters = preset.parameters) => Array.from({ length: 24 }, (_, unit) => {
+    const context = createEffectContext(frame, fps, 5, 129, unit, 24, frame)
+    context.unitPositions = positions
+    return colorRoamStrength(context, parameters)
+  })
+
+  it('walks unit to unit among the nearest not just visited, sliding smoothly between them', () => {
+    expect(getVariableParameters('color-roam')).toEqual([])
+    expect(ignoresWeatherTiming('color-roam')).toBe(true)
+    expect(getEffectCompletion(preset, fps, 24)!.frames).toBe(160 * 24)
+    const { neighbors } = roamLayout(positions, 24)
+    const visited: number[] = []
+    for (let step = 0; step < 30; step += 1) {
+      const values = strengths(step * 160)
+      const current = values.indexOf(Math.max(...values))
+      expect(values[current]).toBe(1)
+      if (visited.length > 0) {
+        const recent = visited.slice(-3, -1)
+        expect(neighbors[visited.at(-1)!].filter((other) => !recent.includes(other)).slice(0, 3)).toContain(current)
+        expect(visited.slice(-3)).not.toContain(current)
+      }
+      visited.push(current)
+    }
+    let last = strengths(0)
+    for (let frame = 1; frame < 160 * 6; frame += 1) {
+      const now = strengths(frame)
+      expect(Math.max(...now.map((value, unit) => Math.abs(value - last[unit])))).toBeLessThan(0.05)
+      last = now
+    }
+  })
+
+  it('shows A on the roamer and B far away; solid colour is dark away from it', () => {
+    const color = (unit: number, value = preset) => {
+      const context = createEffectContext(0, fps, 5, 129, unit, 24, 0)
+      context.unitPositions = positions
+      return sampleEffect(value, context)
+    }
+    if (preset.color.mode !== 'gradient') throw new Error('gradient default expected')
+    const colors = Array.from({ length: 24 }, (_, unit) => color(unit))
+    expect(colors).toContainEqual(preset.color.colors[1])
+    expect(colors).toContainEqual(preset.color.colors[0])
+    const solid = { ...preset, color: { mode: 'solid' as const, color: { r: 1, g: 1, b: 1 } } }
+    const levels = Array.from({ length: 24 }, (_, unit) => color(unit, solid).r)
+    expect(Math.max(...levels)).toBe(1)
+    expect(Math.min(...levels)).toBe(0)
+  })
+
+  it('without a layout places the units in a row and still roams', () => {
+    const { points, neighbors } = roamLayout(undefined, 5)
+    expect(points).toEqual([[0], [250], [500], [750], [1000]])
+    expect(neighbors[2]).toEqual([1, 3, 0, 4])
   })
 })
 

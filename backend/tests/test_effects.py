@@ -52,8 +52,8 @@ class EffectParityTests(unittest.TestCase):
     def test_frontend_golden_vectors(self) -> None:
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
         presets = [validate_preset(preset) for preset in fixture["presets"]]
-        self.assertEqual(26, len({preset["effectId"] for preset in presets}))
-        self.assertEqual(936, len(fixture["samples"]))
+        self.assertEqual(27, len({preset["effectId"] for preset in presets}))
+        self.assertEqual(972, len(fixture["samples"]))
         for sample in fixture["samples"]:
             data = sample["context"]
             context = EffectContext(
@@ -77,7 +77,7 @@ class EffectParityTests(unittest.TestCase):
     def test_frontend_full_frame_bytes(self) -> None:
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
         presets = [validate_preset(preset) for preset in fixture["presets"]]
-        self.assertEqual(1872, len(fixture["frames"]))
+        self.assertEqual(1944, len(fixture["frames"]))
         for case in fixture["frames"]:
             preset = presets[case["presetIndex"]]
             pixels = [
@@ -276,6 +276,74 @@ class EffectParityTests(unittest.TestCase):
                 self.assertAlmostEqual(expected[key], actual[channel], places=12, msg=sample)
             lit_split += expected["r"] != expected["b"]
         self.assertGreater(lit_split, 0)
+
+    def test_color_roam_matches_frontend_with_layout_positions(self):
+        fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["roamPositions"]
+        presets = [validate_preset(preset) for preset in fixture["presets"]]
+        positions = fixture["positions"]
+        self.assertEqual(24, len(positions))
+        self.assertEqual(3 * 7 * 24 * 2, len(fixture["samples"]))
+        for sample in fixture["samples"]:
+            context = EffectContext(sample["frame"], 40, sample["ledIndex"], 129, sample["unitIndex"], 24, sample["frame"],
+                                    unit_positions=positions)
+            actual = sample_effect(presets[sample["presetIndex"]], context, sample["frame"])
+            for channel, key in enumerate(("r", "g", "b")):
+                self.assertAlmostEqual(sample["expected"][key], actual[channel], places=12, msg=sample)
+
+    def test_color_roam_moves_smoothly_and_seeks_consistently(self):
+        from moon_observe_backend import color_roam
+
+        positions = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["roamPositions"]["positions"]
+        preset = validate_preset(default_preset("color-roam"))
+        self.assertEqual((), variable_parameters("color-roam"))
+        p = preset["parameters"]
+        # 每段 4 秒 × 24 台。 / 4 s per step × 24 units.
+        self.assertEqual(160 * 24, completion_frames(preset, 40, 24))
+
+        def strengths(frame: int) -> list[float]:
+            return [color_roam.color_roam_strength(p, frame, 40, unit, 24, positions) for unit in range(24)]
+
+        # 每段開頭起點正好在一台上（那台是 A），其他依距離漸層；下一台是最近的三台之一。
+        # At each step start the roamer sits on one unit (pure A); the next is one of the three nearest not just visited.
+        layout = color_roam.roam_layout(positions, 24)
+        visited: list[int] = []
+        for step in range(40):
+            values = strengths(step * 160)
+            current = values.index(max(values))
+            self.assertEqual(1.0, values[current])
+            if visited:
+                recent = visited[-3:-1]
+                self.assertIn(current, [other for other in layout.neighbors[visited[-1]] if other not in recent][:3])
+                self.assertNotIn(current, visited[-3:])
+            visited.append(current)
+        # 連續移動：相鄰影格的變化很小（不瞬移）。 / Continuous: neighbouring frames differ only a little (no jumps).
+        last = strengths(0)
+        for frame in range(1, 160 * 12):
+            now = strengths(frame)
+            self.assertLess(max(abs(a - b) for a, b in zip(now, last)), 0.05, frame)
+            last = now
+        # 跳著看與從頭走一致（跨過檢查點）。 / Seeking matches walking from the start (across checkpoints).
+        fast = {**p, "stepSeconds": 0.5}
+        far = [color_roam.color_roam_strength(fast, 20 * 1000 + 7, 40, unit, 24, positions) for unit in range(24)]
+        color_roam._WALKS.clear()
+        for frame in range(0, 20 * 1000, 20 * 200):
+            color_roam.color_roam_strength(fast, frame, 40, 0, 24, positions)
+        self.assertEqual(far, [color_roam.color_roam_strength(fast, 20 * 1000 + 7, 40, unit, 24, positions)
+                               for unit in range(24)])
+
+    def test_color_roam_colours_b_to_a_and_solid_is_dark_away(self):
+        positions = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["roamPositions"]["positions"]
+        preset = validate_preset(default_preset("color-roam"))
+        colors = preset["color"]["colors"]
+        rgb = [sample_effect(preset, EffectContext(0, 40, 5, 129, unit, 24, 0, unit_positions=positions))
+               for unit in range(24)]
+        self.assertIn(colors[-1], rgb)   # 起點那台 A / the roamer's unit is A
+        self.assertIn(colors[0], rgb)    # 遠處 B / far units are B
+        solid = validate_preset({**default_preset("color-roam"), "color": {"mode": "solid", "color": {"r": 1, "g": 1, "b": 1}}})
+        levels = [sample_effect(solid, EffectContext(0, 40, 5, 129, unit, 24, 0, unit_positions=positions))[0]
+                  for unit in range(24)]
+        self.assertEqual(1.0, max(levels))
+        self.assertEqual(0.0, min(levels))
 
     def test_center_out_flow_matches_frontend_with_layout_positions(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["flowPositions"]
@@ -637,7 +705,7 @@ if __name__ == "__main__":
 class UnitEffectTests(unittest.TestCase):
     def test_frontend_unit_effect_hashes(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
-        self.assertEqual(20, len(fixture["unitEffects"]))
+        self.assertEqual(22, len(fixture["unitEffects"]))
         for case in fixture["unitEffects"]:
             preset = validate_preset(case["preset"])
             unit_count = case["unitCount"]
@@ -653,7 +721,7 @@ class UnitEffectTests(unittest.TestCase):
                              f"{preset['effectId']} x{unit_count}")
 
     def test_unit_effects_ignore_weather_timing(self):
-        for effect_id in ("unit-chase", "unit-random", "roulette-ring", "unit-random-fill"):
+        for effect_id in ("unit-chase", "unit-random", "roulette-ring", "unit-random-fill", "color-roam"):
             preset = validate_preset(default_preset(effect_id))
             plain = {"unitId": 6, "logicalPixelCount": 156, "frameOffset": 0}
             cloudy = {**plain, "frameOffset": 30}
@@ -669,7 +737,7 @@ class UnitEffectTests(unittest.TestCase):
     def test_rain_lines_match_frontend(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["rainLines"]
         frames = [frame for start, end in fixture["frameRanges"] for frame in range(start, end)]
-        self.assertEqual(52, len(fixture["cases"]))
+        self.assertEqual(54, len(fixture["cases"]))
         for case in fixture["cases"]:
             preset = validate_preset(default_preset(case["effectId"]))
             data = bytearray()
@@ -700,7 +768,7 @@ class UnitEffectTests(unittest.TestCase):
         self.assertAlmostEqual(0.18, sum(lit) / (len(lit) * 156), delta=0.02)
 
     def test_unit_effects_reject_unit_variation(self):
-        for effect_id in ("unit-chase", "unit-random", "roulette-ring", "unit-random-fill"):
+        for effect_id in ("unit-chase", "unit-random", "roulette-ring", "unit-random-fill", "color-roam"):
             preset = default_preset(effect_id)
             parameter = next(iter(preset["parameters"]))
             preset["unitVariation"] = {"parameter": parameter, "from": preset["parameters"][parameter],

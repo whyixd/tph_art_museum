@@ -33,6 +33,7 @@ const ids = [
   'unit-random-fill',
   'color-alternate',
   'wave-split',
+  'color-roam',
 ] as const
 
 const gradient8 = [
@@ -204,6 +205,12 @@ const unitEffectCases: [EffectPreset, number][] = [
   [{ ...createDefaultEffectPreset('unit-random-fill'), parameters: {
     stepSeconds: 0.2, acceleration: 2, fadeInSeconds: 0.3, holdSeconds: 0.5, fadeOutSeconds: 0.25, endDarkSeconds: 0,
   } }, 9],
+  // 色彩漫遊（沒有配置，依編號排成一排）：預設 24 台，與快速、三個起點、等速、9 台。
+  // color-roam without a layout (units in a row): default 24, and fast with three roamers, linear, 9 units.
+  [createDefaultEffectPreset('color-roam'), 24],
+  [{ ...createDefaultEffectPreset('color-roam'), parameters: {
+    radiusCm: 300, stepSeconds: 0.5, choices: 2, noReturn: 0, roamers: 3, curve: 0,
+  }, color: { mode: 'solid', color: { r: 1, g: 0.5, b: 0.2 } } }, 9],
   // 隨機填滿錯落開始。 / random-fill with a staggered start.
   [{ ...createDefaultEffectPreset('random-fill'), parameters: {
     fillSeconds: 5, acceleration: 3.5, ledFadeSeconds: 0.25, holdSeconds: 6, fadeOutSeconds: 0.5, staggerSeconds: 2,
@@ -297,6 +304,27 @@ const flowPositions = {
   completions: flowPresets.map((preset) => getEffectCompletion(preset, 40, 24)?.frames ?? null),
 }
 
+// 色彩漫遊：範例配置 24 台的立體座標；含跨過好幾個檢查點的影格（每步 0.5 秒時第 20000 格 = 第 1000 步）。
+// color-roam with the example layout's 24 positions; frames include ones past several checkpoints (step 1000).
+const roamBase = createDefaultEffectPreset('color-roam')
+const roamPresets: EffectPreset[] = [
+  roamBase,
+  { ...roamBase, parameters: { ...roamBase.parameters, stepSeconds: 0.5, roamers: 2, radiusCm: 250 },
+    color: { mode: 'solid', color: { r: 0.2, g: 0.9, b: 0.6 } } },
+  { ...roamBase, parameters: { ...roamBase.parameters, stepSeconds: 0.5, choices: 1, noReturn: 4, curve: 0, radiusCm: 800 },
+    color: { mode: 'gradient', axis: 'radius', colors: [{ r: 0, g: 0, b: 0.4 }, { r: 0.9, g: 0.1, b: 0.5 }, { r: 1, g: 0.9, b: 0.2 }] } },
+]
+const roamPositions = {
+  positions: waveLayout.spinners,
+  presets: roamPresets,
+  samples: roamPresets.flatMap((preset, presetIndex) => [0, 37, 160, 999, 5130, 20000, 20011].flatMap((frame) =>
+    waveLayout.spinners.flatMap((_, unitIndex) => [0, 64].map((ledIndex) => {
+      const context = createEffectContext(frame, 40, ledIndex, 129, unitIndex, waveLayout.spinners.length, frame)
+      context.unitPositions = waveLayout.spinners
+      return { presetIndex, frame, unitIndex, ledIndex, expected: sampleEffect(preset, context, frame) }
+    })))),
+}
+
 const output = JSON.stringify({
   source: 'frontend/src/effects',
   schemaVersion: 2,
@@ -312,6 +340,7 @@ const output = JSON.stringify({
   rainLines,
   wavePositions,
   flowPositions,
+  roamPositions,
 }, null, 2)
 
 if (process.argv.includes('--write')) {

@@ -27,6 +27,7 @@ export type EffectId =
   | 'unit-random-fill'
   | 'color-alternate'
   | 'wave-split'
+  | 'color-roam'
   | 'wind-flow'
 
 export type RgbColor = {
@@ -128,7 +129,15 @@ export type EffectSampleContext = {
    * when positions are missing). Used by center-out-sine's horizontal flow.
    */
   unitFlowPosition?: { x: number; y: number }
+  /**
+   * 全部轉燈中心的場地座標（依台號，同一個陣列物件，可快取；色彩漫遊用）。
+   * Every spinner centre in the room, by unit (one shared array, cacheable); used by color-roam.
+   */
+  unitPositions?: UnitPositions
 }
+
+/** 依台號的轉燈中心座標（cm；沒有配置的台是 null）。 / Spinner centres by unit (cm; null without a layout entry). */
+export type UnitPositions = readonly ({ x?: number; y?: number; z?: number } | null)[]
 
 export type EffectModule = {
   manifest: EffectManifestEntry

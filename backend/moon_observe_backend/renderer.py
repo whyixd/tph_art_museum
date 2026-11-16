@@ -100,6 +100,7 @@ def render_frame(
                 unit_rank=unit.get("pillarRank"),
                 unit_position=unit.get("position"),
                 unit_flow=_flow(unit.get("flowPosition")),
+                unit_positions=unit.get("positions"),
             ),
             global_frame,
             raining,

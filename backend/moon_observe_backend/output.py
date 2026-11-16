@@ -386,6 +386,8 @@ def stream(
                     "position": (config.get("spinner_positions") or [])[unit_id - 1] if unit_id <= len(config.get("spinner_positions") or []) else None,
                     # 中心擴散的水平流動：轉燈在全部轉燈範圍內的平面位置 (x, y)。 / center-out-sine flow: plan position (x, y).
                     "flowPosition": (config.get("spinner_flow") or [])[unit_id - 1] if unit_id <= len(config.get("spinner_flow") or []) else None,
+                    # 色彩漫遊：全部轉燈的座標（同一個串列物件）。 / color-roam: every spinner's position (one shared list).
+                    "positions": config.get("spinner_positions"),
                 }
                 color_override = weather.get("color") if category is not None else None
                 if spinners_dark:

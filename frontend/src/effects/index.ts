@@ -29,6 +29,7 @@ import { spectrumCycle } from './spectrumCycle'
 import { unitChase } from './unitChase'
 import { unitRandom } from './unitRandom'
 import { unitRandomFill } from './unitRandomFill'
+import { colorRoam } from './colorRoam'
 import { twoToneTrail } from './twoToneTrail'
 import { unitVariationValue } from './unitVariation'
 import { waveSplit } from './waveSplit'
@@ -62,6 +63,7 @@ const EFFECTS: Record<EffectId, EffectModule> = {
   'unit-random-fill': unitRandomFill,
   'color-alternate': colorAlternate,
   'wave-split': waveSplit,
+  'color-roam': colorRoam,
   'wind-flow': windFlow,
 }
 
@@ -88,6 +90,8 @@ const FIXED_PARAMETERS: Partial<Record<EffectId, readonly string[]>> = {
   'pillar-fill': ['stepSeconds', 'acceleration', 'fadeInSeconds', 'holdSeconds', 'fadeOutSeconds', 'endDarkSeconds'],
   // 隨機順序靠全部轉燈共用的整輪長度。 / The random order relies on one shared round length.
   'unit-random-fill': ['stepSeconds', 'acceleration', 'fadeInSeconds', 'holdSeconds', 'fadeOutSeconds', 'endDarkSeconds'],
+  // 全部轉燈共用同一條漫遊路徑。 / Every spinner follows the one roaming path.
+  'color-roam': ['radiusCm', 'stepSeconds', 'choices', 'noReturn', 'roamers', 'curve'],
   // 錯落順序靠九台共用的整輪長度。 / The stagger order relies on one shared round length.
   'random-fill': ['staggerSeconds'],
   // 水平流動要全部轉燈一起流，不開放各台不同。 / The horizontal flow moves all spinners together, so no per-unit values.
