@@ -17,6 +17,7 @@ backend/schedule.json
 backend/beat-edits/
 backend/palette.json
 backend/audio-calibration.json
+backend/wind-standby.json
 
 # Music files ship beside the release, not in git (beat maps in backend/tracks/ are tracked)
 audio/
