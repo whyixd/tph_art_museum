@@ -14,6 +14,7 @@ from dataclasses import dataclass
 import math
 from typing import Any, Mapping, Sequence
 
+from .brightness_walk import Neighbors, brightness_walk, walk_settings, walk_step_frames
 from .effects import (
     BLACK, MULTI_FIELDS, TAU, Rgb, _gradient, _number, _rgb, _round_half_up, clamp01, hash01, multi_color_at,
     multi_fields, multi_fields_to_json,
@@ -34,6 +35,7 @@ FIXTURE_EFFECT_IDS = (
     "pole-rise",
     "base-wave",
     "horizontal-flow",
+    "brightness-walk",
 )
 # min, max, default, integer
 FIXTURE_PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
@@ -75,6 +77,14 @@ FIXTURE_PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "waveAxis": (0, 3, 0, True),
         "direction": (0, 1, 0, True),
     },
+    "brightness-walk": {
+        "walkers": (1, 37, 3, True),
+        "stepSeconds": (0.1, 20, 2, False),
+        "choices": (1, 6, 3, True),
+        "noReturn": (0, 6, 2, True),
+        "roundSteps": (1, 200, 20, True),
+        "curve": (0, 1, 0, True),
+    },
     "horizontal-flow": {
         "speedHz": (0.02, 2, 0.2, False),
         "waveCount": (0.5, 6, 1, False),
@@ -108,6 +118,8 @@ class FixtureContext:
     pole_rank: int | None = None
     pole_count: int | None = None
     pole_step: int | None = None
+    # 每顆的鄰近順序（亮度漫遊；fixture_neighbors）；None 時依編號。 / Neighbour order (brightness-walk); by index if None.
+    neighbors: Neighbors | None = None
 
     @property
     def normalized_index(self) -> float:
@@ -227,6 +239,9 @@ def fixture_completion_frames(preset: Mapping[str, Any], fps: int, fixture_count
     if effect == "horizontal-flow":
         # 加速時以一次加速為一輪。 / With acceleration, one ramp is one round.
         return _frames(p["rampSeconds"], fps) if p["acceleration"] > 1 else max(1, math.ceil(fps / p["speedHz"]))
+    if effect == "brightness-walk":
+        # 一輪 = 幾步後重選起點 × 每步。 / One round: steps per round × step frames.
+        return walk_step_frames(p, fps) * walk_settings(p, max(1, fixture_count))[3]
     return None
 
 
@@ -248,6 +263,8 @@ def fixture_brightness(preset: Mapping[str, Any], ctx: FixtureContext) -> float:
         return 0.0
     if effect == "fixture-solid":
         return 1.0
+    if effect == "brightness-walk":
+        return brightness_walk(p, frame, ctx.controller_fps, ctx.fixture_index, ctx.fixture_count, ctx.neighbors)
     if effect == "fixture-breathing":
         return p["minLevel"] + (1 - p["minLevel"]) * (0.5 - 0.5 * math.cos(TAU * p["breatheHz"] * time))
     if effect == "height-sweep":
@@ -446,10 +463,12 @@ def render_fixture_frame(
     frame_step: int = 0,
     cycle_frames: int | None = None,
     poles: Sequence[tuple[int, int]] | None = None,
+    neighbors: Neighbors | None = None,
 ) -> list[Rgb]:
     """One group's colours for a frame counted from playback (or step) start.
 
-    ``poles`` gives each fixture's (pole rank, order on the pole) for pole-rise (config.fixture_poles).
+    ``poles`` gives each fixture's (pole rank, order on the pole) for pole-rise (config.fixture_poles);
+    ``neighbors`` the neighbour order for brightness-walk (brightness_walk.fixture_neighbors).
 
     ``frame_step`` (cloudy) offsets each fixture by its x position; ``cycle_frames`` wraps the frame
     for count-based sequence steps.
@@ -460,13 +479,15 @@ def render_fixture_frame(
     preset = weather_fixture_preset(preset, color_override)
     count = len(geometry)
     pole_count = max((rank + 1 for rank, _ in poles), default=0) if poles else None
+    # 亮度漫遊要全組同一個時間（亮度在燈之間流動），不錯開。 / brightness-walk needs one time for the group: no offsets.
+    shared = preset["effectId"] == "brightness-walk"
     return [
         sample_fixture(preset, FixtureContext(
-            controller_frame=effect_frame + _round_half_up(x * CLOUD_SPREAD_STEPS * frame_step),
+            controller_frame=effect_frame + (0 if shared else _round_half_up(x * CLOUD_SPREAD_STEPS * frame_step)),
             controller_fps=fps, fixture_index=index, fixture_count=count,
             normalized_height=height, normalized_x=x, normalized_y=y,
             pole_rank=poles[index][0] if poles else None, pole_count=pole_count,
-            pole_step=poles[index][1] if poles else None,
+            pole_step=poles[index][1] if poles else None, neighbors=neighbors,
         ), raining)
         for index, (height, x, y) in enumerate(geometry)
     ]

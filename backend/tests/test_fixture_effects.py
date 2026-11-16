@@ -3,6 +3,7 @@ import json
 import unittest
 from pathlib import Path
 
+from moon_observe_backend.brightness_walk import fixture_neighbors, walk_paths
 from moon_observe_backend.config import fixture_poles
 from moon_observe_backend.fixture_effects import (
     FIXTURE_EFFECT_IDS,
@@ -128,6 +129,85 @@ class FixturePresetTests(unittest.TestCase):
             preset = validate_fixture_preset(case["preset"])
             frames = b"".join(to_bytes(render_fixture_frame(preset, geometry, frame, fps=40, poles=poles)) for frame in range(700))
             self.assertEqual(case["sha256"], hashlib.sha256(frames).hexdigest(), case["preset"]["parameters"])
+
+    def test_brightness_walk_matches_frontend_with_layout_positions(self):
+        data = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["brightnessWalk"]
+        neighbors = fixture_neighbors(data["positions"])
+        self.assertEqual([tuple(row) for row in data["expectedNeighbors"]], list(neighbors))
+        geometry = fixture_geometry(data["positions"])
+        for case in data["cases"]:
+            preset = validate_fixture_preset(case["preset"])
+            cycle = fixture_completion_frames(preset, 40, len(geometry))
+            self.assertEqual(case["cycleFrames"], cycle)
+            frames = b"".join(to_bytes(render_fixture_frame(preset, geometry, frame, fps=40, neighbors=neighbors,
+                                                            cycle_frames=cycle))
+                              for frame in range(2 * cycle))
+            self.assertEqual(case["sha256"], hashlib.sha256(frames).hexdigest(), case["preset"]["parameters"])
+
+    def test_brightness_walk_flows_from_a_to_the_nearby_b(self):
+        positions = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["brightnessWalk"]["positions"]
+        neighbors = fixture_neighbors(positions)
+        geometry = fixture_geometry(positions)
+        preset = validate_fixture_preset(default_fixture_preset("brightness-walk"))
+        # 2 s steps, 20 steps per round at 40 FPS.
+        self.assertEqual(1600, fixture_completion_frames(preset, 40, 37))
+
+        def levels(frame):
+            return [color[0] for color in render_fixture_frame(preset, geometry, frame, neighbors=neighbors)]
+
+        paths = walk_paths(0, neighbors, (3, 3, 2, 20))
+        self.assertEqual(3, len({path[0] for path in paths}))
+        for path in paths:
+            for step, (a, b) in enumerate(zip(path, path[1:])):
+                recent = path[max(0, step - 2):step]
+                self.assertNotIn(b, recent)                          # not one of the two just left
+                # 其餘的燈中最近的三顆之一。 / One of the three nearest of the rest.
+                self.assertIn(b, [other for other in neighbors[a] if other not in recent][:3])
+        # A = 1, B = 0 at the start of a step; 0.75 / 0.25 a quarter in; the total stays 3 (no paths meet here).
+        a, b = paths[0][4], paths[0][5]
+        at = levels(4 * 80)
+        self.assertEqual(1.0, at[a])
+        quarter = levels(4 * 80 + 20)
+        self.assertAlmostEqual(0.75, quarter[a])
+        self.assertAlmostEqual(0.25, quarter[b])
+        for frame in range(0, 1600, 37):
+            if len({path[frame // 80] for path in paths} | {path[frame // 80 + 1] for path in paths}) == 6:
+                self.assertAlmostEqual(3.0, sum(levels(frame)), places=9)
+        # 平滑曲線：四分之一時 A = 1 - smoothstep(0.25)。 / Eased: A = 1 - smoothstep(0.25) a quarter in.
+        eased = validate_fixture_preset({**default_fixture_preset("brightness-walk"),
+                                         "parameters": {**default_fixture_preset("brightness-walk")["parameters"], "curve": 1}})
+        self.assertAlmostEqual(1 - 0.15625, render_fixture_frame(eased, geometry, 4 * 80 + 20, neighbors=neighbors)[a][0])
+        # 新的一輪換起點。 / A new round picks new starts.
+        self.assertNotEqual([path[0] for path in paths], [path[0] for path in walk_paths(1, neighbors, (3, 3, 2, 20))])
+
+    def test_brightness_walk_paths_meeting_add_up_to_one(self):
+        geometry = fixture_geometry([None] * 4)
+        raw = default_fixture_preset("brightness-walk")
+        raw["parameters"] = {**raw["parameters"], "walkers": 4, "choices": 1, "noReturn": 0}
+        preset = validate_fixture_preset(raw)
+        for frame in range(0, 400, 7):
+            colors = render_fixture_frame(preset, geometry, frame)
+            self.assertTrue(all(0 <= color[0] <= 1 for color in colors))
+            self.assertLessEqual(sum(color[0] for color in colors), 4.0 + 1e-9)
+        # 路徑在同一顆相遇時相加、最高 1。 / Paths meeting on a ball add up, capped at 1.
+        paths = walk_paths(0, fixture_neighbors([None] * 4), (4, 1, 0, 20))
+        met = 0
+        for frame in range(0, 1600, 5):
+            step, progress = frame // 80, (frame % 80) / 80
+            colors = render_fixture_frame(preset, geometry, frame)
+            for ball in range(4):
+                total = sum((1 - progress) * (path[step] == ball) + progress * (path[step + 1] == ball) for path in paths)
+                self.assertAlmostEqual(min(1.0, total), colors[ball][0], places=12)
+                met += total > 1
+        self.assertGreater(met, 0)
+
+    def test_brightness_walk_ignores_cloud_offsets(self):
+        geometry = fixture_geometry([{"x": x * 100, "y": 0, "z": 300} for x in range(6)])
+        neighbors = fixture_neighbors([{"x": x * 100, "y": 0, "z": 300} for x in range(6)])
+        preset = validate_fixture_preset(default_fixture_preset("brightness-walk"))
+        for frame in (0, 50, 333):
+            self.assertEqual(render_fixture_frame(preset, geometry, frame, neighbors=neighbors),
+                             render_fixture_frame(preset, geometry, frame, neighbors=neighbors, frame_step=6))
 
     def test_horizontal_flow_moves_colours_along_the_direction(self):
         raw = default_fixture_preset("horizontal-flow")

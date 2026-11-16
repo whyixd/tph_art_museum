@@ -11,6 +11,7 @@ import {
   FIXTURE_MANIFEST,
   createDefaultFixturePreset,
   fixtureGeometry,
+  fixtureNeighbors,
   getFixtureCompletion,
   renderFixtureFrame,
   sampleFixture,
@@ -37,7 +38,9 @@ const geometries = {
 const gradient = [
   { r: 1, g: 0.1, b: 0 }, { r: 0.1, g: 0.9, b: 0.3 }, { r: 0, g: 0.2, b: 1 }, { r: 0.9, g: 0.8, b: 0.1 },
 ]
-const presets: FixturePreset[] = FIXTURE_MANIFEST.flatMap(({ id }) => {
+// 風流是待機用的原型，亮點隨機、兩邊各有時鐘，沒有一致性向量（後端在 wind.py）。
+// wind-flow is the standby prototype: random sparkles and separate clocks, so no parity vectors (backend: wind.py).
+const presets: FixturePreset[] = FIXTURE_MANIFEST.filter(({ id }) => id !== 'wind-flow').flatMap(({ id }) => {
   const base = createDefaultFixturePreset(id)
   const variants: FixturePreset[] = [
     base,
@@ -117,6 +120,28 @@ const poleRise = {
   }),
 }
 
+// 亮度漫遊：範例場地配置的球燈位置算鄰近順序；預設、平滑＋多起點＋只挑最近（會相加、碰到上限）。
+// brightness-walk with the example layout's ball positions: default, and eased with many walkers that only take
+// the nearest (they meet, add up and hit the cap).
+const ballNeighbors = fixtureNeighbors(ballPositions)
+const brightnessWalk = {
+  positions: ballPositions,
+  expectedNeighbors: ballNeighbors,
+  cases: [
+    {},
+    { walkers: 12, stepSeconds: 0.5, choices: 1, noReturn: 0, roundSteps: 7, curve: 1 },
+  ].map((parameters) => {
+    const preset = createDefaultFixturePreset('brightness-walk')
+    preset.parameters = { ...preset.parameters, ...parameters }
+    const cycleFrames = getFixtureCompletion(preset, 40, ballPositions.length)
+    const bytes: number[] = []
+    for (let frame = 0; frame < 2 * cycleFrames!; frame += 1) {
+      bytes.push(...toBytes(renderFixtureFrame(preset, poleGeometry, frame, { fps: 40, neighbors: ballNeighbors, cycleFrames })))
+    }
+    return { preset, cycleFrames, sha256: createHash('sha256').update(Buffer.from(bytes)).digest('hex') }
+  }),
+}
+
 const output = JSON.stringify({
   source: 'frontend/src/fixtures',
   schemaVersion: 1,
@@ -129,6 +154,7 @@ const output = JSON.stringify({
   samples,
   groupFrames,
   poleRise,
+  brightnessWalk,
 }, null, 2)
 
 if (process.argv.includes('--write')) {

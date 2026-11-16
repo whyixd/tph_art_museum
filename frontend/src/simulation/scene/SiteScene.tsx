@@ -22,7 +22,9 @@ import {
 } from '../../effects'
 import {
   fixtureGeometry,
+  fixtureNeighbors,
   renderFixtureFrame,
+  type FixtureNeighbors,
   type FixturePreset,
   type WeatherPalette,
 } from '../../fixtures'
@@ -468,9 +470,11 @@ export function fixtureColorsAt(
     weather: WeatherState | null
     /** 每顆的柱子（球燈 pole-rise 用）。 / Each fixture's pole (pole-rise). */
     poles?: readonly { rank: number; step: number }[] | null
+    /** 鄰近順序（亮度漫遊用）。 / Neighbour order (brightness-walk). */
+    neighbors?: FixtureNeighbors | null
   },
 ): RgbColor[] {
-  const { sequence, preset, fps, weather, poles } = options
+  const { sequence, preset, fps, weather, poles, neighbors } = options
   const palette = weatherPalette(weather)
   const raining = weather?.category === 'rain'
   const frameStep = weather?.category === 'cloudy' ? weather.frameStep : 0
@@ -486,7 +490,7 @@ export function fixtureColorsAt(
     if (!layer.preset || layer.weight <= 0) continue
     const colors = renderFixtureFrame(layer.preset, geometry, layer.frame, {
       fps, raining, palette: layer.preset.color.weatherPalette === false ? null : palette, frameStep, cycleFrames: layer.cycle,
-      poles,
+      poles, neighbors,
     })
     colors.forEach((color, index) => {
       // 逐台淡出：依編號（DMX 鏈順序）逐顆淡出。 / unit-fade-black: fixtures fade in id (DMX chain) order.
@@ -508,6 +512,7 @@ function Fixtures(props: SiteSceneProps & { group: FixtureGroup; points: ScenePo
   const color = useMemo(() => new THREE.Color(), [])
   const geometry = useMemo(() => fixtureGeometry(layout[group].map((fixture) => fixture.position)), [layout, group])
   const poles = useMemo(() => fixturePoles(layout[group].map((fixture) => fixture.position), layout.poles), [layout, group])
+  const neighbors = useMemo(() => fixtureNeighbors(layout[group].map((fixture) => fixture.position)), [layout, group])
   useEffect(() => {
     const matrix = new THREE.Matrix4()
     for (const mesh of [meshRef.current, glowRef.current]) {
@@ -539,7 +544,7 @@ function Fixtures(props: SiteSceneProps & { group: FixtureGroup; points: ScenePo
     lastFrame.current = frame
     const test = fixtureColors?.[group]
     const colors = fixtureColorsAt(group, geometry, frame, {
-      sequence, preset: fixturePresets[group], fps: settings.controllerFps, weather, poles,
+      sequence, preset: fixturePresets[group], fps: settings.controllerFps, weather, poles, neighbors,
     })
     colors.forEach((own, index) => {
       const value = test?.[index] ?? own

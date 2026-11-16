@@ -3,11 +3,13 @@ import {
   FIXTURE_MANIFEST,
   createDefaultFixturePreset,
   fixtureGeometry,
+  fixtureNeighbors,
   flowDistance,
   getFixtureCompletion,
   renderFixtureFrame,
 } from '../src/fixtures'
 import { exampleSiteLayout, fixturePoles } from '../src/site/layout'
+import { walkPaths } from '../src/fixtures/brightnessWalk'
 
 describe('fixture effects', () => {
   it('builds defaults from the manifest', () => {
@@ -161,5 +163,50 @@ describe('fixture effects', () => {
     expect(levels(80)[2]).toBe(1)
     expect(levels(190)).toEqual([0, 0, 0])
     expect(levels(200)).toEqual([1, 0, 0])
+  })
+})
+
+describe('brightness-walk', () => {
+  const positions = exampleSiteLayout().ball.map((fixture) => fixture.position)
+  const neighbors = fixtureNeighbors(positions)
+  const geometry = fixtureGeometry(positions)
+  const preset = createDefaultFixturePreset('brightness-walk')
+  const levels = (frame: number, target = preset) =>
+    renderFixtureFrame(target, geometry, frame, { neighbors }).map((color) => color.r)
+
+  it('orders neighbours by real distance, so ball 1 is nearest its own pole', () => {
+    expect(neighbors[0].slice(0, 3)).toEqual([1, 2, 3])
+    expect(neighbors.every((row, index) => row.length === 36 && !row.includes(index))).toBe(true)
+  })
+
+  it('flows brightness from A to a nearby B that is not one just left, keeping A + B = 1', () => {
+    expect(getFixtureCompletion(preset, 40, 37)).toBe(1600)
+    const paths = walkPaths(0, neighbors, { walkers: 3, choices: 3, noReturn: 2, roundSteps: 20 })
+    expect(new Set(paths.map((path) => path[0])).size).toBe(3)
+    for (const path of paths) {
+      path.slice(1).forEach((next, step) => {
+        const recent = path.slice(Math.max(0, step - 2), step)
+        expect(recent).not.toContain(next)
+        expect(neighbors[path[step]].filter((other) => !recent.includes(other)).slice(0, 3)).toContain(next)
+      })
+    }
+    const [a, b] = [paths[0][4], paths[0][5]]
+    expect(levels(4 * 80)[a]).toBe(1)
+    expect(levels(4 * 80 + 20)[a]).toBeCloseTo(0.75, 12)
+    expect(levels(4 * 80 + 20)[b]).toBeCloseTo(0.25, 12)
+    const eased = { ...preset, parameters: { ...preset.parameters, curve: 1 } }
+    expect(levels(4 * 80 + 20, eased)[a]).toBeCloseTo(1 - 0.15625, 12)
+  })
+
+  it('never exceeds 1 when paths meet and ignores cloud offsets', () => {
+    const crowded = { ...preset, parameters: { ...preset.parameters, walkers: 20, choices: 1, noReturn: 0 } }
+    for (let frame = 0; frame < 1600; frame += 13) {
+      const values = levels(frame, crowded)
+      expect(values.every((value) => value >= 0 && value <= 1)).toBe(true)
+    }
+    for (const frame of [0, 50, 333]) {
+      expect(renderFixtureFrame(preset, geometry, frame, { neighbors, frameStep: 6 }))
+        .toEqual(renderFixtureFrame(preset, geometry, frame, { neighbors }))
+    }
   })
 })

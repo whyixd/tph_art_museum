@@ -10,6 +10,9 @@ import { sampleGradient } from '../effects/color'
 import { hash01 } from '../effects/rouletteRing'
 import { multiColorAt, type MultiOrder } from '../effects/multiColor'
 import { sampleWindBand, windFlowParameters, WIND_FLOW_COLORS, WIND_FLOW_FIXTURE_DESCRIPTION } from '../wind/windPreview'
+import { brightnessWalk, walkSettings, walkStepFrames, type FixtureNeighbors } from './brightnessWalk'
+
+export { fixtureNeighbors, type FixtureNeighbors } from './brightnessWalk'
 
 export const FIXTURE_SCHEMA_VERSION = 1 as const
 
@@ -26,6 +29,7 @@ export type FixtureEffectId =
   | 'pole-rise'
   | 'base-wave'
   | 'horizontal-flow'
+  | 'brightness-walk'
   | 'wind-flow'
 
 export type FixtureAxis = 'height' | 'x' | 'y' | 'index'
@@ -60,6 +64,8 @@ export type FixtureContext = {
   poleCount?: number
   /** 在柱子上由低到高第幾顆（0 起）。 / Order on its pole, low to high. */
   poleStep?: number
+  /** 每顆的鄰近順序（亮度漫遊；fixtureNeighbors）；沒有時依編號。 / Neighbour order (brightness-walk); by index when missing. */
+  neighbors?: FixtureNeighbors
 }
 
 export type FixtureParameterDefinition = {
@@ -164,6 +170,18 @@ export const FIXTURE_MANIFEST: readonly FixtureManifestEntry[] = [
       parameter('depth', '亮度起伏', '', 0, 1, 0.05, 0.5),
       parameter('acceleration', '加速倍數', '倍（1 = 不加速）', 1, 10, 0.25, 1),
       parameter('rampSeconds', '加速時間', 's', 0.5, 120, 0.5, 10),
+    ],
+  },
+  {
+    id: 'brightness-walk', label: '亮度漫遊',
+    description: '隨機選幾顆球燈當起點，亮度從目前這顆逐漸流到附近的下一顆（兩顆相加恆為 1，例如 1/0 → 0.9/0.1 → … → 0/1），流完再從那顆往下一顆走。下一顆從離它最近的幾顆中隨機挑，而且不回到剛走過的幾顆，才不會困在同一根柱子繞圈。不同路徑流到同一顆時亮度相加（最高全亮），所以會亮得更快。走完設定的步數就重新隨機選起點。距離依場地配置的實際位置；沒有配置時依編號。不受天氣的多雲錯開影響。',
+    parameters: [
+      parameter('walkers', '起點數', '顆', 1, 37, 1, 3),
+      parameter('stepSeconds', '每步流動時間', 's', 0.1, 20, 0.1, 2),
+      parameter('choices', '從最近幾顆挑', '顆', 1, 6, 1, 3),
+      parameter('noReturn', '不回頭', '顆', 0, 6, 1, 2),
+      parameter('roundSteps', '幾步後重選起點', '步', 1, 200, 1, 20),
+      parameter('curve', '流動曲線', '0 等速／1 平滑', 0, 1, 1, 0),
     ],
   },
   {
@@ -289,6 +307,9 @@ export function getFixtureCompletion(preset: FixturePreset, fps: number, fixture
     case 'horizontal-flow':
       // 加速時以一次加速為一輪。 / With acceleration, one ramp is one round.
       return p.acceleration > 1 ? frames(p.rampSeconds, fps) : Math.max(1, Math.ceil(fps / p.speedHz))
+    case 'brightness-walk':
+      // 一輪 = 幾步後重選起點 × 每步。 / One round: steps per round × step frames.
+      return walkStepFrames(p, fps) * walkSettings(p, Math.max(1, fixtureCount)).roundSteps
     default:
       return null
   }
@@ -331,6 +352,8 @@ export function fixtureBrightness(preset: FixturePreset, context: FixtureContext
       const tail = Math.trunc(p.tailCount)
       return behind <= tail ? 1 - behind / (tail + 1) : 0
     }
+    case 'brightness-walk':
+      return brightnessWalk(p, frame, context.controllerFps, context.fixtureIndex, context.fixtureCount, context.neighbors)
     case 'wind-flow': {
       const s = windFlowSample(preset, context)
       return s.band * (1 - s.mix) + s.sparkle * s.mix
@@ -497,6 +520,8 @@ export function renderFixtureFrame(
     fps?: number; raining?: boolean; palette?: WeatherPalette | null; frameStep?: number; cycleFrames?: number | null
     /** 每顆的柱子（fixturePoles）。 / Each fixture's pole (fixturePoles). */
     poles?: readonly { rank: number; step: number }[] | null
+    /** 鄰近順序（fixtureNeighbors，亮度漫遊用）。 / Neighbour order (fixtureNeighbors, brightness-walk). */
+    neighbors?: FixtureNeighbors | null
   } = {},
 ): RgbColor[] {
   const fps = options.fps ?? 40
@@ -507,9 +532,13 @@ export function renderFixtureFrame(
   const poleCount = poles ? poles.reduce((most, pole) => Math.max(most, pole.rank + 1), 0) : undefined
   // 風流不套用天氣（色盤、雨、多雲錯開）。 / wind-flow ignores the weather (palette, rain, cloud offsets).
   const wind = preset.effectId === 'wind-flow'
+  // 亮度漫遊要全組同一個時間（亮度在燈之間流動），不錯開。 / brightness-walk needs one time for the group: no offsets.
+  const shared = wind || preset.effectId === 'brightness-walk'
+  const neighbors = options.neighbors ?? undefined
   return geometry.map(([height, x, y], index) => sampleFixture(wind ? preset : active, {
     ...(poles ? { poleRank: poles[index].rank, poleStep: poles[index].step, poleCount } : {}),
-    controllerFrame: effectFrame + (wind ? 0 : Math.round(x * CLOUD_SPREAD_STEPS * frameStep)),
+    ...(neighbors ? { neighbors } : {}),
+    controllerFrame: effectFrame + (shared ? 0 : Math.round(x * CLOUD_SPREAD_STEPS * frameStep)),
     controllerFps: fps,
     fixtureIndex: index,
     fixtureCount: geometry.length,

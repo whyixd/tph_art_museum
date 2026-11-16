@@ -349,6 +349,7 @@ def render_sequence_fixtures(
     color_override: Mapping[str, Any] | None = None,
     frame_step: int = 0,
     poles: list[tuple[int, int]] | None = None,
+    neighbors: tuple[tuple[int, ...], ...] | None = None,
 ) -> list[Rgb]:
     """One DMX group's colours; a step without that group's preset is dark.
 
@@ -364,7 +365,7 @@ def render_sequence_fixtures(
             continue
         colors = render_fixture_frame(
             preset, geometry, elapsed, fps=fps, raining=rain, color_override=color_override,
-            frame_step=frame_step, cycle_frames=step["group_cycles"][group], poles=poles,
+            frame_step=frame_step, cycle_frames=step["group_cycles"][group], poles=poles, neighbors=neighbors,
         )
         for index, (target, color) in enumerate(zip(result, colors)):
             scale = weight * (unit_fade_weight(unit_fade, index, count) if unit_fade is not None else 1.0)

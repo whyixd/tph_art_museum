@@ -13,6 +13,7 @@ from .dmx import COLOR_CHANNELS, DMX_CHANNELS, GROUPS, WHITE_MODES
 from .fixture_effects import fixture_geometry, parse_preset_document
 from .hardware import CHANNELS_PER_PIXEL, COLOR_ORDERS, default_motor_channel, packet_sizes
 from .modbus import BAUDRATES
+from .brightness_walk import fixture_neighbors
 
 MAX_PIXELS = 2048
 MAX_UNITS = 64
@@ -418,6 +419,8 @@ def load_config(path: str | Path) -> tuple[dict[str, Any], dict[str, Any]]:
         # 每顆的 (高度, x, y)，群組內 0..1；給球燈／洗牆燈效果。 / Per-fixture (height, x, y) within the group, 0..1.
         dmx["geometry"] = {group: fixture_geometry(positions) for group, positions in dmx["positions"].items()}
         dmx["poles"] = {group: fixture_poles(positions, poles) for group, positions in dmx["positions"].items()}
+        # 鄰近順序（亮度漫遊；依 layout 實際位置）。 / Neighbour order (brightness-walk; real layout positions).
+        dmx["neighbors"] = {group: fixture_neighbors(positions) for group, positions in dmx["positions"].items()}
 
     weather = None
     if "weather" in raw:
