@@ -9,7 +9,8 @@ Type=simple
 User=@SERVICE_USER@
 Group=@SERVICE_USER@
 # 音樂從 USB 音效卡播放：直接使用 ALSA（/dev/snd）。 / Music plays on the USB sound card through ALSA (/dev/snd).
-SupplementaryGroups=audio
+# 風速計經 USB 轉 RS485（/dev/ttyUSB*，root:dialout 0660）。 / The anemometer's USB-RS485 adapter is root:dialout 0660.
+SupplementaryGroups=audio dialout
 WorkingDirectory=@INSTALL_ROOT@/current
 # 40 FPS 的間歇負載會讓 CPU 降頻，每格時間變成數倍；固定最高時脈（需主動散熱器）。沒有 cpufreq 時略過。
 # A bursty 40 FPS load lets the CPU clock down and multiplies the frame time; pin the performance governor

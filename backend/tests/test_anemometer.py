@@ -176,6 +176,19 @@ class ProbeTest(unittest.TestCase):
         self.assertEqual("no-port", result["kind"])
         self.assertIn("沒插好", result["message"])
 
+    def test_permission_denied_names_the_dialout_group(self):
+        def denied(port, baudrate):
+            raise PermissionError(13, "Permission denied")
+        probe = AnemometerProbe(port_pattern=ANY_PORT, open_port=denied, log=lambda line: None)
+        result = probe.probe({"port": "/dev/null"})
+        self.assertEqual("open-failed", result["kind"])
+        self.assertIn("dialout", result["detail"])
+
+    def test_service_unit_grants_the_serial_group(self):
+        unit = (Path(__file__).resolve().parents[1] / "deploy" / "tph-art-museum.service").read_text(encoding="utf-8")
+        groups = next(line for line in unit.splitlines() if line.startswith("SupplementaryGroups="))
+        self.assertEqual({"audio", "dialout"}, set(groups.split("=", 1)[1].split()))
+
     def test_one_read_at_a_time(self):
         probe = AnemometerProbe(port_pattern=ANY_PORT, log=lambda line: None)
         probe._lock.acquire()

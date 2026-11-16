@@ -145,6 +145,10 @@ class AnemometerProbe:
             return done("no-port")
         try:
             fd = self._open(port, baudrate)
+        except PermissionError as error:
+            # 服務帳號不在 dialout 群組（systemd 服務檔的 SupplementaryGroups）。 / The service user lacks dialout.
+            return done("open-failed", f"{error.strerror or error}：後端的執行帳號沒有序列埠權限，要在 dialout 群組"
+                                       "（rc.19 起服務檔已加上；手動執行時把帳號加入 dialout）")
         except OSError as error:
             return done("open-failed", error.strerror or str(error))
         try:
