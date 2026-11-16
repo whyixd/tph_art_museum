@@ -259,6 +259,19 @@ class FixturePresetTests(unittest.TestCase):
         self.assertTrue(0 < levels(60)[0] < levels(60)[1] < 1)
         self.assertEqual([0.0] * 4, levels(319))
 
+    def test_flash_fade_matches_the_spinner_formula(self):
+        from moon_observe_backend.effects import EffectContext, default_preset, sample_effect, validate_preset
+
+        preset = validate_fixture_preset(default_fixture_preset("flash-fade"))
+        spinner = validate_preset(default_preset("flash-fade"))
+        self.assertEqual(spinner["parameters"], preset["parameters"])
+        self.assertEqual(166, fixture_completion_frames(preset, 40, 37))
+        geometry = fixture_geometry([{"z": z} for z in (100, 300, 500)])
+        for frame in (0, 3, 6, 40, 125, 126, 165, 166, 400):
+            levels = [color[0] for color in render_fixture_frame(preset, geometry, frame)]
+            expected = sample_effect(spinner, EffectContext(frame, 40, 0, 129, 0, 24))[0]
+            self.assertEqual([expected] * 3, levels, frame)
+
     def test_rise_lights_from_lowest_and_stays_lit(self):
         preset = validate_fixture_preset(default_fixture_preset("fixture-rise"))
         geometry = fixture_geometry([{"z": z} for z in (1000, 0, 500)])

@@ -16,6 +16,7 @@ from typing import Any, Mapping, Sequence
 
 from .brightness_walk import Neighbors, brightness_walk, walk_settings, walk_step_frames
 from .effects import (
+    PARAMETERS as _SPINNER_PARAMETERS, flash_fade_level, flash_fade_timing,
     BLACK, MULTI_FIELDS, TAU, Rgb, _gradient, _number, _rgb, _round_half_up, clamp01, hash01, multi_color_at,
     multi_fields, multi_fields_to_json,
 )
@@ -36,6 +37,7 @@ FIXTURE_EFFECT_IDS = (
     "base-wave",
     "horizontal-flow",
     "brightness-walk",
+    "flash-fade",
 )
 # min, max, default, integer
 FIXTURE_PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
@@ -85,6 +87,8 @@ FIXTURE_PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "roundSteps": (1, 200, 20, True),
         "curve": (0, 1, 0, True),
     },
+    # 與轉燈快閃淡出同一組參數與公式。 / The spinner flash-fade's parameters and formula.
+    "flash-fade": dict(_SPINNER_PARAMETERS["flash-fade"]),
     "horizontal-flow": {
         "speedHz": (0.02, 2, 0.2, False),
         "waveCount": (0.5, 6, 1, False),
@@ -242,6 +246,8 @@ def fixture_completion_frames(preset: Mapping[str, Any], fps: int, fixture_count
     if effect == "brightness-walk":
         # 一輪 = 幾步後重選起點 × 每步。 / One round: steps per round × step frames.
         return walk_step_frames(p, fps) * walk_settings(p, max(1, fixture_count))[3]
+    if effect == "flash-fade":
+        return flash_fade_timing(p, fps)[2]
     return None
 
 
@@ -263,6 +269,8 @@ def fixture_brightness(preset: Mapping[str, Any], ctx: FixtureContext) -> float:
         return 0.0
     if effect == "fixture-solid":
         return 1.0
+    if effect == "flash-fade":
+        return flash_fade_level(p, frame, ctx.controller_fps)
     if effect == "brightness-walk":
         return brightness_walk(p, frame, ctx.controller_fps, ctx.fixture_index, ctx.fixture_count, ctx.neighbors)
     if effect == "fixture-breathing":

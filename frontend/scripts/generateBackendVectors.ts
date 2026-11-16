@@ -34,6 +34,7 @@ const ids = [
   'color-alternate',
   'wave-split',
   'color-roam',
+  'flash-fade',
 ] as const
 
 const gradient8 = [
@@ -211,6 +212,9 @@ const unitEffectCases: [EffectPreset, number][] = [
   [{ ...createDefaultEffectPreset('color-roam'), parameters: {
     radiusCm: 300, stepSeconds: 0.5, choices: 2, noReturn: 0, roamers: 3, curve: 0,
   }, color: { mode: 'solid', color: { r: 1, g: 0.5, b: 0.2 } } }, 9],
+  // 快閃淡出：預設（平方淡出），以及瞬間亮起、線性、沒有全暗。 / flash-fade: default (squared), and instant, linear, no gap.
+  [createDefaultEffectPreset('flash-fade'), 9],
+  [{ ...createDefaultEffectPreset('flash-fade'), parameters: { attackSeconds: 0, decaySeconds: 1.3, curve: 0, gapSeconds: 0 } }, 9],
   // 隨機填滿錯落開始。 / random-fill with a staggered start.
   [{ ...createDefaultEffectPreset('random-fill'), parameters: {
     fillSeconds: 5, acceleration: 3.5, ledFadeSeconds: 0.25, holdSeconds: 6, fadeOutSeconds: 0.5, staggerSeconds: 2,

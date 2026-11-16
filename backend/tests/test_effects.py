@@ -52,8 +52,8 @@ class EffectParityTests(unittest.TestCase):
     def test_frontend_golden_vectors(self) -> None:
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
         presets = [validate_preset(preset) for preset in fixture["presets"]]
-        self.assertEqual(27, len({preset["effectId"] for preset in presets}))
-        self.assertEqual(972, len(fixture["samples"]))
+        self.assertEqual(28, len({preset["effectId"] for preset in presets}))
+        self.assertEqual(1008, len(fixture["samples"]))
         for sample in fixture["samples"]:
             data = sample["context"]
             context = EffectContext(
@@ -77,7 +77,7 @@ class EffectParityTests(unittest.TestCase):
     def test_frontend_full_frame_bytes(self) -> None:
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
         presets = [validate_preset(preset) for preset in fixture["presets"]]
-        self.assertEqual(1944, len(fixture["frames"]))
+        self.assertEqual(2016, len(fixture["frames"]))
         for case in fixture["frames"]:
             preset = presets[case["presetIndex"]]
             pixels = [
@@ -330,6 +330,27 @@ class EffectParityTests(unittest.TestCase):
             color_roam.color_roam_strength(fast, frame, 40, 0, 24, positions)
         self.assertEqual(far, [color_roam.color_roam_strength(fast, 20 * 1000 + 7, 40, unit, 24, positions)
                                for unit in range(24)])
+
+    def test_flash_fade_attacks_quickly_then_fades_slowly(self):
+        preset = validate_preset(default_preset("flash-fade"))
+        # 0.15 s 亮起、3 s 淡出、1 s 全暗：6 + 120 + 40 影格。 / 0.15 s attack, 3 s fade, 1 s dark: 6 + 120 + 40 frames.
+        self.assertEqual(166, completion_frames(preset, 40, 24))
+
+        def level(frame: int, unit: int = 3) -> float:
+            return sample_effect(preset, EffectContext(frame, 40, 20, 129, unit, 24))[0]
+
+        self.assertAlmostEqual(1 / 6, level(0))
+        self.assertEqual(1.0, level(6))
+        self.assertAlmostEqual((1 - 60 / 120) ** 2, level(66))  # 平方：一半時間剩 1/4 / squared: a quarter at half way
+        self.assertEqual(0.0, level(126))
+        self.assertEqual(0.0, level(165))
+        self.assertAlmostEqual(1 / 6, level(166))
+        self.assertEqual([level(30, unit) for unit in range(24)], [level(30)] * 24)
+        linear = validate_preset({**default_preset("flash-fade"),
+                                  "parameters": {"attackSeconds": 0, "decaySeconds": 3, "curve": 0, "gapSeconds": 0}})
+        self.assertEqual(1.0, sample_effect(linear, EffectContext(0, 40, 20, 129, 0, 24))[0])
+        self.assertAlmostEqual(0.5, sample_effect(linear, EffectContext(60, 40, 20, 129, 0, 24))[0])
+        self.assertEqual(1.0, sample_effect(linear, EffectContext(120, 40, 20, 129, 0, 24))[0])
 
     def test_color_roam_colours_b_to_a_and_solid_is_dark_away(self):
         positions = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["roamPositions"]["positions"]
@@ -595,7 +616,7 @@ class EffectParityTests(unittest.TestCase):
 
     def test_frontend_unit_variation_values_and_cycles(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
-        self.assertEqual(120, len(fixture["unitVariations"]))
+        self.assertEqual(132, len(fixture["unitVariations"]))
         for case in fixture["unitVariations"]:
             preset = validate_preset(case["preset"])
             self.assertEqual(case["preset"], preset_to_json(preset))
@@ -705,7 +726,7 @@ if __name__ == "__main__":
 class UnitEffectTests(unittest.TestCase):
     def test_frontend_unit_effect_hashes(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
-        self.assertEqual(22, len(fixture["unitEffects"]))
+        self.assertEqual(24, len(fixture["unitEffects"]))
         for case in fixture["unitEffects"]:
             preset = validate_preset(case["preset"])
             unit_count = case["unitCount"]
@@ -737,7 +758,7 @@ class UnitEffectTests(unittest.TestCase):
     def test_rain_lines_match_frontend(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["rainLines"]
         frames = [frame for start, end in fixture["frameRanges"] for frame in range(start, end)]
-        self.assertEqual(54, len(fixture["cases"]))
+        self.assertEqual(56, len(fixture["cases"]))
         for case in fixture["cases"]:
             preset = validate_preset(default_preset(case["effectId"]))
             data = bytearray()

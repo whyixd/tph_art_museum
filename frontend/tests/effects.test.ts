@@ -66,6 +66,7 @@ describe('effect synchronization contract', () => {
       'color-alternate',
       'wave-split',
       'color-roam',
+      'flash-fade',
       'wind-flow',
     ])
     expect(decoded.every(
@@ -755,6 +756,22 @@ describe('unit-random-fill', () => {
     expect(orders[2]).not.toEqual(orders[1])
     // The pillar rank does not change the order.
     expect(level(500, 3, 20)).toBe(level(500, 3))
+  })
+})
+
+describe('flash-fade', () => {
+  const preset = createDefaultEffectPreset('flash-fade')
+  const level = (frame: number, unit = 3) => sampleEffect(preset, createEffectContext(frame, 40, 20, 129, unit, 24)).r
+
+  it('attacks quickly, fades slowly (squared), stays dark, then repeats on every unit together', () => {
+    // 0.15 s attack, 3 s fade, 1 s dark at 40 FPS: 6 + 120 + 40 frames.
+    expect(getEffectCompletion(preset, 40, 24)!.frames).toBe(166)
+    expect(level(0)).toBeCloseTo(1 / 6, 12)
+    expect(level(6)).toBe(1)
+    expect(level(66)).toBeCloseTo(0.25, 12)
+    expect(level(126)).toBe(0)
+    expect(level(166)).toBeCloseTo(1 / 6, 12)
+    expect(Array.from({ length: 24 }, (_, unit) => level(30, unit))).toEqual(Array(24).fill(level(30)))
   })
 })
 

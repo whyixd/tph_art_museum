@@ -28,6 +28,7 @@ export type EffectId =
   | 'color-alternate'
   | 'wave-split'
   | 'color-roam'
+  | 'flash-fade'
   | 'wind-flow'
 
 export type RgbColor = {

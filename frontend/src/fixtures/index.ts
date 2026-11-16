@@ -11,6 +11,7 @@ import { hash01 } from '../effects/rouletteRing'
 import { multiColorAt, type MultiOrder } from '../effects/multiColor'
 import { sampleWindBand, windFlowParameters, WIND_FLOW_COLORS, WIND_FLOW_FIXTURE_DESCRIPTION } from '../wind/windPreview'
 import { brightnessWalk, walkSettings, walkStepFrames, type FixtureNeighbors } from './brightnessWalk'
+import { FLASH_FADE_DESCRIPTION, FLASH_FADE_PARAMETERS, flashFadeLevel, flashFadeTiming } from '../effects/flashFade'
 
 export { fixtureNeighbors, type FixtureNeighbors } from './brightnessWalk'
 
@@ -30,6 +31,7 @@ export type FixtureEffectId =
   | 'base-wave'
   | 'horizontal-flow'
   | 'brightness-walk'
+  | 'flash-fade'
   | 'wind-flow'
 
 export type FixtureAxis = 'height' | 'x' | 'y' | 'index'
@@ -185,6 +187,11 @@ export const FIXTURE_MANIFEST: readonly FixtureManifestEntry[] = [
     ],
   },
   {
+    // 與轉燈快閃淡出同一個公式。 / The same formula as the spinner flash-fade.
+    id: 'flash-fade', label: '快閃淡出', description: `全部球燈${FLASH_FADE_DESCRIPTION}`,
+    parameters: FLASH_FADE_PARAMETERS.map((item) => ({ ...item })),
+  },
+  {
     id: 'wind-flow', label: '風流（風力原型）', description: WIND_FLOW_FIXTURE_DESCRIPTION,
     // 每顆只有一個顏色，亮點比例預設比轉燈高。 / One colour per fixture, so a higher default sparkle density.
     parameters: windFlowParameters(
@@ -310,6 +317,8 @@ export function getFixtureCompletion(preset: FixturePreset, fps: number, fixture
     case 'brightness-walk':
       // 一輪 = 幾步後重選起點 × 每步。 / One round: steps per round × step frames.
       return walkStepFrames(p, fps) * walkSettings(p, Math.max(1, fixtureCount)).roundSteps
+    case 'flash-fade':
+      return flashFadeTiming(p, fps).cycle
     default:
       return null
   }
@@ -352,6 +361,8 @@ export function fixtureBrightness(preset: FixturePreset, context: FixtureContext
       const tail = Math.trunc(p.tailCount)
       return behind <= tail ? 1 - behind / (tail + 1) : 0
     }
+    case 'flash-fade':
+      return flashFadeLevel(p, frame, context.controllerFps)
     case 'brightness-walk':
       return brightnessWalk(p, frame, context.controllerFps, context.fixtureIndex, context.fixtureCount, context.neighbors)
     case 'wind-flow': {

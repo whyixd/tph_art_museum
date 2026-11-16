@@ -38,6 +38,7 @@ EFFECT_IDS = (
     "color-alternate",
     "wave-split",
     "color-roam",
+    "flash-fade",
 )
 # min, max, default, integer
 PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
@@ -144,6 +145,14 @@ PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "fadeOutSeconds": (0, 10, 3, False),
         "endDarkSeconds": (0, 10, 1, False),
     },
+    # 快閃淡出（球燈 fixture_effects 共用）。 / flash-fade (shared with the balls in fixture_effects).
+    "flash-fade": {
+        "attackSeconds": (0, 2, 0.15, False),
+        "decaySeconds": (0.1, 30, 3, False),
+        # 0 線性，1 平方（尾巴拉長）。 / 0 linear, 1 squared (a longer tail).
+        "curve": (0, 1, 1, True),
+        "gapSeconds": (0, 30, 1, False),
+    },
     "color-roam": {
         "radiusCm": (50, 2000, 400, False),
         "stepSeconds": (0.5, 30, 4, False),
@@ -178,6 +187,7 @@ PARAMETER_STEPS: dict[str, dict[str, float]] = {
     "random-fill": {"fillSeconds": 5, "acceleration": 0.25, "ledFadeSeconds": 0.25, "holdSeconds": 1, "fadeOutSeconds": 0.5,
                     "staggerSeconds": 0.25},
     "two-tone-trail": {"periodSeconds": 0.5, "tailLength": 0.05},
+    "flash-fade": {"attackSeconds": 0.05, "decaySeconds": 0.1, "gapSeconds": 0.25},
     "firework-rise": {"travelSeconds": 0.25, "gapSeconds": 0.25, "headSize": 0.01, "trailSeconds": 0.1,
                       "randomness": 0.05},
 }
@@ -218,7 +228,7 @@ UNIT_VARIATION_DISTRIBUTIONS = ("linear", "skip", "random")
 UNIT_INDEPENDENT_EFFECTS = (
     "spectrum-cycle", "center-out-sine", "moving-rings", "periodic-leds", "reverse-tide", "wide-rings",
     "comet-tail", "color-breathing", "sector-smear", "twenty-beat", "sine-swell", "full-on", "two-tone-trail",
-    "color-alternate",
+    "color-alternate", "flash-fade",
 )
 
 
@@ -778,6 +788,8 @@ def _brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float:
         return _pillar_fill(p, ctx)
     if effect == "unit-random-fill":
         return _unit_random_fill(p, ctx)
+    if effect == "flash-fade":
+        return flash_fade_level(p, ctx.controller_frame, ctx.controller_fps)
     if effect == "color-roam":
         # 漸層時整台全亮、靠顏色；純色時 B 是全暗。 / Gradient: fully lit, shown by colour; solid: B is dark.
         return 1.0 if preset["color"]["mode"] == "gradient" else _color_roam_strength(p, ctx)
@@ -1444,6 +1456,8 @@ def completion_frames(preset: Mapping[str, Any], fps: int, unit_count: int) -> i
         return _pillar_fill_timing(parameters, fps, unit_count)[-1]
     if effect == "color-alternate":
         return 2 * max(1, int(parameters["intervalFrames"]))
+    if effect == "flash-fade":
+        return flash_fade_timing(parameters, fps)[2]
     if effect == "color-roam":
         # 起點走過與台數相同的步數。 / The roamer walks as many steps as there are units.
         return roam_step_frames(parameters, fps) * max(1, unit_count)
@@ -1465,6 +1479,27 @@ def completion_frames(preset: Mapping[str, Any], fps: int, unit_count: int) -> i
         stages = center_fill_stage(0, unit_count, parameters.get("fromBothEnds", 0) == 1)[1]
         return math.ceil(((stages - 1) * (expansion + hold) + expansion) * fps) + 1
     return None
+
+
+def flash_fade_timing(p: Mapping[str, Any], fps: float) -> tuple[int, int, int]:
+    """flash-fade (attack, decay, cycle) frames; attack and gap may be 0 (frontend flashFadeTiming)."""
+    attack = max(0, _round_half_up(p["attackSeconds"] * fps))
+    decay = max(1, _round_half_up(p["decaySeconds"] * fps))
+    gap = max(0, _round_half_up(p["gapSeconds"] * fps))
+    return attack, decay, attack + decay + gap
+
+
+def flash_fade_level(p: Mapping[str, Any], frame: int, fps: float) -> float:
+    """flash-fade, spinners and balls (frontend flashFadeLevel): the attack ramps (t + 1) / attack up to 1; the fade
+    starts exactly at 1 and falls linearly (or squared) towards 0 over decay frames; then dark."""
+    attack, decay, cycle = flash_fade_timing(p, fps)
+    local = max(0, frame) % cycle
+    if local < attack:
+        return (local + 1) / attack
+    if local >= attack + decay:
+        return 0.0
+    remaining = 1 - (local - attack) / decay
+    return remaining * remaining if p["curve"] == 1 else remaining
 
 
 def _color_roam_strength(p: Mapping[str, Any], ctx: EffectContext) -> float:

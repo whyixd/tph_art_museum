@@ -30,6 +30,7 @@ import { unitChase } from './unitChase'
 import { unitRandom } from './unitRandom'
 import { unitRandomFill } from './unitRandomFill'
 import { colorRoam } from './colorRoam'
+import { flashFade } from './flashFade'
 import { twoToneTrail } from './twoToneTrail'
 import { unitVariationValue } from './unitVariation'
 import { waveSplit } from './waveSplit'
@@ -64,6 +65,7 @@ const EFFECTS: Record<EffectId, EffectModule> = {
   'color-alternate': colorAlternate,
   'wave-split': waveSplit,
   'color-roam': colorRoam,
+  'flash-fade': flashFade,
   'wind-flow': windFlow,
 }
 

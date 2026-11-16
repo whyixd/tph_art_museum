@@ -10,6 +10,7 @@ import {
 } from '../src/fixtures'
 import { exampleSiteLayout, fixturePoles } from '../src/site/layout'
 import { walkPaths } from '../src/fixtures/brightnessWalk'
+import { flashFadeLevel } from '../src/effects/flashFade'
 
 describe('fixture effects', () => {
   it('builds defaults from the manifest', () => {
@@ -163,6 +164,20 @@ describe('fixture effects', () => {
     expect(levels(80)[2]).toBe(1)
     expect(levels(190)).toEqual([0, 0, 0])
     expect(levels(200)).toEqual([1, 0, 0])
+  })
+})
+
+describe('flash-fade (balls)', () => {
+  it('uses the spinner flash-fade formula on every ball together', () => {
+    const preset = createDefaultFixturePreset('flash-fade')
+    expect(getFixtureCompletion(preset, 40, 37)).toBe(166)
+    const geometry = fixtureGeometry([{ z: 100 }, { z: 300 }, { z: 500 }])
+    for (const frame of [0, 6, 66, 126, 166]) {
+      const level = flashFadeLevel(preset.parameters, frame, 40)
+      expect(renderFixtureFrame(preset, geometry, frame).map((color) => color.r)).toEqual([level, level, level])
+    }
+    expect(flashFadeLevel(preset.parameters, 6, 40)).toBe(1)
+    expect(flashFadeLevel(preset.parameters, 126, 40)).toBe(0)
   })
 })
 
