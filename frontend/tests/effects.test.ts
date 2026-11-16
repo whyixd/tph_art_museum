@@ -703,9 +703,9 @@ describe('unit-random-fill', () => {
   }
 
   it('fades whole units in one by one in a fresh random order each round, then fades out together', () => {
-    // Step 2 s, fade in 2 s, hold 5 s, fade out 3 s, dark 1 s, 24 units: 23 × 80 + 80 + 200 + 120 + 40 frames.
+    // Step 1.5 s, fade in 4 s, hold 5 s, fade out 3 s, dark 1 s, 24 units: 23 × 60 + 160 + 200 + 120 + 40 frames.
     const cycle = getEffectCompletion(preset, fps, 24)!.frames
-    expect(cycle).toBe(2280)
+    expect(cycle).toBe(1900)
     expect(getVariableParameters('unit-random-fill')).toEqual([])
     expect(ignoresWeatherTiming('unit-random-fill')).toBe(true)
     const orders = [0, 1, 2].map((round) => {
@@ -713,14 +713,21 @@ describe('unit-random-fill', () => {
       const starts = Array.from({ length: 24 }, (_, unit) => {
         let frame = base
         while (level(frame, unit) === 0) frame += 1
-        expect(level(frame, unit)).toBeCloseTo(1 / 80, 12)
-        expect(level(frame + 79, unit)).toBe(1)
-        expect(level(base + 2119, unit)).toBe(1)
+        expect(level(frame, unit)).toBeCloseTo(1 / 160, 12)
+        expect(level(frame + 159, unit)).toBe(1)
+        expect(level(base + 1739, unit)).toBe(1)
         expect(level(base + cycle - 1, unit)).toBe(0)
         return frame - base
       })
-      expect([...starts].sort((a, b) => a - b)).toEqual(Array.from({ length: 24 }, (_, index) => index * 80))
-      return starts.map((start, unit) => [start, unit]).sort((a, b) => a[0] - b[0]).map(([, unit]) => unit)
+      expect([...starts].sort((a, b) => a - b)).toEqual(Array.from({ length: 24 }, (_, index) => index * 60))
+      const order = starts.map((start, unit) => [start, unit]).sort((a, b) => a[0] - b[0]).map(([, unit]) => unit)
+      // Overlap: when the third unit starts, the first two are still brightening.
+      const third = base + starts[order[2]]
+      order.slice(0, 3).forEach((unit) => {
+        expect(level(third, unit)).toBeGreaterThan(0)
+        expect(level(third, unit)).toBeLessThan(1)
+      })
+      return order
     })
     expect(orders[1]).not.toEqual(orders[0])
     expect(orders[2]).not.toEqual(orders[1])

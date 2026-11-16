@@ -133,9 +133,10 @@ PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "softnessCm": (0, 40, 4, False),
     },
     "unit-random-fill": {
-        "stepSeconds": (0.05, 10, 2, False),
+        # 預設重疊：每 1.5 秒開始一台、淡入 4 秒。 / Overlapping by default: one every 1.5 s, 4 s fade in.
+        "stepSeconds": (0.05, 10, 1.5, False),
         "acceleration": (1, 4, 1, False),
-        "fadeInSeconds": (0, 10, 2, False),
+        "fadeInSeconds": (0, 10, 4, False),
         "holdSeconds": (0, 30, 5, False),
         "fadeOutSeconds": (0, 10, 3, False),
         "endDarkSeconds": (0, 10, 1, False),

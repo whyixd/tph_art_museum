@@ -2,8 +2,9 @@ import { EFFECT_SCHEMA_VERSION, type EffectModule } from './contract'
 import { pillarFillStart, pillarFillTiming } from './pillarFill'
 import { randomRanks } from './randomLeds'
 
-// 預設比依柱子點亮慢：每台間隔 2 秒、淡入 2 秒。 / Slower defaults than pillar-fill: 2 s apart, 2 s fade in.
-const DEFAULTS = { stepSeconds: 2, acceleration: 1, fadeInSeconds: 2, holdSeconds: 5, fadeOutSeconds: 3, endDarkSeconds: 1 }
+// 預設比依柱子點亮慢，而且前後重疊：每 1.5 秒開始一台、每台淡入 4 秒，同時約有 2–3 台在淡入。
+// Slower than pillar-fill and overlapping: a unit starts every 1.5 s and fades in over 4 s, so about 2–3 fade in at once.
+const DEFAULTS = { stepSeconds: 1.5, acceleration: 1, fadeInSeconds: 4, holdSeconds: 5, fadeOutSeconds: 3, endDarkSeconds: 1 }
 // 洗牌種子，與隨機單台（1009）和燈點洗牌分開。 / Shuffle seed, apart from unit-random (1009) and the LED shuffles.
 export const UNIT_RANDOM_FILL_SEED = 2027
 
@@ -26,7 +27,7 @@ export const unitRandomFill: EffectModule = {
     schemaVersion: EFFECT_SCHEMA_VERSION,
     id: 'unit-random-fill',
     label: '隨機逐台點亮',
-    description: '從全暗開始，依隨機順序一台接一台緩慢淡入，整台轉燈亮起後保持亮著；全部亮起後停留，一起淡出、全暗，再以新的隨機順序重新開始。逐漸加速大於 1 時，一開始一台台慢慢亮、越後面越快（總時間不變）。全部轉燈共用同一個時間表，不受天氣的多雲錯開與雨天線條影響。',
+    description: '從全暗開始，依隨機順序一台接一台緩慢淡入，整台轉燈亮起後保持亮著。每台淡入比每台間隔長時，前一台還在變亮、下一台就開始亮（重疊）；兩者相同時一台亮滿才換下一台。全部亮起後停留，一起淡出、全暗，再以新的隨機順序重新開始。逐漸加速大於 1 時，一開始一台台慢慢亮、越後面越快（總時間不變）。全部轉燈共用同一個時間表，不受天氣的多雲錯開與雨天線條影響。',
     parameters: [
       { key: 'stepSeconds', label: '每台間隔（平均）', unit: 's', min: 0.05, max: 10, step: 0.05, defaultValue: DEFAULTS.stepSeconds },
       { key: 'acceleration', label: '逐漸加速', unit: '倍', min: 1, max: 4, step: 0.25, defaultValue: DEFAULTS.acceleration },

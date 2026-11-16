@@ -392,9 +392,9 @@ class EffectParityTests(unittest.TestCase):
 
     def test_unit_random_fill_lights_every_unit_once_in_a_fresh_order(self):
         preset = validate_preset(default_preset("unit-random-fill"))
-        # Step 2 s, fade in 2 s, hold 5 s, fade out 3 s, dark 1 s at 40 FPS, 24 units: 23 × 80 + 80 + 200 + 120 + 40.
+        # Step 1.5 s, fade in 4 s, hold 5 s, fade out 3 s, dark 1 s at 40 FPS, 24 units: 23 × 60 + 160 + 200 + 120 + 40.
         cycle = completion_frames(preset, 40, 24)
-        self.assertEqual(2280, cycle)
+        self.assertEqual(1900, cycle)
         self.assertEqual((), variable_parameters("unit-random-fill"))
 
         def level(frame: int, unit: int) -> float:
@@ -409,14 +409,18 @@ class EffectParityTests(unittest.TestCase):
                 while level(frame, unit) == 0:
                     frame += 1
                 starts[unit] = frame - base
-                # 淡入 2 秒後全亮並保持到淡出。 / Fully lit after the 2 s fade in, until the fade out.
-                self.assertAlmostEqual(1 / 80, level(frame, unit), places=12)
-                self.assertEqual(1.0, level(frame + 79, unit))
-                self.assertEqual(1.0, level(base + 1840 + 80 + 199, unit))
+                # 淡入 4 秒後全亮並保持到淡出。 / Fully lit after the 4 s fade in, until the fade out.
+                self.assertAlmostEqual(1 / 160, level(frame, unit), places=12)
+                self.assertEqual(1.0, level(frame + 159, unit))
+                self.assertEqual(1.0, level(base + 1739, unit))
                 self.assertEqual(0.0, level(base + cycle - 1, unit))
-            # 每台各一次、每 2 秒一台。 / One unit every 2 s, each once.
-            self.assertEqual(list(range(0, 1841, 80)), sorted(starts.values()))
-            orders.append(sorted(range(24), key=starts.get))
+            # 每台各一次、每 1.5 秒一台。 / One unit every 1.5 s, each once.
+            self.assertEqual(list(range(0, 1381, 60)), sorted(starts.values()))
+            order = sorted(range(24), key=starts.get)
+            # 重疊：第 3 台開始時，前兩台都還在淡入。 / Overlap: when the third starts the first two still brighten.
+            third = base + starts[order[2]]
+            self.assertTrue(all(0 < level(third, unit) < 1 for unit in order[:3]))
+            orders.append(order)
         self.assertNotEqual(orders[0], orders[1])
         self.assertNotEqual(orders[1], orders[2])
         # 不看柱子順序（unit_rank）。 / The pillar rank does not matter.

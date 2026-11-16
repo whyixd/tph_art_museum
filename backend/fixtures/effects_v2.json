@@ -2743,9 +2743,9 @@
       "schemaVersion": 2,
       "effectId": "unit-random-fill",
       "parameters": {
-        "stepSeconds": 2,
+        "stepSeconds": 1.5,
         "acceleration": 1,
-        "fadeInSeconds": 2,
+        "fadeInSeconds": 4,
         "holdSeconds": 5,
         "fadeOutSeconds": 3,
         "endDarkSeconds": 1
@@ -2763,9 +2763,9 @@
       "schemaVersion": 2,
       "effectId": "unit-random-fill",
       "parameters": {
-        "stepSeconds": 2,
+        "stepSeconds": 1.5,
         "acceleration": 1,
-        "fadeInSeconds": 2,
+        "fadeInSeconds": 4,
         "holdSeconds": 5,
         "fadeOutSeconds": 3,
         "endDarkSeconds": 1
@@ -2783,9 +2783,9 @@
       "schemaVersion": 2,
       "effectId": "unit-random-fill",
       "parameters": {
-        "stepSeconds": 2,
+        "stepSeconds": 1.5,
         "acceleration": 1,
-        "fadeInSeconds": 2,
+        "fadeInSeconds": 4,
         "holdSeconds": 5,
         "fadeOutSeconds": 3,
         "endDarkSeconds": 1
@@ -2811,9 +2811,9 @@
       "schemaVersion": 2,
       "effectId": "unit-random-fill",
       "parameters": {
-        "stepSeconds": 2,
+        "stepSeconds": 1.5,
         "acceleration": 1,
-        "fadeInSeconds": 2,
+        "fadeInSeconds": 4,
         "holdSeconds": 5,
         "fadeOutSeconds": 3,
         "endDarkSeconds": 1
@@ -42425,9 +42425,9 @@
         "schemaVersion": 2,
         "effectId": "unit-random-fill",
         "parameters": {
-          "stepSeconds": 2,
+          "stepSeconds": 1.5,
           "acceleration": 1,
-          "fadeInSeconds": 2,
+          "fadeInSeconds": 4,
           "holdSeconds": 5,
           "fadeOutSeconds": 3,
           "endDarkSeconds": 1
@@ -42454,8 +42454,8 @@
         154,
         155
       ],
-      "totalFrames": 4560,
-      "sha256": "22c86c76a881afcbff591097088a05a1a1a1314a3c5316c769b58e1047e87730"
+      "totalFrames": 3800,
+      "sha256": "b9e4cf326f114837714b49900dfc0cfb485374d8d4e738789281e46bdcf5c7e2"
     },
     {
       "preset": {
@@ -42894,12 +42894,12 @@
       {
         "effectId": "unit-random-fill",
         "fps": 40,
-        "sha256": "3cb273efc0c96e974c8c7e299442fc49a75f84219b5ac4027ce6765309837b65"
+        "sha256": "cea8a56d27dd40713f733b23bced0d3ce2c7699c04e4049f9f270b7fd4ede03d"
       },
       {
         "effectId": "unit-random-fill",
         "fps": 60,
-        "sha256": "964e477ee1235276bfdbc3020c1f4381df3399bfbd37983877e02708dc7ada9e"
+        "sha256": "f0684ce9aa39c1ca7f497b06a566b65beea48b141753d0471f2e7f8e35b05b37"
       },
       {
         "effectId": "color-alternate",
