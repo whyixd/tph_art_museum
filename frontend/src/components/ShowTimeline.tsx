@@ -51,6 +51,11 @@ export function ShowTimeline({ editor, fallbackSeconds }: ShowTimelineProps) {
   const { loadWaveform } = editor
   useEffect(() => { if (beatMap && !peaks) void loadWaveform(beatMap) }, [beatMap?.id, peaks, loadWaveform])
 
+  // 選了演出才有捲動區（之前回傳 null），所以要在它出現後才量寬度；只在掛上時量會一直停在預設 800 px，
+  // 寬螢幕上右邊畫不到，捲到最後時結尾幾十秒看不到。
+  // The scroll area exists only once a show is loaded (null before), so observe it when it appears; measuring only
+  // on mount left the canvas at the 800 px default, so on wide screens the right side and the end were never drawn.
+  const ready = Boolean(draft && beatMap)
   useEffect(() => {
     const element = scroll.current
     if (!element) return
@@ -58,7 +63,7 @@ export function ShowTimeline({ editor, fallbackSeconds }: ShowTimelineProps) {
     observer.observe(element)
     setWidth(element.clientWidth)
     return () => observer.disconnect()
-  }, [])
+  }, [ready])
 
   const position = () => state.current.editor.audioSeconds() ?? state.current.fallbackSeconds
 
