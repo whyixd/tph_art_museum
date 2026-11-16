@@ -34,6 +34,7 @@ EFFECT_IDS = (
     "two-tone-trail",
     "firework-rise",
     "pillar-fill",
+    "unit-random-fill",
     "color-alternate",
     "wave-split",
 )
@@ -131,6 +132,14 @@ PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
         "foamCm": (0, 40, 6, False),
         "softnessCm": (0, 40, 4, False),
     },
+    "unit-random-fill": {
+        "stepSeconds": (0.05, 10, 2, False),
+        "acceleration": (1, 4, 1, False),
+        "fadeInSeconds": (0, 10, 2, False),
+        "holdSeconds": (0, 30, 5, False),
+        "fadeOutSeconds": (0, 10, 3, False),
+        "endDarkSeconds": (0, 10, 1, False),
+    },
     "pillar-fill": {
         "stepSeconds": (0.05, 5, 0.5, False),
         "acceleration": (1, 4, 1, False),
@@ -167,6 +176,9 @@ FIXED_PARAMETERS: dict[str, tuple[str, ...]] = {
     "wave-split": ("levelMeters", "amplitudeMeters", "wavelengthMeters", "speedMps", "directionDegrees", "chop",
                    "foamCm", "softnessCm"),
     "pillar-fill": ("stepSeconds", "acceleration", "fadeInSeconds", "holdSeconds", "fadeOutSeconds", "endDarkSeconds"),
+    # 隨機順序靠全部轉燈共用的整輪長度。 / The random order relies on one shared round length.
+    "unit-random-fill": ("stepSeconds", "acceleration", "fadeInSeconds", "holdSeconds", "fadeOutSeconds",
+                         "endDarkSeconds"),
     # 錯落順序靠九台共用的整輪長度。 / The stagger order relies on one shared round length.
     "random-fill": ("staggerSeconds",),
     # 水平流動要全部轉燈一起流。 / The horizontal flow moves all spinners together.
@@ -180,7 +192,7 @@ FIXED_PARAMETERS: dict[str, tuple[str, ...]] = {
 }
 # 九台共用時間表、不套用天氣多雲錯開的效果（前端 ignoresWeatherTiming）；它們也沒有雨天線條版本。
 # Shared-schedule effects that skip weather cloud offsets (frontend ignoresWeatherTiming); they have no rain lines either.
-WEATHER_TIMING_FREE = ("unit-chase", "unit-random", "roulette-ring", "pillar-fill", "wave-split")
+WEATHER_TIMING_FREE = ("unit-chase", "unit-random", "roulette-ring", "pillar-fill", "unit-random-fill", "wave-split")
 UNIT_VARIATION_DISTRIBUTIONS = ("linear", "skip", "random")
 # 不用到燈台編號／相位的效果：沒有雨、各台不錯開時，每台畫面相同，只需算一次（輸出迴圈依此共用）。
 # 其他效果依 unit_index（隨機種子、逐台排程、燈台色盤）或各台相位而不同。測試逐台比對確認。
@@ -731,6 +743,8 @@ def _brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float:
         return _unit_chase(p, ctx)
     if effect == "pillar-fill":
         return _pillar_fill(p, ctx)
+    if effect == "unit-random-fill":
+        return _unit_random_fill(p, ctx)
     if effect == "wave-split":
         # 純色：海面下亮、海面上暗，浪花全亮。 / Solid: lit below the surface, dark above, the foam fully lit.
         top, foam = _wave_split(p, ctx)
@@ -1117,11 +1131,31 @@ def _pillar_fill_timing(parameters: Mapping[str, Any], fps: float, unit_count: i
 
 def _pillar_fill(p: Mapping[str, Any], ctx: EffectContext) -> float:
     """Units light one by one in pillar order and stay lit; then hold, fade out together and stay dark."""
+    units = max(1, ctx.unit_count)
+    return _fill_one_by_one(p, ctx, lambda _round: min(units - 1, max(0, ctx.unit_index if ctx.unit_rank is None
+                                                                          else ctx.unit_rank)))
+
+
+# 隨機逐台點亮的洗牌種子，與隨機單台（1009）和燈點洗牌分開（前端 UNIT_RANDOM_FILL_SEED）。
+# unit-random-fill's shuffle seed, apart from unit-random (1009) and the LED shuffles (frontend UNIT_RANDOM_FILL_SEED).
+UNIT_RANDOM_FILL_SEED = 2027
+
+
+def _unit_random_fill(p: Mapping[str, Any], ctx: EffectContext) -> float:
+    """pillar-fill's schedule in a fresh random unit order each round."""
+    units = max(1, ctx.unit_count)
+    unit = min(units - 1, max(0, ctx.unit_index))
+    return _fill_one_by_one(p, ctx, lambda round_index: _random_ranks(round_index, UNIT_RANDOM_FILL_SEED, units)[unit])
+
+
+def _fill_one_by_one(p: Mapping[str, Any], ctx: EffectContext, rank_in_round: Any) -> float:
+    """Shared by pillar-fill and unit-random-fill: the unit ranked r fades in and stays lit, then all fade out."""
     span, fade_in, fade_start, fade_out, cycle = _pillar_fill_timing(p, ctx.controller_fps, ctx.unit_count)
     frame = max(0, ctx.controller_frame)
-    elapsed = frame - (frame // cycle) * cycle
+    round_index = frame // cycle
+    elapsed = frame - round_index * cycle
     units = max(1, ctx.unit_count)
-    rank = min(units - 1, max(0, ctx.unit_index if ctx.unit_rank is None else ctx.unit_rank))
+    rank = rank_in_round(round_index)
     # 加速：第 r 台在 span × (r / (N - 1))^(1 / 加速程度) 開始。 / Acceleration: rank r starts at span × (r/(N-1))^(1/a).
     start = 0 if units <= 1 else _round_half_up(span * (rank / (units - 1)) ** (1 / max(1.0, p["acceleration"])))
     if elapsed < start:
@@ -1367,7 +1401,7 @@ def completion_frames(preset: Mapping[str, Any], fps: int, unit_count: int) -> i
         return fill + led_fade + hold + fade_out + stagger
     if effect == "unit-chase":
         return _unit_chase_timing(parameters, fps, unit_count)[-1]
-    if effect == "pillar-fill":
+    if effect in ("pillar-fill", "unit-random-fill"):
         return _pillar_fill_timing(parameters, fps, unit_count)[-1]
     if effect == "color-alternate":
         return 2 * max(1, int(parameters["intervalFrames"]))

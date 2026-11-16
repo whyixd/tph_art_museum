@@ -1034,3 +1034,10 @@ CPython、PyPy 都要通過；frontend 加上 `tsc`、build。
 - **前端**（「風力」分頁，後端控制時）`AnemometerProbePanel`：序列埠（可選偵測到的或自己輸入、重新偵測）、baud、位址、逾時；〔讀一次〕；〔開始連續讀取〕每秒一次、預設 120 次（現場清單 §10.11 第 3 項），統計成功率（是否達 95%）、來回時間最短／平均／最長、建議逾時（最長 × 2）、各種失敗的次數。
 - 驗證：backend `test_anemometer.py` 16 個（含 pty 假風速計：分段到達、逾時、前面有雜訊、例外回應、各種失敗分類、序列埠限制、設定、API），PyPy 與 CPython 通過；全部後端 311 個通過。frontend `probeStats.test.ts` 3 個，全部 171 個、build 通過。開發機（`--api-only`＋pty 假風速計）headless Chromium：讀一次成功（13 bytes、來回約 250 ms、數值與方位一致）、連續 5 次 100%、假風速計不回應時顯示「沒有回應」。**尚未在 Pi 與實際風速計上測試。**
 - **修正：Pi 上按測試顯示 Permission denied**（2026-11-16 rc.18 現場回報）：服務以 `tph-art-museum` 帳號執行，只有 `audio` 附加群組；`/dev/ttyUSB0` 是 `root:dialout 0660`。2026-11-12 現場測試用的是 `whyixd`（在 dialout），所以沒發現。`tph-art-museum.service` 改為 `SupplementaryGroups=audio dialout`（installer 每次升級都會重寫服務檔，rc.19 起生效）；權限不足時網頁直接說明要 dialout 群組。測試：`test_anemometer.py` 新增服務檔群組與權限錯誤訊息 2 個。
+
+### 2026-11-16：轉燈效果「隨機逐台點亮」（`unit-random-fill`）
+
+使用者指示：「逐個緩慢整顆亮起，順序隨機」。沿用「依柱子逐台點亮」（`pillar-fill`）的時間表：一台接一台淡入並保持亮著，全部亮起後停留、一起淡出、全暗，再開始下一輪；順序改成**每輪重新隨機**（固定種子 2027 的洗牌，前後端相同），不看柱子順序。預設比 pillar-fill 慢：每台間隔 2 秒、淡入 2 秒、停留 5 秒、淡出 3 秒、全暗 1 秒（24 台一輪 57 秒）；參數範圍間隔 0.05–10 秒、淡入 0–10 秒，可設逐漸加速。跟其他整台效果一樣：全部轉燈共用時間表（不開放各台不同）、不受多雲錯開、沒有雨天線條。
+
+- 前端 `effects/unitRandomFill.ts`（重用 `pillarFillTiming`／`pillarFillStart`）；後端 `_unit_random_fill`，與 `_pillar_fill` 共用 `_fill_one_by_one`。
+- 驗證：一致性向量重產（既有效果的向量逐值相同，只多了新效果：presets 104、samples 936、frames 1872、整台效果 18、雨天 52）；前後端各新增一個行為測試（每 2 秒一台、每台淡入 2 秒後全亮、三輪順序都不同、不受柱子順序影響）。backend 全部通過（PyPy；`test_effects.py` 另跑 CPython），frontend 172 個測試、build 通過。**尚未在 Pi 與實體轉燈上看過。**

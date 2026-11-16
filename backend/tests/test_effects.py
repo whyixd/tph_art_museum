@@ -52,8 +52,8 @@ class EffectParityTests(unittest.TestCase):
     def test_frontend_golden_vectors(self) -> None:
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
         presets = [validate_preset(preset) for preset in fixture["presets"]]
-        self.assertEqual(25, len({preset["effectId"] for preset in presets}))
-        self.assertEqual(900, len(fixture["samples"]))
+        self.assertEqual(26, len({preset["effectId"] for preset in presets}))
+        self.assertEqual(936, len(fixture["samples"]))
         for sample in fixture["samples"]:
             data = sample["context"]
             context = EffectContext(
@@ -77,7 +77,7 @@ class EffectParityTests(unittest.TestCase):
     def test_frontend_full_frame_bytes(self) -> None:
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
         presets = [validate_preset(preset) for preset in fixture["presets"]]
-        self.assertEqual(1800, len(fixture["frames"]))
+        self.assertEqual(1872, len(fixture["frames"]))
         for case in fixture["frames"]:
             preset = presets[case["presetIndex"]]
             pixels = [
@@ -390,6 +390,39 @@ class EffectParityTests(unittest.TestCase):
 
         self.assertEqual([0, 57, 80, 98, 113, 126, 139, 150, 160], [start(rank) for rank in range(9)])
 
+    def test_unit_random_fill_lights_every_unit_once_in_a_fresh_order(self):
+        preset = validate_preset(default_preset("unit-random-fill"))
+        # Step 2 s, fade in 2 s, hold 5 s, fade out 3 s, dark 1 s at 40 FPS, 24 units: 23 × 80 + 80 + 200 + 120 + 40.
+        cycle = completion_frames(preset, 40, 24)
+        self.assertEqual(2280, cycle)
+        self.assertEqual((), variable_parameters("unit-random-fill"))
+
+        def level(frame: int, unit: int) -> float:
+            return sample_effect(preset, EffectContext(frame, 40, 10, 129, unit, 24))[0]
+
+        orders = []
+        for round_index in range(3):
+            base = round_index * cycle
+            starts = {}
+            for unit in range(24):
+                frame = base
+                while level(frame, unit) == 0:
+                    frame += 1
+                starts[unit] = frame - base
+                # 淡入 2 秒後全亮並保持到淡出。 / Fully lit after the 2 s fade in, until the fade out.
+                self.assertAlmostEqual(1 / 80, level(frame, unit), places=12)
+                self.assertEqual(1.0, level(frame + 79, unit))
+                self.assertEqual(1.0, level(base + 1840 + 80 + 199, unit))
+                self.assertEqual(0.0, level(base + cycle - 1, unit))
+            # 每台各一次、每 2 秒一台。 / One unit every 2 s, each once.
+            self.assertEqual(list(range(0, 1841, 80)), sorted(starts.values()))
+            orders.append(sorted(range(24), key=starts.get))
+        self.assertNotEqual(orders[0], orders[1])
+        self.assertNotEqual(orders[1], orders[2])
+        # 不看柱子順序（unit_rank）。 / The pillar rank does not matter.
+        self.assertEqual(sample_effect(preset, EffectContext(500, 40, 10, 129, 3, 24)),
+                         sample_effect(preset, EffectContext(500, 40, 10, 129, 3, 24, unit_rank=20)))
+
     def test_firework_rise_meteor(self):
         preset = validate_preset(default_preset("firework-rise"))
         self.assertEqual(100, completion_frames(preset, 40, 9))
@@ -573,7 +606,7 @@ if __name__ == "__main__":
 class UnitEffectTests(unittest.TestCase):
     def test_frontend_unit_effect_hashes(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
-        self.assertEqual(16, len(fixture["unitEffects"]))
+        self.assertEqual(18, len(fixture["unitEffects"]))
         for case in fixture["unitEffects"]:
             preset = validate_preset(case["preset"])
             unit_count = case["unitCount"]
@@ -589,7 +622,7 @@ class UnitEffectTests(unittest.TestCase):
                              f"{preset['effectId']} x{unit_count}")
 
     def test_unit_effects_ignore_weather_timing(self):
-        for effect_id in ("unit-chase", "unit-random", "roulette-ring"):
+        for effect_id in ("unit-chase", "unit-random", "roulette-ring", "unit-random-fill"):
             preset = validate_preset(default_preset(effect_id))
             plain = {"unitId": 6, "logicalPixelCount": 156, "frameOffset": 0}
             cloudy = {**plain, "frameOffset": 30}
@@ -605,7 +638,7 @@ class UnitEffectTests(unittest.TestCase):
     def test_rain_lines_match_frontend(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))["rainLines"]
         frames = [frame for start, end in fixture["frameRanges"] for frame in range(start, end)]
-        self.assertEqual(50, len(fixture["cases"]))
+        self.assertEqual(52, len(fixture["cases"]))
         for case in fixture["cases"]:
             preset = validate_preset(default_preset(case["effectId"]))
             data = bytearray()
@@ -636,7 +669,7 @@ class UnitEffectTests(unittest.TestCase):
         self.assertAlmostEqual(0.18, sum(lit) / (len(lit) * 156), delta=0.02)
 
     def test_unit_effects_reject_unit_variation(self):
-        for effect_id in ("unit-chase", "unit-random", "roulette-ring"):
+        for effect_id in ("unit-chase", "unit-random", "roulette-ring", "unit-random-fill"):
             preset = default_preset(effect_id)
             parameter = next(iter(preset["parameters"]))
             preset["unitVariation"] = {"parameter": parameter, "from": preset["parameters"][parameter],

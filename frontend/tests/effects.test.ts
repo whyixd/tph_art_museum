@@ -60,6 +60,7 @@ describe('effect synchronization contract', () => {
       'two-tone-trail',
       'firework-rise',
       'pillar-fill',
+      'unit-random-fill',
       'color-alternate',
       'wave-split',
       'wind-flow',
@@ -689,6 +690,42 @@ describe('pillar-fill', () => {
     const gaps = starts.slice(1).map((start, index) => start - starts[index])
     gaps.slice(1).forEach((gap, index) => expect(gap).toBeLessThanOrEqual(gaps[index]))
     expect(getEffectCompletion(fast, fps, 9)?.frames).toBe(312)
+  })
+})
+
+describe('unit-random-fill', () => {
+  const fps = 40
+  const preset = createDefaultEffectPreset('unit-random-fill')
+  const level = (frame: number, unit: number, rank?: number) => {
+    const context = createEffectContext(frame, fps, 10, 129, unit, 24)
+    if (rank !== undefined) context.unitRank = rank
+    return sampleEffect(preset, context).r
+  }
+
+  it('fades whole units in one by one in a fresh random order each round, then fades out together', () => {
+    // Step 2 s, fade in 2 s, hold 5 s, fade out 3 s, dark 1 s, 24 units: 23 × 80 + 80 + 200 + 120 + 40 frames.
+    const cycle = getEffectCompletion(preset, fps, 24)!.frames
+    expect(cycle).toBe(2280)
+    expect(getVariableParameters('unit-random-fill')).toEqual([])
+    expect(ignoresWeatherTiming('unit-random-fill')).toBe(true)
+    const orders = [0, 1, 2].map((round) => {
+      const base = round * cycle
+      const starts = Array.from({ length: 24 }, (_, unit) => {
+        let frame = base
+        while (level(frame, unit) === 0) frame += 1
+        expect(level(frame, unit)).toBeCloseTo(1 / 80, 12)
+        expect(level(frame + 79, unit)).toBe(1)
+        expect(level(base + 2119, unit)).toBe(1)
+        expect(level(base + cycle - 1, unit)).toBe(0)
+        return frame - base
+      })
+      expect([...starts].sort((a, b) => a - b)).toEqual(Array.from({ length: 24 }, (_, index) => index * 80))
+      return starts.map((start, unit) => [start, unit]).sort((a, b) => a[0] - b[0]).map(([, unit]) => unit)
+    })
+    expect(orders[1]).not.toEqual(orders[0])
+    expect(orders[2]).not.toEqual(orders[1])
+    // The pillar rank does not change the order.
+    expect(level(500, 3, 20)).toBe(level(500, 3))
   })
 })
 

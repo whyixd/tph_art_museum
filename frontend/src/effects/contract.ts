@@ -24,6 +24,7 @@ export type EffectId =
   | 'two-tone-trail'
   | 'firework-rise'
   | 'pillar-fill'
+  | 'unit-random-fill'
   | 'color-alternate'
   | 'wave-split'
   | 'wind-flow'

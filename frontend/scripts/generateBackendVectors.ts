@@ -30,6 +30,7 @@ const ids = [
   'two-tone-trail',
   'firework-rise',
   'pillar-fill',
+  'unit-random-fill',
   'color-alternate',
   'wave-split',
 ] as const
@@ -195,6 +196,11 @@ const unitEffectCases: [EffectPreset, number][] = [
   // 依柱子點亮：預設與逐漸加速。 / pillar-fill: default and accelerating.
   [createDefaultEffectPreset('pillar-fill'), 24],
   [{ ...createDefaultEffectPreset('pillar-fill'), parameters: { ...createDefaultEffectPreset('pillar-fill').parameters, acceleration: 2.5, fadeInSeconds: 0.15 } }, 24],
+  // 隨機逐台點亮：預設與快速、加速（多輪看順序重新隨機）。 / unit-random-fill: default, and fast with acceleration.
+  [createDefaultEffectPreset('unit-random-fill'), 24],
+  [{ ...createDefaultEffectPreset('unit-random-fill'), parameters: {
+    stepSeconds: 0.2, acceleration: 2, fadeInSeconds: 0.3, holdSeconds: 0.5, fadeOutSeconds: 0.25, endDarkSeconds: 0,
+  } }, 9],
   // 隨機填滿錯落開始。 / random-fill with a staggered start.
   [{ ...createDefaultEffectPreset('random-fill'), parameters: {
     fillSeconds: 5, acceleration: 3.5, ledFadeSeconds: 0.25, holdSeconds: 6, fadeOutSeconds: 0.5, staggerSeconds: 2,
