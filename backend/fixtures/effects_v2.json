@@ -399,7 +399,8 @@
       "effectId": "sequential-center-fill",
       "parameters": {
         "expansionSeconds": 2.5,
-        "holdSeconds": 0.4
+        "holdSeconds": 0.4,
+        "fromBothEnds": 0
       },
       "color": {
         "mode": "solid",
@@ -415,7 +416,8 @@
       "effectId": "sequential-center-fill",
       "parameters": {
         "expansionSeconds": 2.5,
-        "holdSeconds": 0.4
+        "holdSeconds": 0.4,
+        "fromBothEnds": 0
       },
       "color": {
         "mode": "solid",
@@ -431,7 +433,8 @@
       "effectId": "sequential-center-fill",
       "parameters": {
         "expansionSeconds": 2.5,
-        "holdSeconds": 0.4
+        "holdSeconds": 0.4,
+        "fromBothEnds": 0
       },
       "color": {
         "mode": "gradient",
@@ -455,7 +458,8 @@
       "effectId": "sequential-center-fill",
       "parameters": {
         "expansionSeconds": 2.5,
-        "holdSeconds": 0.4
+        "holdSeconds": 0.4,
+        "fromBothEnds": 0
       },
       "color": {
         "mode": "gradient",
@@ -42259,7 +42263,8 @@
         "effectId": "sequential-center-fill",
         "parameters": {
           "expansionSeconds": 2.5,
-          "holdSeconds": 0.4
+          "holdSeconds": 0.4,
+          "fromBothEnds": 0
         },
         "color": {
           "mode": "solid",
@@ -42285,6 +42290,74 @@
       ],
       "totalFrames": 5538,
       "sha256": "79b9aacb1fa789be644e5ad017f8ad7188b41d3dae2f8cf4ce14bab2509d1256"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "sequential-center-fill",
+        "parameters": {
+          "expansionSeconds": 1,
+          "holdSeconds": 0.2,
+          "fromBothEnds": 1
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        }
+      },
+      "unitCount": 24,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 1138,
+      "sha256": "0e3917f31c213434af6267ecf13bc4c69b65ebd0c37fd0b5c26ef555e8d0e129"
+    },
+    {
+      "preset": {
+        "schemaVersion": 2,
+        "effectId": "sequential-center-fill",
+        "parameters": {
+          "expansionSeconds": 1,
+          "holdSeconds": 0.2,
+          "fromBothEnds": 1
+        },
+        "color": {
+          "mode": "solid",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        }
+      },
+      "unitCount": 9,
+      "leds": [
+        0,
+        1,
+        2,
+        38,
+        77,
+        78,
+        117,
+        153,
+        154,
+        155
+      ],
+      "totalFrames": 466,
+      "sha256": "dfdc9000d75558bd7c535124ff645b7d4f75e34d0436f7184436d834402c6a87"
     },
     {
       "preset": {

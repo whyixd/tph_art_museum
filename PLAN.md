@@ -1054,3 +1054,7 @@ CPython、PyPy 都要通過；frontend 加上 `tsc`、build。
 - **一致性向量**：`generateFixtureVectors.ts` 先排除 `wind-flow`（待機原型，沒有一致性向量；排除後重產與原檔逐 byte 相同），再加入新效果：通用的取樣與整組影格（沒有位置 → 依編號），以及 `brightnessWalk`（範例配置的實際位置：鄰近表、預設與「12 個起點、只挑最近、平滑」兩組，兩輪逐格雜湊）。
 - **效能**：後端 PyPy（Apple M4）每格 0.013 ms（37 個起點、200 步 0.016 ms）。
 - 驗證：backend 新增 4 個（與前端一致、A→B 流動與規則、相遇相加上限 1、不受多雲錯開），全部通過（PyPy；`test_fixture_effects.py` 另跑 CPython）；frontend 新增 3 個，175 個測試、build 通過。**尚未在 Pi 與實體球燈上看過。**
+
+### 2026-11-17：逐月（`sequential-center-fill`）可從兩頭往中間
+
+使用者指示：「從兩頭都開始（從 1 和 24 同時開始往中間）」。新參數「起點」`fromBothEnds`（0 從 1 號開始＝原本行為，預設；1 兩頭往中間）：1 與 N 同一段，再 2 與 N−1……奇數台時中間一台自己一段；段數 ceil(N/2)，一輪時間約減半（24 台 12 段）。全部轉燈共用時間表，與其他參數一樣不開放各台不同。前後端共用 `centerFillStage`／`center_fill_stage`；舊 preset 沒有這個欄位時用 0。驗證：既有一致性向量的值不變（只多了 preset 的新欄位），新增兩頭開始 24 台、9 台兩組整台雜湊；前後端各新增一個行為測試；backend 全部（PyPy；`test_effects.py` 另跑 CPython）、frontend 176 個測試通過。**尚未在 Pi 上看過。**

@@ -693,6 +693,25 @@ describe('pillar-fill', () => {
   })
 })
 
+describe('sequential-center-fill from both ends', () => {
+  const preset = { ...createDefaultEffectPreset('sequential-center-fill'), parameters: { expansionSeconds: 1, holdSeconds: 0, fromBothEnds: 1 } }
+  const outer = (frame: number, unit: number, units = 24) =>
+    sampleEffect(preset, createEffectContext(frame, 40, 0, 129, unit, units, frame)).r
+
+  it('lights units 1 and N together, then 2 and N-1, towards the middle', () => {
+    expect(getEffectCompletion(preset, 40, 24)?.frames).toBe(481)
+    expect(getEffectCompletion(preset, 40, 9)?.frames).toBe(201)
+    expect([outer(41, 0), outer(41, 23)]).toEqual([1, 1])
+    expect([outer(41, 1), outer(41, 22), outer(41, 2)]).toEqual([0, 0, 0])
+    expect([outer(81, 1), outer(81, 22)]).toEqual([1, 1])
+    expect([outer(441, 10), outer(441, 13), outer(441, 11)]).toEqual([1, 1, 0])
+    expect(outer(481, 11)).toBe(1)
+    expect(outer(161, 4, 9)).toBe(0)
+    expect(outer(201, 4, 9)).toBe(1)
+    expect(createDefaultEffectPreset('sequential-center-fill').parameters.fromBothEnds).toBe(0)
+  })
+})
+
 describe('unit-random-fill', () => {
   const fps = 40
   const preset = createDefaultEffectPreset('unit-random-fill')

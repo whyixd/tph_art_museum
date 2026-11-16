@@ -55,6 +55,8 @@ PARAMETERS: dict[str, dict[str, tuple[float, float, float, bool]]] = {
     "sequential-center-fill": {
         "expansionSeconds": (0.5, 8, 2.5, False),
         "holdSeconds": (0, 2, 0.4, False),
+        # 1：從兩頭（1 與 N）同時往中間。 / 1: from both ends (1 and N) towards the middle.
+        "fromBothEnds": (0, 1, 0, True),
     },
     "periodic-leds": {
         "litCount": (1, 156, 12, True),
@@ -172,7 +174,7 @@ PARAMETER_STEPS: dict[str, dict[str, float]] = {
 # 逐組填滿與整台效果靠九台共用時間表，各台參數不同會錯亂，所以不開放。
 # sequential-center-fill and the whole-unit effects share one schedule, so per-unit values would break them.
 FIXED_PARAMETERS: dict[str, tuple[str, ...]] = {
-    "sequential-center-fill": ("expansionSeconds", "holdSeconds"),
+    "sequential-center-fill": ("expansionSeconds", "holdSeconds", "fromBothEnds"),
     "random-leds": ("durationMode",),
     "wave-split": ("levelMeters", "amplitudeMeters", "wavelengthMeters", "speedMps", "directionDegrees", "chop",
                    "foamCm", "softnessCm"),
@@ -562,6 +564,16 @@ def _gradient(colors: tuple[Rgb, ...], position: float, loop: bool) -> Rgb:
     )  # type: ignore[return-value]
 
 
+def center_fill_stage(unit_index: int, unit_count: int, from_both_ends: bool) -> tuple[int, int]:
+    """(this unit's stage, stage count) for sequential-center-fill (frontend centerFillStage).
+
+    From unit 1: unit i lights in stage i. From both ends: 1 and N together, then 2 and N-1, … to the middle."""
+    units = max(1, unit_count)
+    if not from_both_ends:
+        return unit_index, units
+    return min(unit_index, units - 1 - unit_index), (units + 1) // 2
+
+
 @lru_cache(maxsize=64)
 def _random_ranks(frame: int, unit_index: int, led_count: int) -> tuple[int, ...]:
     mask = 0xFFFFFFFF
@@ -626,10 +638,11 @@ def _brightness(preset: Mapping[str, Any], ctx: EffectContext) -> float:
         expansion = max(0.01, p["expansionSeconds"])
         stage = expansion + max(0, p["holdSeconds"])
         global_time = max(0, ctx.global_frame / ctx.controller_fps if ctx.controller_fps > 0 else 0)
-        active = min(math.floor(global_time / stage), max(1, ctx.unit_count) - 1)
-        if ctx.unit_index < active:
+        own, stages = center_fill_stage(ctx.unit_index, ctx.unit_count, p.get("fromBothEnds", 0) == 1)
+        active = min(math.floor(global_time / stage), stages - 1)
+        if own < active:
             return 1.0
-        if ctx.unit_index > active:
+        if own > active:
             return 0.0
         progress = clamp01((global_time - active * stage) / expansion)
         step = 1 if ctx.led_count <= 1 else 2 / (ctx.led_count - 1)
@@ -1421,5 +1434,6 @@ def completion_frames(preset: Mapping[str, Any], fps: int, unit_count: int) -> i
     if effect == "sequential-center-fill":
         expansion = parameters["expansionSeconds"]
         hold = parameters["holdSeconds"]
-        return math.ceil(((unit_count - 1) * (expansion + hold) + expansion) * fps) + 1
+        stages = center_fill_stage(0, unit_count, parameters.get("fromBothEnds", 0) == 1)[1]
+        return math.ceil(((stages - 1) * (expansion + hold) + expansion) * fps) + 1
     return None

@@ -390,6 +390,33 @@ class EffectParityTests(unittest.TestCase):
 
         self.assertEqual([0, 57, 80, 98, 113, 126, 139, 150, 160], [start(rank) for rank in range(9)])
 
+    def test_sequential_center_fill_from_both_ends(self):
+        raw = default_preset("sequential-center-fill")
+        raw["parameters"] = {"expansionSeconds": 1, "holdSeconds": 0, "fromBothEnds": 1}
+        preset = validate_preset(raw)
+        # 24 units in 12 stages of 1 s: (12 - 1) × 1 + 1 s at 40 FPS, plus one frame.
+        self.assertEqual(481, completion_frames(preset, 40, 24))
+        self.assertEqual(201, completion_frames(preset, 40, 9))   # 5 stages, the middle unit alone
+
+        def outer(frame: int, unit: int, units: int = 24) -> float:
+            # The outermost LED is the last to light in a stage.
+            return sample_effect(preset, EffectContext(frame, 40, 0, 129, unit, units, global_controller_frame=frame))[0]
+
+        # Stage 0 (units 1 and 24) fills during the first second, then stays lit; stage 1 is 2 and 23.
+        self.assertEqual(0.0, outer(20, 1))
+        self.assertTrue(0 < sample_effect(preset, EffectContext(20, 40, 64, 129, 0, 24, global_controller_frame=20))[0])
+        self.assertEqual([1.0, 1.0], [outer(41, 0), outer(41, 23)])
+        self.assertEqual([0.0, 0.0, 0.0], [outer(41, 1), outer(41, 22), outer(41, 2)])
+        self.assertEqual([1.0, 1.0], [outer(81, 1), outer(81, 22)])
+        self.assertEqual([1.0, 1.0, 0.0], [outer(441, 10), outer(441, 13), outer(441, 11)])
+        self.assertEqual(1.0, outer(481, 11))
+        self.assertEqual(0.0, outer(161, 4, 9))
+        self.assertEqual(1.0, outer(201, 4, 9))
+        # 預設仍從 1 號開始。 / The default still starts from unit 1.
+        default = validate_preset(default_preset("sequential-center-fill"))
+        self.assertEqual(0.0, default["parameters"]["fromBothEnds"])
+        self.assertEqual(0.0, sample_effect(default, EffectContext(10, 40, 64, 129, 23, 24, global_controller_frame=10))[0])
+
     def test_unit_random_fill_lights_every_unit_once_in_a_fresh_order(self):
         preset = validate_preset(default_preset("unit-random-fill"))
         # Step 1.5 s, fade in 4 s, hold 5 s, fade out 3 s, dark 1 s at 40 FPS, 24 units: 23 × 60 + 160 + 200 + 120 + 40.
@@ -610,7 +637,7 @@ if __name__ == "__main__":
 class UnitEffectTests(unittest.TestCase):
     def test_frontend_unit_effect_hashes(self):
         fixture = json.loads(FIXTURE.read_text(encoding="utf-8-sig"))
-        self.assertEqual(18, len(fixture["unitEffects"]))
+        self.assertEqual(20, len(fixture["unitEffects"]))
         for case in fixture["unitEffects"]:
             preset = validate_preset(case["preset"])
             unit_count = case["unitCount"]

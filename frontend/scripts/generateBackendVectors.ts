@@ -192,6 +192,9 @@ const unitEffectCases: [EffectPreset, number][] = [
   [createDefaultEffectPreset('unit-random'), 24],
   [createDefaultEffectPreset('roulette-ring'), 24],
   [createDefaultEffectPreset('sequential-center-fill'), 24],
+  // 逐月從兩頭往中間：24 台（12 段）與 9 台（中間一台自己一段）。 / From both ends: 24 units, and 9 (the middle alone).
+  [{ ...createDefaultEffectPreset('sequential-center-fill'), parameters: { expansionSeconds: 1, holdSeconds: 0.2, fromBothEnds: 1 } }, 24],
+  [{ ...createDefaultEffectPreset('sequential-center-fill'), parameters: { expansionSeconds: 1, holdSeconds: 0.2, fromBothEnds: 1 } }, 9],
   [createDefaultEffectPreset('random-fill'), 24],
   // 依柱子點亮：預設與逐漸加速。 / pillar-fill: default and accelerating.
   [createDefaultEffectPreset('pillar-fill'), 24],

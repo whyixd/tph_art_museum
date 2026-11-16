@@ -76,7 +76,7 @@ export function getEffectManifest(effectId: EffectId) {
 // 逐組填滿、逐台巡行、隨機單台與輪盤收束靠九台共用時間表決定輪到哪一台，各台參數不同會錯亂，所以不開放。
 // sequential-center-fill, unit-chase, unit-random and roulette-ring share one schedule across units, so per-unit values would break them.
 const FIXED_PARAMETERS: Partial<Record<EffectId, readonly string[]>> = {
-  'sequential-center-fill': ['expansionSeconds', 'holdSeconds'],
+  'sequential-center-fill': ['expansionSeconds', 'holdSeconds', 'fromBothEnds'],
   'unit-chase': ['stepSeconds', 'fadeSeconds', 'gapSeconds', 'holdSeconds', 'endDarkSeconds'],
   'unit-random': ['fadeInSeconds', 'holdSeconds', 'fadeOutSeconds', 'gapSeconds'],
   'roulette-ring': [
