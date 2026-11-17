@@ -992,6 +992,7 @@ CPython、PyPy 都要通過；frontend 加上 `tsc`、build。
 - **新韌體實測**（同一台、同一支腳本、同樣 12 秒／12 秒，2026-11-14 02:06 結束）：**100 次啟動、100 次停止，XIAO 0 次漏**，WLED 輸出每次都正確（舊韌體 20 次漏 1 次啟動）。
 - **緩停中的啟動實測**（`--cycles 10 --on-seconds 20 --off-seconds 3`，停止 3 秒後就送啟動，02:32）：10 次都在緩停結束後自動啟動（`MOTOR_STOPPING → POWER_DOWN → POWER_OFF → PRECHARGING → … → MOTOR_RUNNING`，啟動命令送出後約 3.9 秒開始上電、約 11 秒到全速），啟動 0 次漏。當時腳本把這 10 次停止記成 MISS，是判定規則的問題（3 秒內到不了 `POWER_OFF`），已改成「有反應且仍在緩停」算 ok。
 - 只測了一台（桌上單機，不是現場群控），其他 23 台尚未重刷。
+- 不重刷 XIAO 的補救方案（WLED usermod 重讀脈衝、backend 啟動多按一次）評估見 `doc/motor-missed-command.md`（2026-11-18，尚未實作）。
 
 ### 2026-11-14：每日排程（M13，加上裝置啟動時間）
 
